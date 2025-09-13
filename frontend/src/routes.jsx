@@ -43,8 +43,8 @@ export const routes = [
       },
     ],
   },
+  // Keep auth pages for routing but don't show them in sidebar
   {
-    title: "auth pages",
     layout: "auth",
     pages: [
       {
