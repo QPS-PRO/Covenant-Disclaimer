@@ -12,7 +12,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { Home, Profile, Tables, Notifications } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
-import { Employees, Assets, Departments }  from "@/pages/management";
+import { Employees, Assets, Departments, Transactions }  from "@/pages/management";
 const icon = {
   className: "w-5 h-5 text-inherit",
 };
@@ -45,12 +45,12 @@ export const routes = [
         path: "/departments",
         element: <Departments />,
       },
-      // {
-      //   icon: <ArrowsRightLeftIcon {...icon} />,
-      //   name: "transactions",
-      //   path: "/transactions",
-      //   element: <Transactions />,
-      // },
+      {
+        icon: <ArrowsRightLeftIcon {...icon} />,
+        name: "transactions",
+        path: "/transactions",
+        element: <Transactions />,
+      },
       {
         icon: <UserCircleIcon {...icon} />,
         name: "profile",

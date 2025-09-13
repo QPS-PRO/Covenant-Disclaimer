@@ -15,7 +15,7 @@ import {
     Option,
     Alert,
 } from "@material-tailwind/react";
-import { PlusIcon, PencilIcon, EyeIcon, MagnifyingGlassIcon, UsersIcon, CubeIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, PencilIcon, EyeIcon, TrashIcon, MagnifyingGlassIcon, UsersIcon, CubeIcon } from "@heroicons/react/24/outline";
 import { departmentAPI, employeeAPI } from "@/lib/assetApi";
 
 export function Departments() {
@@ -27,7 +27,9 @@ export function Departments() {
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedDepartment, setSelectedDepartment] = useState(null);
 
     // Form states
@@ -96,15 +98,44 @@ export function Departments() {
                 name: formData.name,
                 manager: formData.manager || null,
             };
-            await departmentAPI.create(submitData);
-            setShowAddModal(false);
-            setFormData({
-                name: "",
-                manager: "",
-            });
+            
+            if (selectedDepartment) {
+                await departmentAPI.update(selectedDepartment.id, submitData);
+                setShowEditModal(false);
+            } else {
+                await departmentAPI.create(submitData);
+                setShowAddModal(false);
+            }
+            
+            resetForm();
             fetchDepartments();
         } catch (err) {
-            setError(err.message || "Failed to create department");
+            setError(err.message || "Failed to save department");
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
+    const handleEdit = (department) => {
+        setSelectedDepartment(department);
+        setFormData({
+            name: department.name,
+            manager: department.manager ? department.manager.toString() : "",
+        });
+        setShowEditModal(true);
+    };
+
+    const handleDelete = async () => {
+        if (!selectedDepartment) return;
+        
+        setFormLoading(true);
+        try {
+            await departmentAPI.delete(selectedDepartment.id);
+            setShowDeleteModal(false);
+            setSelectedDepartment(null);
+            fetchDepartments();
+        } catch (err) {
+            setError("Failed to delete department. Make sure it has no employees or assets assigned.");
         } finally {
             setFormLoading(false);
         }
@@ -118,6 +149,20 @@ export function Departments() {
         } catch (err) {
             setError("Failed to fetch department details");
         }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            name: "",
+            manager: "",
+        });
+        setSelectedDepartment(null);
+    };
+
+    const handleModalClose = () => {
+        setShowAddModal(false);
+        setShowEditModal(false);
+        resetForm();
     };
 
     if (loading) {
@@ -182,8 +227,7 @@ export function Departments() {
                             </thead>
                             <tbody>
                                 {departments.map((department, key) => {
-                                    const className = `py-3 px-5 ${key === departments.length - 1 ? "" : "border-b border-blue-gray-50"
-                                        }`;
+                                    const className = `py-3 px-5 ${key === departments.length - 1 ? "" : "border-b border-blue-gray-50"}`;
 
                                     return (
                                         <tr key={department.id}>
@@ -233,8 +277,22 @@ export function Departments() {
                                                     >
                                                         <EyeIcon className="h-4 w-4" />
                                                     </IconButton>
-                                                    <IconButton variant="text" color="blue-gray">
+                                                    <IconButton
+                                                        variant="text"
+                                                        color="blue-gray"
+                                                        onClick={() => handleEdit(department)}
+                                                    >
                                                         <PencilIcon className="h-4 w-4" />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        variant="text"
+                                                        color="red"
+                                                        onClick={() => {
+                                                            setSelectedDepartment(department);
+                                                            setShowDeleteModal(true);
+                                                        }}
+                                                    >
+                                                        <TrashIcon className="h-4 w-4" />
                                                     </IconButton>
                                                 </div>
                                             </td>
@@ -247,9 +305,11 @@ export function Departments() {
                 </CardBody>
             </Card>
 
-            {/* Add Department Modal */}
-            <Dialog open={showAddModal} handler={() => setShowAddModal(false)} size="md">
-                <DialogHeader>Add New Department</DialogHeader>
+            {/* Add/Edit Department Modal */}
+            <Dialog open={showAddModal || showEditModal} handler={handleModalClose} size="md">
+                <DialogHeader>
+                    {selectedDepartment ? "Edit Department" : "Add New Department"}
+                </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="flex flex-col gap-4">
                         <Input
@@ -273,14 +333,40 @@ export function Departments() {
                         </Select>
                     </DialogBody>
                     <DialogFooter>
-                        <Button variant="text" color="red" onClick={() => setShowAddModal(false)} className="mr-1">
+                        <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
                             Cancel
                         </Button>
                         <Button type="submit" loading={formLoading}>
-                            Create Department
+                            {selectedDepartment ? "Update Department" : "Create Department"}
                         </Button>
                     </DialogFooter>
                 </form>
+            </Dialog>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={showDeleteModal} handler={() => setShowDeleteModal(false)} size="sm">
+                <DialogHeader>Confirm Delete</DialogHeader>
+                <DialogBody>
+                    Are you sure you want to delete this department? This action cannot be undone and will fail if the department has employees or assets assigned.
+                    {selectedDepartment && (
+                        <div className="mt-2 p-2 bg-gray-100 rounded">
+                            <Typography variant="small" className="font-semibold">
+                                {selectedDepartment.name}
+                            </Typography>
+                            <Typography variant="small" className="text-gray-600">
+                                Employees: {selectedDepartment.employee_count} | Assets: {selectedDepartment.asset_count}
+                            </Typography>
+                        </div>
+                    )}
+                </DialogBody>
+                <DialogFooter>
+                    <Button variant="text" color="gray" onClick={() => setShowDeleteModal(false)} className="mr-1">
+                        Cancel
+                    </Button>
+                    <Button color="red" onClick={handleDelete} loading={formLoading}>
+                        Delete Department
+                    </Button>
+                </DialogFooter>
             </Dialog>
 
             {/* View Department Modal */}

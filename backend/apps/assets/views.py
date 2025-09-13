@@ -7,11 +7,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
+import hashlib
+import random
 from .models import Department, Employee, Asset, AssetTransaction
 from .serializers import (
-    DepartmentSerializer, EmployeeSerializer, EmployeeCreateSerializer,
+    DepartmentSerializer, EmployeeSerializer, EmployeeCreateSerializer, EmployeeUpdateSerializer,
     AssetSerializer, AssetTransactionSerializer, AssetTransactionCreateSerializer,
-    DashboardStatsSerializer
+    DashboardStatsSerializer, FaceVerificationSerializer
 )
 
 class DepartmentListCreateView(generics.ListCreateAPIView):
@@ -44,8 +46,12 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
 
 class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Employee.objects.select_related('user', 'department')
-    serializer_class = EmployeeSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return EmployeeUpdateSerializer
+        return EmployeeSerializer
 
     def destroy(self, request, *args, **kwargs):
         # Soft delete - mark as inactive instead of deleting
@@ -75,7 +81,7 @@ class AssetTransactionListCreateView(generics.ListCreateAPIView):
     )
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['transaction_type', 'asset__department', 'employee']
+    filterset_fields = ['transaction_type', 'asset__department', 'employee', 'face_verification_success']
     search_fields = ['asset__name', 'asset__serial_number', 'employee__user__first_name']
     ordering = ['-transaction_date']
 
@@ -122,6 +128,99 @@ def employee_profile_view(request, employee_id):
                 'total_issues': transactions.filter(transaction_type='issue').count(),
                 'total_returns': transactions.filter(transaction_type='return').count(),
             }
+        })
+        
+    except Employee.DoesNotExist:
+        return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_face_view(request):
+    """Verify face data against stored employee face data"""
+    serializer = FaceVerificationSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        employee = serializer.validated_data['employee']
+        face_data = serializer.validated_data['face_data']
+        
+        # Perform face verification
+        verification_result = perform_face_verification(
+            employee.face_recognition_data,
+            face_data
+        )
+        
+        return Response({
+            'success': verification_result['success'],
+            'confidence': verification_result['confidence'],
+            'threshold': verification_result['threshold'],
+            'employee_name': employee.name,
+            'employee_id': employee.employee_id
+        })
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def perform_face_verification(stored_face_data, captured_face_data):
+    """
+    Perform face verification between stored and captured face data
+    In production, this would integrate with a real face recognition service
+    """
+    try:
+        # Simulate face verification process
+        # In a real implementation, you would:
+        # 1. Load face recognition model
+        # 2. Extract face encodings from both images
+        # 3. Calculate similarity/distance (e.g., using face_recognition library)
+        # 4. Compare against threshold
+        
+        # For demo purposes, simulate verification
+        stored_hash = hashlib.md5(stored_face_data.encode()).hexdigest()
+        captured_hash = hashlib.md5(captured_face_data.encode()).hexdigest()
+        
+        # Simulate confidence score
+        confidence = random.uniform(0.3, 0.95)
+        threshold = 0.7
+        
+        # Add some logic to make verification more realistic
+        # If hashes are similar, higher chance of success
+        if stored_hash[:4] == captured_hash[:4]:
+            confidence += 0.1
+        
+        success = confidence >= threshold
+        
+        return {
+            'success': success,
+            'confidence': round(confidence, 2),
+            'threshold': threshold
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'confidence': 0.0,
+            'threshold': 0.7,
+            'error': str(e)
+        }
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_employee_face_data(request, employee_id):
+    """Update employee face recognition data"""
+    try:
+        employee = Employee.objects.get(id=employee_id)
+        face_data = request.data.get('face_recognition_data')
+        
+        if not face_data:
+            return Response(
+                {'error': 'Face recognition data is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        employee.face_recognition_data = face_data
+        employee.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Face recognition data updated successfully'
         })
         
     except Employee.DoesNotExist:
