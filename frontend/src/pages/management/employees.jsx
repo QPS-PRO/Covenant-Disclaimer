@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Card,
     CardHeader,
@@ -54,7 +54,9 @@ export function Employees() {
     const [formLoading, setFormLoading] = useState(false);
     const [faceRecording, setFaceRecording] = useState(false);
     const [capturedFaceData, setCapturedFaceData] = useState(null);
-    const [videoRef, setVideoRef] = useState(null);
+    
+    // Use useRef for video element
+    const videoRef = useRef(null);
     const [stream, setStream] = useState(null);
 
     useEffect(() => {
@@ -102,41 +104,65 @@ export function Employees() {
 
     // Face recognition functions
     const startFaceRecording = async () => {
-        setFaceRecording(true);
         try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setFaceRecording(true);
+            setError(""); // Clear previous errors
+            
+            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 640 }, 
+                    height: { ideal: 480 } 
+                } 
+            });
+            
             setStream(mediaStream);
-            if (videoRef) {
-                videoRef.srcObject = mediaStream;
-            }
             setShowFaceModal(true);
+            
+            // Wait for modal to be shown and video element to be available
+            setTimeout(() => {
+                if (videoRef.current && mediaStream) {
+                    videoRef.current.srcObject = mediaStream;
+                    videoRef.current.play();
+                }
+            }, 100);
         } catch (error) {
-            setError("Failed to access camera for face recording");
+            console.error("Camera access error:", error);
+            setError("Failed to access camera. Please ensure camera permissions are granted.");
             setFaceRecording(false);
         }
     };
 
     const captureFaceData = async () => {
-        if (!videoRef) return;
-
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        canvas.width = videoRef.videoWidth;
-        canvas.height = videoRef.videoHeight;
-        context.drawImage(videoRef, 0, 0);
-
-        const imageData = canvas.toDataURL("image/jpeg");
-        setCapturedFaceData(imageData);
-
-        // Stop the video stream
-        if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
-            setStream(null);
+        if (!videoRef.current) {
+            setError("Video not ready for capture");
+            return;
         }
-        setShowFaceModal(false);
-        setFaceRecording(false);
 
-        console.log("Face data captured successfully");
+        try {
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            canvas.width = videoRef.current.videoWidth;
+            canvas.height = videoRef.current.videoHeight;
+            context.drawImage(videoRef.current, 0, 0);
+
+            const imageData = canvas.toDataURL("image/jpeg", 0.8);
+            setCapturedFaceData(imageData);
+
+            // Stop the video stream
+            if (stream) {
+                stream.getTracks().forEach((track) => track.stop());
+                setStream(null);
+            }
+            
+            setShowFaceModal(false);
+            setFaceRecording(false);
+            setError("");
+
+            console.log("Face data captured successfully");
+        } catch (error) {
+            console.error("Face capture error:", error);
+            setError("Failed to capture face data");
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -147,10 +173,10 @@ export function Employees() {
         try {
             const submitData = {
                 ...formData,
-                face_recognition_data: capturedFaceData, // Include face data
+                face_recognition_data: capturedFaceData || "", // Include face data
             };
 
-            if (selectedEmployee) {
+            if (selectedEmployee && showEditModal) {
                 await employeeAPI.update(selectedEmployee.id, submitData);
                 setShowEditModal(false);
             } else {
@@ -168,15 +194,18 @@ export function Employees() {
     };
 
     const handleEdit = (employee) => {
-        setSelectedEmployee(employee); // flat object from list
+        setSelectedEmployee(employee);
         setFormData({
-            first_name: employee.user_data.first_name,
-            last_name: employee.user_data.last_name,
-            email: employee.user_data.email,
-            employee_id: employee.employee_id,
-            phone_number: employee.phone_number,
-            department: employee.department.toString(),
+            first_name: employee.user_data?.first_name || "",
+            last_name: employee.user_data?.last_name || "",
+            email: employee.user_data?.email || "",
+            employee_id: employee.employee_id || "",
+            phone_number: employee.phone_number || "",
+            department: employee.department?.toString() || "",
         });
+        
+        // If employee has face data, we won't show it but we'll preserve it
+        setCapturedFaceData(employee.has_face_data ? "existing" : null);
         setShowEditModal(true);
     };
 
@@ -184,13 +213,18 @@ export function Employees() {
         if (!selectedEmployee) return;
 
         setFormLoading(true);
+        setError("");
+        
         try {
             await employeeAPI.delete(selectedEmployee.id);
             setShowDeleteModal(false);
             setSelectedEmployee(null);
             fetchEmployees();
+            // Clear any errors after successful deletion
+            setError("");
         } catch (err) {
-            setError("Failed to delete employee");
+            console.error("Delete error:", err);
+            setError(err.message || "Failed to delete employee");
         } finally {
             setFormLoading(false);
         }
@@ -198,10 +232,12 @@ export function Employees() {
 
     const handleViewEmployee = async (employee) => {
         try {
-            const response = await employeeAPI.getProfile(employee.id); // nested profile
+            setError("");
+            const response = await employeeAPI.getProfile(employee.id);
             setSelectedEmployee(response);
             setShowViewModal(true);
         } catch (err) {
+            console.error("View employee error:", err);
             setError("Failed to fetch employee details");
         }
     };
@@ -217,6 +253,8 @@ export function Employees() {
         });
         setCapturedFaceData(null);
         setSelectedEmployee(null);
+        
+        // Clean up video stream
         if (stream) {
             stream.getTracks().forEach((track) => track.stop());
             setStream(null);
@@ -228,6 +266,16 @@ export function Employees() {
         setShowEditModal(false);
         setShowFaceModal(false);
         resetForm();
+        setError(""); // Clear errors when closing modals
+    };
+
+    const stopVideoStream = () => {
+        if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+            setStream(null);
+        }
+        setShowFaceModal(false);
+        setFaceRecording(false);
     };
 
     if (loading) {
@@ -238,13 +286,12 @@ export function Employees() {
         );
     }
 
-    // ------- Derived helpers for the profile modal -------
-    const profileEmp = selectedEmployee?.employee ?? selectedEmployee ?? null;
-    const profileStats = selectedEmployee?.stats ?? null;
+    // Safe data access for view modal
+    const profileEmp = selectedEmployee?.employee || selectedEmployee || null;
+    const profileStats = selectedEmployee?.stats || null;
     const currentAssets = Array.isArray(selectedEmployee?.current_assets)
         ? selectedEmployee.current_assets
         : [];
-    // -----------------------------------------------------
 
     return (
         <div className="mt-12 mb-8 flex flex-col gap-12">
@@ -263,7 +310,7 @@ export function Employees() {
 
                 <CardBody className="px-0 pt-0 pb-2">
                     {error && (
-                        <Alert color="red" className="mb-6 mx-6">
+                        <Alert color="red" className="mb-6 mx-6" dismissible onClose={() => setError("")}>
                             {error}
                         </Alert>
                     )}
@@ -282,7 +329,7 @@ export function Employees() {
                             <Select
                                 label="Filter by Department"
                                 value={selectedDepartment}
-                                onChange={(value) => setSelectedDepartment(value)}
+                                onChange={(value) => setSelectedDepartment(value || "")}
                             >
                                 <Option value="">All Departments</Option>
                                 {departments.map((dept) => (
@@ -379,23 +426,71 @@ export function Employees() {
                             </tbody>
                         </table>
                     </div>
+
+                    {employees.length === 0 && !loading && (
+                        <div className="text-center py-8">
+                            <Typography color="blue-gray" className="font-normal">
+                                No employees found.
+                            </Typography>
+                        </div>
+                    )}
                 </CardBody>
             </Card>
 
             {/* Add/Edit Employee Modal */}
             <Dialog open={showAddModal || showEditModal} handler={handleModalClose} size="lg">
-                <DialogHeader>{selectedEmployee ? "Edit Employee" : "Add New Employee"}</DialogHeader>
+                <DialogHeader>{selectedEmployee && showEditModal ? "Edit Employee" : "Add New Employee"}</DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="flex flex-col gap-4">
+                        {error && (
+                            <Alert color="red" className="mb-4">
+                                {error}
+                            </Alert>
+                        )}
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input label="First Name" name="first_name" value={formData.first_name} onChange={handleInputChange} required />
-                            <Input label="Last Name" name="last_name" value={formData.last_name} onChange={handleInputChange} required />
+                            <Input 
+                                label="First Name" 
+                                name="first_name" 
+                                value={formData.first_name} 
+                                onChange={handleInputChange} 
+                                required 
+                            />
+                            <Input 
+                                label="Last Name" 
+                                name="last_name" 
+                                value={formData.last_name} 
+                                onChange={handleInputChange} 
+                                required 
+                            />
                         </div>
-                        <Input label="Email" name="email" type="email" value={formData.email} onChange={handleInputChange} required />
+                        
+                        <Input 
+                            label="Email" 
+                            name="email" 
+                            type="email" 
+                            value={formData.email} 
+                            onChange={handleInputChange} 
+                            required 
+                        />
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input label="Employee ID" name="employee_id" value={formData.employee_id} onChange={handleInputChange} required />
-                            <Input label="Phone Number" name="phone_number" value={formData.phone_number} onChange={handleInputChange} required />
+                            <Input 
+                                label="Employee ID" 
+                                name="employee_id" 
+                                value={formData.employee_id} 
+                                onChange={handleInputChange} 
+                                required 
+                            />
+                            <Input 
+                                label="Phone Number" 
+                                name="phone_number" 
+                                value={formData.phone_number} 
+                                onChange={handleInputChange} 
+                                required 
+                            />
                         </div>
+                        
                         <Select
                             label="Department"
                             value={formData.department}
@@ -418,20 +513,27 @@ export function Employees() {
                                         Face Recognition Setup
                                     </Typography>
                                 </div>
-                                {capturedFaceData && <Chip color="green" value="CAPTURED" className="text-xs" />}
+                                {(capturedFaceData && capturedFaceData !== "existing") && (
+                                    <Chip color="green" value="CAPTURED" className="text-xs" />
+                                )}
+                                {capturedFaceData === "existing" && (
+                                    <Chip color="blue" value="EXISTING DATA" className="text-xs" />
+                                )}
                             </div>
                             <Typography variant="small" className="text-gray-600 mb-3">
                                 Capture the employee's face for identity verification during transactions.
                             </Typography>
                             <Button
+                                type="button"
                                 size="sm"
-                                color={capturedFaceData ? "green" : "blue"}
+                                color={(capturedFaceData && capturedFaceData !== "existing") ? "green" : "blue"}
                                 onClick={startFaceRecording}
                                 loading={faceRecording}
                                 className="flex items-center gap-2"
                             >
                                 <CameraIcon className="h-4 w-4" />
-                                {capturedFaceData ? "Re-capture Face" : "Capture Face"}
+                                {capturedFaceData === "existing" ? "Update Face Data" : 
+                                 capturedFaceData ? "Re-capture Face" : "Capture Face"}
                             </Button>
                         </div>
                     </DialogBody>
@@ -440,40 +542,47 @@ export function Employees() {
                             Cancel
                         </Button>
                         <Button type="submit" loading={formLoading}>
-                            {selectedEmployee ? "Update Employee" : "Create Employee"}
+                            {selectedEmployee && showEditModal ? "Update Employee" : "Create Employee"}
                         </Button>
                     </DialogFooter>
                 </form>
             </Dialog>
 
             {/* Face Capture Modal */}
-            <Dialog open={showFaceModal} handler={() => setShowFaceModal(false)} size="md">
+            <Dialog open={showFaceModal} handler={stopVideoStream} size="md">
                 <DialogHeader>Capture Face for Recognition</DialogHeader>
                 <DialogBody className="text-center">
                     <div className="mb-4">
-                        <video ref={setVideoRef} autoPlay muted className="w-full max-w-md mx-auto rounded-lg border" />
+                        <video 
+                            ref={videoRef} 
+                            autoPlay 
+                            muted 
+                            playsInline
+                            className="w-full max-w-md mx-auto rounded-lg border"
+                            style={{ maxHeight: '360px' }}
+                        />
                     </div>
                     <Typography className="mb-4 text-sm text-gray-600">
                         Position the employee's face in the camera frame and click capture to register their face ID.
                     </Typography>
+                    {error && (
+                        <Alert color="red" className="mb-4">
+                            {error}
+                        </Alert>
+                    )}
                 </DialogBody>
                 <DialogFooter>
                     <Button
                         variant="text"
                         color="red"
-                        onClick={() => {
-                            if (stream) {
-                                stream.getTracks().forEach((track) => track.stop());
-                                setStream(null);
-                            }
-                            setShowFaceModal(false);
-                            setFaceRecording(false);
-                        }}
+                        onClick={stopVideoStream}
                         className="mr-1"
                     >
                         Cancel
                     </Button>
-                    <Button onClick={captureFaceData}>Capture Face</Button>
+                    <Button onClick={captureFaceData} disabled={!videoRef.current}>
+                        Capture Face
+                    </Button>
                 </DialogFooter>
             </Dialog>
 
@@ -481,13 +590,20 @@ export function Employees() {
             <Dialog open={showDeleteModal} handler={() => setShowDeleteModal(false)} size="sm">
                 <DialogHeader>Confirm Delete</DialogHeader>
                 <DialogBody>
+                    {error && (
+                        <Alert color="red" className="mb-4">
+                            {error}
+                        </Alert>
+                    )}
                     Are you sure you want to delete this employee? This action cannot be undone.
                     {selectedEmployee && (
                         <div className="mt-2 p-2 bg-gray-100 rounded">
                             <Typography variant="small" className="font-semibold">
                                 {selectedEmployee.name}
                             </Typography>
-                            <Typography variant="small" className="text-gray-600">ID: {selectedEmployee.employee_id}</Typography>
+                            <Typography variant="small" className="text-gray-600">
+                                ID: {selectedEmployee.employee_id}
+                            </Typography>
                         </div>
                     )}
                 </DialogBody>
@@ -505,9 +621,12 @@ export function Employees() {
             <Dialog open={showViewModal} handler={() => setShowViewModal(false)} size="lg">
                 {showViewModal && selectedEmployee && (
                     <>
-                        <DialogHeader>Employee Profile - {profileEmp?.name ?? "—"}</DialogHeader>
+                        <DialogHeader>
+                            Employee Profile - {profileEmp?.name || selectedEmployee.name || "Employee"}
+                        </DialogHeader>
                         <DialogBody className="max-h-[70vh] overflow-y-auto">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Basic Information Card */}
                                 <Card className="shadow-sm">
                                     <CardHeader color="blue" className="relative h-16">
                                         <Typography variant="h6" color="white" className="text-center">
@@ -518,30 +637,30 @@ export function Employees() {
                                         <div className="space-y-2">
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Name:</span>
-                                                <span>{profileEmp?.name ?? "—"}</span>
+                                                <span>{profileEmp?.name || selectedEmployee.name || "—"}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Employee ID:</span>
-                                                <span>{profileEmp?.employee_id ?? "—"}</span>
+                                                <span>{profileEmp?.employee_id || selectedEmployee.employee_id || "—"}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Email:</span>
-                                                <span>{profileEmp?.email ?? "—"}</span>
+                                                <span>{profileEmp?.email || selectedEmployee.email || "—"}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Phone:</span>
-                                                <span>{profileEmp?.phone_number ?? "—"}</span>
+                                                <span>{profileEmp?.phone_number || selectedEmployee.phone_number || "—"}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Department:</span>
-                                                <span>{profileEmp?.department_name ?? "—"}</span>
+                                                <span>{profileEmp?.department_name || selectedEmployee.department_name || "—"}</span>
                                             </div>
-                                            <div className="flex justify-between">
+                                            <div className="flex justify-between items-center">
                                                 <span className="font-semibold">Face ID Status:</span>
                                                 <Chip
                                                     variant="gradient"
-                                                    color={profileEmp?.has_face_data ? "green" : "red"}
-                                                    value={profileEmp?.has_face_data ? "REGISTERED" : "NOT REGISTERED"}
+                                                    color={(profileEmp?.has_face_data || selectedEmployee.has_face_data) ? "green" : "red"}
+                                                    value={(profileEmp?.has_face_data || selectedEmployee.has_face_data) ? "REGISTERED" : "NOT REGISTERED"}
                                                     className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                 />
                                             </div>
@@ -549,60 +668,50 @@ export function Employees() {
                                     </CardBody>
                                 </Card>
 
-                                {/* Statistics */}
-                                {profileStats ? (
-                                    <Card className="shadow-sm">
-                                        <CardHeader color="green" className="relative h-16">
-                                            <Typography variant="h6" color="white" className="text-center">
-                                                Statistics
-                                            </Typography>
-                                        </CardHeader>
-                                        <CardBody>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Current Assets:</span>
-                                                    <span>{profileStats.current_assets_count}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Total Issues:</span>
-                                                    <span>{profileStats.total_issues}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Total Returns:</span>
-                                                    <span>{profileStats.total_returns}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Total Transactions:</span>
-                                                    <span>{profileStats.total_transactions}</span>
-                                                </div>
+                                {/* Statistics Card */}
+                                <Card className="shadow-sm">
+                                    <CardHeader color="green" className="relative h-16">
+                                        <Typography variant="h6" color="white" className="text-center">
+                                            Statistics
+                                        </Typography>
+                                    </CardHeader>
+                                    <CardBody>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Current Assets:</span>
+                                                <span>
+                                                    {profileStats?.current_assets_count || 
+                                                     selectedEmployee.current_assets_count || 
+                                                     currentAssets.length || 0}
+                                                </span>
                                             </div>
-                                        </CardBody>
-                                    </Card>
-                                ) : (
-                                    <Card className="shadow-sm">
-                                        <CardHeader color="green" className="relative h-16">
-                                            <Typography variant="h6" color="white" className="text-center">
-                                                Statistics
-                                            </Typography>
-                                        </CardHeader>
-                                        <CardBody>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Current Assets:</span>
-                                                    <span>{profileEmp?.current_assets_count ?? 0}</span>
-                                                </div>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
-                                )}
+                                            {profileStats && (
+                                                <>
+                                                    <div className="flex justify-between">
+                                                        <span className="font-semibold">Total Issues:</span>
+                                                        <span>{profileStats.total_issues}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="font-semibold">Total Returns:</span>
+                                                        <span>{profileStats.total_returns}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="font-semibold">Total Transactions:</span>
+                                                        <span>{profileStats.total_transactions}</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </CardBody>
+                                </Card>
                             </div>
 
-                            {/* Current Assets */}
+                            {/* Current Assets Table */}
                             {currentAssets.length > 0 && (
                                 <Card className="mt-6 shadow-sm">
                                     <CardHeader color="orange" className="relative h-16">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Current Assets
+                                            Current Assets ({currentAssets.length})
                                         </Typography>
                                     </CardHeader>
                                     <CardBody>
@@ -610,32 +719,35 @@ export function Employees() {
                                             <table className="w-full table-auto">
                                                 <thead>
                                                     <tr>
-                                                        <th className="border-b border-blue-gray-50 py-3 px-5 text-left">Asset Name</th>
-                                                        <th className="border-b border-blue-gray-50 py-3 px-5 text-left">Serial Number</th>
-                                                        <th className="border-b border-blue-gray-50 py-3 px-5 text-left">Department</th>
+                                                        <th className="border-b border-blue-gray-50 py-3 px-5 text-left">
+                                                            <Typography variant="small" className="text-[11px] font-bold uppercase text-blue-gray-400">
+                                                                Asset Name
+                                                            </Typography>
+                                                        </th>
+                                                        <th className="border-b border-blue-gray-50 py-3 px-5 text-left">
+                                                            <Typography variant="small" className="text-[11px] font-bold uppercase text-blue-gray-400">
+                                                                Serial Number
+                                                            </Typography>
+                                                        </th>
+                                                        <th className="border-b border-blue-gray-50 py-3 px-5 text-left">
+                                                            <Typography variant="small" className="text-[11px] font-bold uppercase text-blue-gray-400">
+                                                                Department
+                                                            </Typography>
+                                                        </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {currentAssets.map((asset, index) => (
-                                                        <tr key={asset.id}>
-                                                            <td
-                                                                className={`py-3 px-5 ${index === currentAssets.length - 1 ? "" : "border-b border-blue-gray-50"
-                                                                    }`}
-                                                            >
+                                                        <tr key={asset.id || index}>
+                                                            <td className={`py-3 px-5 ${index === currentAssets.length - 1 ? "" : "border-b border-blue-gray-50"}`}>
                                                                 <Typography variant="small" className="font-semibold">
                                                                     {asset.name}
                                                                 </Typography>
                                                             </td>
-                                                            <td
-                                                                className={`py-3 px-5 ${index === currentAssets.length - 1 ? "" : "border-b border-blue-gray-50"
-                                                                    }`}
-                                                            >
+                                                            <td className={`py-3 px-5 ${index === currentAssets.length - 1 ? "" : "border-b border-blue-gray-50"}`}>
                                                                 <Typography variant="small">{asset.serial_number}</Typography>
                                                             </td>
-                                                            <td
-                                                                className={`py-3 px-5 ${index === currentAssets.length - 1 ? "" : "border-b border-blue-gray-50"
-                                                                    }`}
-                                                            >
+                                                            <td className={`py-3 px-5 ${index === currentAssets.length - 1 ? "" : "border-b border-blue-gray-50"}`}>
                                                                 <Typography variant="small">{asset.department_name}</Typography>
                                                             </td>
                                                         </tr>

@@ -17,7 +17,7 @@ import {
     Alert,
     Textarea,
 } from "@material-tailwind/react";
-import { PlusIcon, PencilIcon, EyeIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, PencilIcon, EyeIcon, TrashIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { assetAPI, departmentAPI } from "@/lib/assetApi";
 
 export function Assets() {
@@ -31,7 +31,9 @@ export function Assets() {
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedAsset, setSelectedAsset] = useState(null);
 
     // Form states
@@ -102,19 +104,56 @@ export function Assets() {
         setError("");
 
         try {
-            await assetAPI.create(formData);
-            setShowAddModal(false);
-            setFormData({
-                name: "",
-                serial_number: "",
-                department: "",
-                description: "",
-                purchase_date: "",
-                purchase_cost: "",
-            });
+            const submitData = {
+                ...formData,
+                purchase_cost: formData.purchase_cost ? parseFloat(formData.purchase_cost) : null,
+            };
+
+            if (selectedAsset && showEditModal) {
+                await assetAPI.update(selectedAsset.id, submitData);
+                setShowEditModal(false);
+            } else {
+                await assetAPI.create(submitData);
+                setShowAddModal(false);
+            }
+
+            resetForm();
             fetchAssets();
         } catch (err) {
-            setError(err.message || "Failed to create asset");
+            setError(err.message || "Failed to save asset");
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
+    const handleEdit = (asset) => {
+        setSelectedAsset(asset);
+        setFormData({
+            name: asset.name || "",
+            serial_number: asset.serial_number || "",
+            department: asset.department?.toString() || "",
+            description: asset.description || "",
+            purchase_date: asset.purchase_date || "",
+            purchase_cost: asset.purchase_cost || "",
+        });
+        setShowEditModal(true);
+    };
+
+    const handleDelete = async () => {
+        if (!selectedAsset) return;
+
+        setFormLoading(true);
+        setError("");
+        
+        try {
+            await assetAPI.delete(selectedAsset.id);
+            setShowDeleteModal(false);
+            setSelectedAsset(null);
+            fetchAssets();
+            setError("");
+        } catch (err) {
+            console.error("Delete error:", err);
+            setError(err.message || "Failed to delete asset");
         } finally {
             setFormLoading(false);
         }
@@ -122,12 +161,34 @@ export function Assets() {
 
     const handleViewAsset = async (asset) => {
         try {
+            setError("");
             const response = await assetAPI.getById(asset.id);
             setSelectedAsset(response);
             setShowViewModal(true);
         } catch (err) {
+            console.error("View asset error:", err);
             setError("Failed to fetch asset details");
         }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            name: "",
+            serial_number: "",
+            department: "",
+            description: "",
+            purchase_date: "",
+            purchase_cost: "",
+        });
+        setSelectedAsset(null);
+    };
+
+    const handleModalClose = () => {
+        setShowAddModal(false);
+        setShowEditModal(false);
+        setShowViewModal(false);
+        resetForm();
+        setError("");
     };
 
     if (loading) {
@@ -159,7 +220,7 @@ export function Assets() {
 
                 <CardBody className="px-0 pt-0 pb-2">
                     {error && (
-                        <Alert color="red" className="mb-6 mx-6">
+                        <Alert color="red" className="mb-6 mx-6" dismissible onClose={() => setError("")}>
                             {error}
                         </Alert>
                     )}
@@ -178,7 +239,7 @@ export function Assets() {
                             <Select
                                 label="Filter by Department"
                                 value={selectedDepartment}
-                                onChange={(value) => setSelectedDepartment(value)}
+                                onChange={(value) => setSelectedDepartment(value || "")}
                             >
                                 <Option value="">All Departments</Option>
                                 {departments.map((dept) => (
@@ -192,7 +253,7 @@ export function Assets() {
                             <Select
                                 label="Filter by Status"
                                 value={selectedStatus}
-                                onChange={(value) => setSelectedStatus(value)}
+                                onChange={(value) => setSelectedStatus(value || "")}
                             >
                                 <Option value="">All Status</Option>
                                 <Option value="available">Available</Option>
@@ -284,8 +345,22 @@ export function Assets() {
                                                     >
                                                         <EyeIcon className="h-4 w-4" />
                                                     </IconButton>
-                                                    <IconButton variant="text" color="blue-gray">
+                                                    <IconButton 
+                                                        variant="text" 
+                                                        color="blue-gray"
+                                                        onClick={() => handleEdit(asset)}
+                                                    >
                                                         <PencilIcon className="h-4 w-4" />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        variant="text"
+                                                        color="red"
+                                                        onClick={() => {
+                                                            setSelectedAsset(asset);
+                                                            setShowDeleteModal(true);
+                                                        }}
+                                                    >
+                                                        <TrashIcon className="h-4 w-4" />
                                                     </IconButton>
                                                 </div>
                                             </td>
@@ -295,14 +370,30 @@ export function Assets() {
                             </tbody>
                         </table>
                     </div>
+
+                    {assets.length === 0 && !loading && (
+                        <div className="text-center py-8">
+                            <Typography color="blue-gray" className="font-normal">
+                                No assets found.
+                            </Typography>
+                        </div>
+                    )}
                 </CardBody>
             </Card>
 
-            {/* Add Asset Modal */}
-            <Dialog open={showAddModal} handler={() => setShowAddModal(false)} size="md">
-                <DialogHeader>Add New Asset</DialogHeader>
+            {/* Add/Edit Asset Modal */}
+            <Dialog open={showAddModal || showEditModal} handler={handleModalClose} size="md">
+                <DialogHeader>
+                    {selectedAsset && showEditModal ? "Edit Asset" : "Add New Asset"}
+                </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="flex flex-col gap-4">
+                        {error && (
+                            <Alert color="red" className="mb-4">
+                                {error}
+                            </Alert>
+                        )}
+
                         <Input
                             label="Asset Name"
                             name="name"
@@ -354,14 +445,48 @@ export function Assets() {
                         </div>
                     </DialogBody>
                     <DialogFooter>
-                        <Button variant="text" color="red" onClick={() => setShowAddModal(false)} className="mr-1">
+                        <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
                             Cancel
                         </Button>
                         <Button type="submit" loading={formLoading}>
-                            Create Asset
+                            {selectedAsset && showEditModal ? "Update Asset" : "Create Asset"}
                         </Button>
                     </DialogFooter>
                 </form>
+            </Dialog>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={showDeleteModal} handler={() => setShowDeleteModal(false)} size="sm">
+                <DialogHeader>Confirm Delete</DialogHeader>
+                <DialogBody>
+                    {error && (
+                        <Alert color="red" className="mb-4">
+                            {error}
+                        </Alert>
+                    )}
+                    Are you sure you want to delete this asset? This action cannot be undone.
+                    {selectedAsset && (
+                        <div className="mt-2 p-2 bg-gray-100 rounded">
+                            <Typography variant="small" className="font-semibold">
+                                {selectedAsset.name}
+                            </Typography>
+                            <Typography variant="small" className="text-gray-600">
+                                Serial: {selectedAsset.serial_number}
+                            </Typography>
+                            <Typography variant="small" className="text-gray-600">
+                                Status: {selectedAsset.status}
+                            </Typography>
+                        </div>
+                    )}
+                </DialogBody>
+                <DialogFooter>
+                    <Button variant="text" color="gray" onClick={() => setShowDeleteModal(false)} className="mr-1">
+                        Cancel
+                    </Button>
+                    <Button color="red" onClick={handleDelete} loading={formLoading}>
+                        Delete Asset
+                    </Button>
+                </DialogFooter>
             </Dialog>
 
             {/* View Asset Modal */}
@@ -391,7 +516,7 @@ export function Assets() {
                                                 <span className="font-semibold">Department:</span>
                                                 <span>{selectedAsset.department_name}</span>
                                             </div>
-                                            <div className="flex justify-between">
+                                            <div className="flex justify-between items-center">
                                                 <span className="font-semibold">Status:</span>
                                                 <Chip
                                                     variant="gradient"
@@ -403,7 +528,13 @@ export function Assets() {
                                             {selectedAsset.current_holder_name && (
                                                 <div className="flex justify-between">
                                                     <span className="font-semibold">Current Holder:</span>
-                                                    <span>{selectedAsset.current_holder_name} (ID: {selectedAsset.current_holder_employee_id})</span>
+                                                    <span>
+                                                        {selectedAsset.current_holder_name} 
+                                                        <br />
+                                                        <span className="text-sm text-gray-600">
+                                                            (ID: {selectedAsset.current_holder_employee_id})
+                                                        </span>
+                                                    </span>
                                                 </div>
                                             )}
                                             {selectedAsset.description && (
@@ -428,6 +559,12 @@ export function Assets() {
                                                 <span className="font-semibold">Created:</span>
                                                 <span>{new Date(selectedAsset.created_at).toLocaleDateString()}</span>
                                             </div>
+                                            {selectedAsset.updated_at && selectedAsset.updated_at !== selectedAsset.created_at && (
+                                                <div className="flex justify-between">
+                                                    <span className="font-semibold">Last Updated:</span>
+                                                    <span>{new Date(selectedAsset.updated_at).toLocaleDateString()}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </CardBody>
                                 </Card>
