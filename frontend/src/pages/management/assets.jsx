@@ -17,7 +17,13 @@ import {
     Alert,
     Textarea,
 } from "@material-tailwind/react";
-import { PlusIcon, PencilIcon, EyeIcon, TrashIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import {
+    PlusIcon,
+    PencilIcon,
+    EyeIcon,
+    TrashIcon,
+    MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
 import { assetAPI, departmentAPI } from "@/lib/assetApi";
 
 export function Assets() {
@@ -47,21 +53,35 @@ export function Assets() {
     });
     const [formLoading, setFormLoading] = useState(false);
 
-    const statusColors = {
-        available: "green",
-        assigned: "blue",
-        maintenance: "orange",
-        retired: "red",
-    };
+    // Prevent double loading
+    const [mounted, setMounted] = useState(false);
+
+    // Status options
+    const statusOptions = [
+        { value: "available", label: "Available", color: "green" },
+        { value: "assigned", label: "Assigned", color: "blue" },
+        { value: "maintenance", label: "Under Maintenance", color: "orange" },
+        { value: "retired", label: "Retired", color: "red" },
+    ];
 
     useEffect(() => {
-        fetchAssets();
-        fetchDepartments();
-    }, []);
+        if (!mounted) {
+            setMounted(true);
+            initializeData();
+        }
+    }, [mounted]);
+
+    const initializeData = async () => {
+        try {
+            setLoading(true);
+            await Promise.all([fetchAssets(), fetchDepartments()]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchAssets = async () => {
         try {
-            setLoading(true);
             const params = {};
             if (selectedDepartment) params.department = selectedDepartment;
             if (selectedStatus) params.status = selectedStatus;
@@ -70,10 +90,9 @@ export function Assets() {
             const response = await assetAPI.getAll(params);
             setAssets(response.results || response);
         } catch (err) {
+            if (!mounted) return;
             setError("Failed to fetch assets");
             console.error(err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -86,16 +105,19 @@ export function Assets() {
         }
     };
 
+    // Debounced search effect
     useEffect(() => {
+        if (!mounted) return;
+        
         const timer = setTimeout(() => {
             fetchAssets();
         }, 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, selectedDepartment, selectedStatus]);
+    }, [searchTerm, selectedDepartment, selectedStatus, mounted]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -107,6 +129,7 @@ export function Assets() {
             const submitData = {
                 ...formData,
                 purchase_cost: formData.purchase_cost ? parseFloat(formData.purchase_cost) : null,
+                purchase_date: formData.purchase_date || null,
             };
 
             if (selectedAsset && showEditModal) {
@@ -118,7 +141,7 @@ export function Assets() {
             }
 
             resetForm();
-            fetchAssets();
+            await fetchAssets();
         } catch (err) {
             setError(err.message || "Failed to save asset");
         } finally {
@@ -144,13 +167,12 @@ export function Assets() {
 
         setFormLoading(true);
         setError("");
-        
+
         try {
             await assetAPI.delete(selectedAsset.id);
             setShowDeleteModal(false);
             setSelectedAsset(null);
             setError("");
-            // Refresh the assets list
             await fetchAssets();
         } catch (err) {
             console.error("Delete error:", err);
@@ -160,16 +182,9 @@ export function Assets() {
         }
     };
 
-    const handleViewAsset = async (asset) => {
-        try {
-            setError("");
-            const response = await assetAPI.getById(asset.id);
-            setSelectedAsset(response);
-            setShowViewModal(true);
-        } catch (err) {
-            console.error("View asset error:", err);
-            setError("Failed to fetch asset details");
-        }
+    const handleViewAsset = (asset) => {
+        setSelectedAsset(asset);
+        setShowViewModal(true);
     };
 
     const resetForm = () => {
@@ -188,8 +203,22 @@ export function Assets() {
         setShowAddModal(false);
         setShowEditModal(false);
         setShowViewModal(false);
+        setShowDeleteModal(false);
         resetForm();
         setError("");
+    };
+
+    const getStatusColor = (status) => {
+        const statusOption = statusOptions.find(opt => opt.value === status);
+        return statusOption ? statusOption.color : "gray";
+    };
+
+    const formatCurrency = (amount) => {
+        return amount ? `$${parseFloat(amount).toLocaleString()}` : "N/A";
+    };
+
+    const formatDate = (dateString) => {
+        return dateString ? new Date(dateString).toLocaleDateString() : "N/A";
     };
 
     if (loading) {
@@ -208,11 +237,7 @@ export function Assets() {
                         <Typography variant="h6" color="white">
                             Assets Management
                         </Typography>
-                        <Button
-                            className="flex items-center gap-3"
-                            size="sm"
-                            onClick={() => setShowAddModal(true)}
-                        >
+                        <Button className="flex items-center gap-3" size="sm" onClick={() => setShowAddModal(true)}>
                             <PlusIcon strokeWidth={2} className="h-4 w-4" />
                             Add Asset
                         </Button>
@@ -227,8 +252,8 @@ export function Assets() {
                     )}
 
                     {/* Filters */}
-                    <div className="flex flex-col md:flex-row gap-4 mb-6 px-6">
-                        <div className="w-full md:w-72">
+                    <div className="flex flex-col lg:flex-row gap-4 mb-6 px-6">
+                        <div className="w-full lg:w-72">
                             <Input
                                 label="Search assets..."
                                 icon={<MagnifyingGlassIcon className="h-5 w-5" />}
@@ -236,7 +261,7 @@ export function Assets() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div className="w-full md:w-48">
+                        <div className="w-full lg:w-60">
                             <Select
                                 label="Filter by Department"
                                 value={selectedDepartment}
@@ -250,17 +275,18 @@ export function Assets() {
                                 ))}
                             </Select>
                         </div>
-                        <div className="w-full md:w-48">
+                        <div className="w-full lg:w-60">
                             <Select
                                 label="Filter by Status"
                                 value={selectedStatus}
                                 onChange={(value) => setSelectedStatus(value || "")}
                             >
-                                <Option value="">All Status</Option>
-                                <Option value="available">Available</Option>
-                                <Option value="assigned">Assigned</Option>
-                                <Option value="maintenance">Maintenance</Option>
-                                <Option value="retired">Retired</Option>
+                                <Option value="">All Statuses</Option>
+                                {statusOptions.map((status) => (
+                                    <Option key={status.value} value={status.value}>
+                                        {status.label}
+                                    </Option>
+                                ))}
                             </Select>
                         </div>
                     </div>
@@ -270,7 +296,7 @@ export function Assets() {
                         <table className="w-full min-w-[640px] table-auto">
                             <thead>
                                 <tr>
-                                    {["Asset", "Serial Number", "Department", "Status", "Holder", "Actions"].map((el) => (
+                                    {["Asset", "Serial Number", "Department", "Status", "Current Holder", "Purchase Cost", "Actions"].map((el) => (
                                         <th key={el} className="border-b border-blue-gray-50 py-3 px-5 text-left">
                                             <Typography variant="small" className="text-[11px] font-bold uppercase text-blue-gray-400">
                                                 {el}
@@ -281,23 +307,21 @@ export function Assets() {
                             </thead>
                             <tbody>
                                 {assets.map((asset, key) => {
-                                    const className = `py-3 px-5 ${key === assets.length - 1 ? "" : "border-b border-blue-gray-50"
-                                        }`;
+                                    const className = `py-3 px-5 ${key === assets.length - 1 ? "" : "border-b border-blue-gray-50"}`;
 
                                     return (
                                         <tr key={asset.id}>
                                             <td className={className}>
-                                                <div>
-                                                    <Typography variant="small" color="blue-gray" className="font-semibold">
-                                                        {asset.name}
-                                                    </Typography>
-                                                    {asset.description && (
-                                                        <Typography className="text-xs font-normal text-blue-gray-500">
-                                                            {asset.description.length > 50
-                                                                ? `${asset.description.substring(0, 50)}...`
-                                                                : asset.description}
+                                                <div className="flex items-center gap-4">
+                                                    <div>
+                                                        <Typography variant="small" color="blue-gray" className="font-semibold">
+                                                            {asset.name}
                                                         </Typography>
-                                                    )}
+                                                        <Typography className="text-xs font-normal text-blue-gray-500">
+                                                            {asset.description?.substring(0, 50)}
+                                                            {asset.description?.length > 50 ? "..." : ""}
+                                                        </Typography>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className={className}>
@@ -316,41 +340,32 @@ export function Assets() {
                                             <td className={className}>
                                                 <Chip
                                                     variant="gradient"
-                                                    color={statusColors[asset.status]}
-                                                    value={asset.status.replace('_', ' ').toUpperCase()}
+                                                    color={getStatusColor(asset.status)}
+                                                    value={asset.status?.toUpperCase()}
                                                     className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                 />
                                             </td>
                                             <td className={className}>
-                                                {asset.current_holder_name ? (
-                                                    <div>
-                                                        <Typography className="text-xs font-semibold text-blue-gray-600">
-                                                            {asset.current_holder_name}
-                                                        </Typography>
-                                                        <Typography className="text-xs font-normal text-blue-gray-500">
-                                                            ID: {asset.current_holder_employee_id}
-                                                        </Typography>
-                                                    </div>
-                                                ) : (
-                                                    <Typography className="text-xs font-normal text-blue-gray-500">
-                                                        Not assigned
+                                                <Typography className="text-xs font-normal text-blue-gray-500">
+                                                    {asset.current_holder_name || "Unassigned"}
+                                                </Typography>
+                                                {asset.current_holder_employee_id && (
+                                                    <Typography className="text-xs font-normal text-blue-gray-400">
+                                                        ID: {asset.current_holder_employee_id}
                                                     </Typography>
                                                 )}
                                             </td>
                                             <td className={className}>
+                                                <Typography className="text-xs font-semibold text-blue-gray-600">
+                                                    {formatCurrency(asset.purchase_cost)}
+                                                </Typography>
+                                            </td>
+                                            <td className={className}>
                                                 <div className="flex items-center gap-2">
-                                                    <IconButton
-                                                        variant="text"
-                                                        color="blue-gray"
-                                                        onClick={() => handleViewAsset(asset)}
-                                                    >
+                                                    <IconButton variant="text" color="blue-gray" onClick={() => handleViewAsset(asset)}>
                                                         <EyeIcon className="h-4 w-4" />
                                                     </IconButton>
-                                                    <IconButton 
-                                                        variant="text" 
-                                                        color="blue-gray"
-                                                        onClick={() => handleEdit(asset)}
-                                                    >
+                                                    <IconButton variant="text" color="blue-gray" onClick={() => handleEdit(asset)}>
                                                         <PencilIcon className="h-4 w-4" />
                                                     </IconButton>
                                                     <IconButton
@@ -383,10 +398,8 @@ export function Assets() {
             </Card>
 
             {/* Add/Edit Asset Modal */}
-            <Dialog open={showAddModal || showEditModal} handler={handleModalClose} size="md">
-                <DialogHeader>
-                    {selectedAsset && showEditModal ? "Edit Asset" : "Add New Asset"}
-                </DialogHeader>
+            <Dialog open={showAddModal || showEditModal} handler={handleModalClose} size="lg">
+                <DialogHeader>{selectedAsset && showEditModal ? "Edit Asset" : "Add New Asset"}</DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="flex flex-col gap-4">
                         {error && (
@@ -395,24 +408,27 @@ export function Assets() {
                             </Alert>
                         )}
 
-                        <Input
-                            label="Asset Name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            required
-                        />
-                        <Input
-                            label="Serial Number"
-                            name="serial_number"
-                            value={formData.serial_number}
-                            onChange={handleInputChange}
-                            required
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input
+                                label="Asset Name"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleInputChange}
+                                required
+                            />
+                            <Input
+                                label="Serial Number"
+                                name="serial_number"
+                                value={formData.serial_number}
+                                onChange={handleInputChange}
+                                required
+                            />
+                        </div>
+
                         <Select
                             label="Department"
                             value={formData.department}
-                            onChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
+                            onChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
                             required
                         >
                             {departments.map((dept) => (
@@ -421,22 +437,25 @@ export function Assets() {
                                 </Option>
                             ))}
                         </Select>
+
                         <Textarea
-                            label="Description (Optional)"
+                            label="Description"
                             name="description"
                             value={formData.description}
                             onChange={handleInputChange}
+                            rows={3}
                         />
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
-                                label="Purchase Date (Optional)"
+                                label="Purchase Date"
                                 name="purchase_date"
                                 type="date"
                                 value={formData.purchase_date}
                                 onChange={handleInputChange}
                             />
                             <Input
-                                label="Purchase Cost (Optional)"
+                                label="Purchase Cost"
                                 name="purchase_cost"
                                 type="number"
                                 step="0.01"
@@ -454,6 +473,104 @@ export function Assets() {
                         </Button>
                     </DialogFooter>
                 </form>
+            </Dialog>
+
+            {/* View Asset Modal */}
+            <Dialog open={showViewModal} handler={() => setShowViewModal(false)} size="lg">
+                {showViewModal && selectedAsset && (
+                    <>
+                        <DialogHeader>Asset Details - {selectedAsset.name}</DialogHeader>
+                        <DialogBody className="max-h-[70vh] overflow-y-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Basic Information Card */}
+                                <Card className="shadow-sm">
+                                    <CardHeader color="blue" className="relative h-16">
+                                        <Typography variant="h6" color="white" className="text-center">
+                                            Basic Information
+                                        </Typography>
+                                    </CardHeader>
+                                    <CardBody>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Name:</span>
+                                                <span>{selectedAsset.name}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Serial Number:</span>
+                                                <span>{selectedAsset.serial_number}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Department:</span>
+                                                <span>{selectedAsset.department_name}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-semibold">Status:</span>
+                                                <Chip
+                                                    variant="gradient"
+                                                    color={getStatusColor(selectedAsset.status)}
+                                                    value={selectedAsset.status?.toUpperCase()}
+                                                    className="py-0.5 px-2 text-[11px] font-medium w-fit"
+                                                />
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Current Holder:</span>
+                                                <span>{selectedAsset.current_holder_name || "Unassigned"}</span>
+                                            </div>
+                                        </div>
+                                    </CardBody>
+                                </Card>
+
+                                {/* Purchase Information Card */}
+                                <Card className="shadow-sm">
+                                    <CardHeader color="green" className="relative h-16">
+                                        <Typography variant="h6" color="white" className="text-center">
+                                            Purchase Information
+                                        </Typography>
+                                    </CardHeader>
+                                    <CardBody>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Purchase Date:</span>
+                                                <span>{formatDate(selectedAsset.purchase_date)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Purchase Cost:</span>
+                                                <span>{formatCurrency(selectedAsset.purchase_cost)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Created:</span>
+                                                <span>{formatDate(selectedAsset.created_at)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-semibold">Last Updated:</span>
+                                                <span>{formatDate(selectedAsset.updated_at)}</span>
+                                            </div>
+                                        </div>
+                                    </CardBody>
+                                </Card>
+                            </div>
+
+                            {/* Description */}
+                            {selectedAsset.description && (
+                                <Card className="mt-6 shadow-sm">
+                                    <CardHeader color="orange" className="relative h-16">
+                                        <Typography variant="h6" color="white" className="text-center">
+                                            Description
+                                        </Typography>
+                                    </CardHeader>
+                                    <CardBody>
+                                        <Typography className="text-sm text-gray-700">
+                                            {selectedAsset.description}
+                                        </Typography>
+                                    </CardBody>
+                                </Card>
+                            )}
+                        </DialogBody>
+                        <DialogFooter>
+                            <Button onClick={() => setShowViewModal(false)}>Close</Button>
+                        </DialogFooter>
+                    </>
+                )}
             </Dialog>
 
             {/* Delete Confirmation Modal */}
@@ -474,116 +591,20 @@ export function Assets() {
                             <Typography variant="small" className="text-gray-600">
                                 Serial: {selectedAsset.serial_number}
                             </Typography>
-                            <Typography variant="small" className="text-gray-600">
-                                Status: {selectedAsset.status}
-                            </Typography>
                         </div>
                     )}
                 </DialogBody>
                 <DialogFooter>
-                    <Button 
-                        variant="text" 
-                        color="gray" 
-                        onClick={() => {
-                            setShowDeleteModal(false);
-                            setError(""); // Clear any errors when closing
-                        }} 
-                        className="mr-1"
-                    >
+                    <Button variant="text" color="gray" onClick={() => {
+                        setShowDeleteModal(false);
+                        setError("");
+                    }} className="mr-1">
                         Cancel
                     </Button>
                     <Button color="red" onClick={handleDelete} loading={formLoading}>
                         Delete Asset
                     </Button>
                 </DialogFooter>
-            </Dialog>
-
-            {/* View Asset Modal */}
-            <Dialog open={showViewModal} handler={() => setShowViewModal(false)} size="md">
-                {selectedAsset && (
-                    <>
-                        <DialogHeader>Asset Details - {selectedAsset.name}</DialogHeader>
-                        <DialogBody className="max-h-[70vh] overflow-y-auto">
-                            <div className="space-y-4">
-                                <Card className="shadow-sm">
-                                    <CardHeader color="blue" className="relative h-16">
-                                        <Typography variant="h6" color="white" className="text-center">
-                                            Asset Information
-                                        </Typography>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Name:</span>
-                                                <span>{selectedAsset.name}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Serial Number:</span>
-                                                <span>{selectedAsset.serial_number}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Department:</span>
-                                                <span>{selectedAsset.department_name}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="font-semibold">Status:</span>
-                                                <Chip
-                                                    variant="gradient"
-                                                    color={statusColors[selectedAsset.status]}
-                                                    value={selectedAsset.status.replace('_', ' ').toUpperCase()}
-                                                    className="py-0.5 px-2 text-[11px] font-medium w-fit"
-                                                />
-                                            </div>
-                                            {selectedAsset.current_holder_name && (
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Current Holder:</span>
-                                                    <span>
-                                                        {selectedAsset.current_holder_name} 
-                                                        <br />
-                                                        <span className="text-sm text-gray-600">
-                                                            (ID: {selectedAsset.current_holder_employee_id})
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {selectedAsset.description && (
-                                                <div>
-                                                    <span className="font-semibold">Description:</span>
-                                                    <p className="mt-1 text-sm text-gray-700">{selectedAsset.description}</p>
-                                                </div>
-                                            )}
-                                            {selectedAsset.purchase_date && (
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Purchase Date:</span>
-                                                    <span>{new Date(selectedAsset.purchase_date).toLocaleDateString()}</span>
-                                                </div>
-                                            )}
-                                            {selectedAsset.purchase_cost && (
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Purchase Cost:</span>
-                                                    <span>${selectedAsset.purchase_cost}</span>
-                                                </div>
-                                            )}
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Created:</span>
-                                                <span>{new Date(selectedAsset.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                            {selectedAsset.updated_at && selectedAsset.updated_at !== selectedAsset.created_at && (
-                                                <div className="flex justify-between">
-                                                    <span className="font-semibold">Last Updated:</span>
-                                                    <span>{new Date(selectedAsset.updated_at).toLocaleDateString()}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </div>
-                        </DialogBody>
-                        <DialogFooter>
-                            <Button onClick={() => setShowViewModal(false)}>Close</Button>
-                        </DialogFooter>
-                    </>
-                )}
             </Dialog>
         </div>
     );

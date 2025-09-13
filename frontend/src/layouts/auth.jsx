@@ -5,7 +5,6 @@ import {
   UserPlusIcon,
   ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/solid";
-import { Navbar, Footer } from "@/widgets/layout";
 import routes from "@/routes";
 
 export function Auth() {
@@ -38,8 +37,8 @@ export function Auth() {
         {routes.map(
           ({ layout, pages }) =>
             layout === "auth" &&
-            pages.map(({ path, element }) => (
-              <Route exact path={path} element={element} />
+            pages.map(({ path, element }, index) => (
+              <Route key={`auth-${index}`} path={path} element={element} />
             ))
         )}
       </Routes>

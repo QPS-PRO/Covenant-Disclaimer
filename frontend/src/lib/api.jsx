@@ -1,4 +1,3 @@
-// frontend/src/lib/api.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -24,12 +23,41 @@ export async function apiRequest(endpoint, options = {}) {
         const response = await fetch(url, config);
         
         if (!response.ok) {
+            // If unauthorized and we have a refresh token, try to refresh
+            if (response.status === 401 && localStorage.getItem('refresh_token')) {
+                try {
+                    const newToken = await authAPI.refreshToken();
+                    if (newToken.access) {
+                        localStorage.setItem('access_token', newToken.access);
+                        // Retry the original request with new token
+                        config.headers.Authorization = `Bearer ${newToken.access}`;
+                        const retryResponse = await fetch(url, config);
+                        if (retryResponse.ok) {
+                            const contentType = retryResponse.headers.get('content-type');
+                            if (retryResponse.status === 204) return null;
+                            if (contentType && contentType.includes('application/json')) {
+                                const text = await retryResponse.text();
+                                return text ? JSON.parse(text) : null;
+                            }
+                            return await retryResponse.text();
+                        }
+                    }
+                } catch (refreshError) {
+                    // Refresh failed, clear tokens and let the error fall through
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    localStorage.removeItem('user');
+                }
+            }
+            
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
         }
+        
         if (response.status === 204) {
             return null;
         }
+        
         // Check if response has content to parse
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -38,7 +66,6 @@ export async function apiRequest(endpoint, options = {}) {
         }
         
         return await response.text();
-        // return await response.json();
     } catch (error) {
         console.error('API request failed:', error);
         throw error;
@@ -119,31 +146,59 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [initialized, setInitialized] = useState(false);
 
     // Check if user is authenticated on app start
     useEffect(() => {
-        checkAuth();
-    }, []);
+        if (!initialized) {
+            checkAuth();
+        }
+    }, [initialized]);
 
     const checkAuth = async () => {
         try {
             const token = localStorage.getItem('access_token');
+            const storedUser = localStorage.getItem('user');
+            
             if (!token) {
                 setLoading(false);
+                setInitialized(true);
                 return;
             }
 
-            const userData = await authAPI.getCurrentUser();
-            setUser(userData);
-            setIsAuthenticated(true);
+            // First try to use stored user data
+            if (storedUser) {
+                try {
+                    const userData = JSON.parse(storedUser);
+                    setUser(userData);
+                    setIsAuthenticated(true);
+                } catch (error) {
+                    console.error('Error parsing stored user data:', error);
+                }
+            }
+
+            // Verify token is still valid by making an API call
+            try {
+                const userData = await authAPI.getCurrentUser();
+                setUser(userData);
+                setIsAuthenticated(true);
+                localStorage.setItem('user', JSON.stringify(userData));
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                // Clear invalid tokens
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                localStorage.removeItem('user');
+                setUser(null);
+                setIsAuthenticated(false);
+            }
         } catch (error) {
-            console.error('Auth check failed:', error);
-            // Clear invalid tokens
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user');
+            console.error('Auth initialization error:', error);
+            setUser(null);
+            setIsAuthenticated(false);
         } finally {
             setLoading(false);
+            setInitialized(true);
         }
     };
 
@@ -152,11 +207,14 @@ export function AuthProvider({ children }) {
             const response = await authAPI.login(credentials);
             
             // Store tokens
-            if (response.access_token) {
-                localStorage.setItem('access_token', response.access_token);
-            }
-            if (response.refresh_token) {
-                localStorage.setItem('refresh_token', response.refresh_token);
+            if (response.access_token || response.access) {
+                const accessToken = response.access_token || response.access;
+                const refreshToken = response.refresh_token || response.refresh;
+                
+                localStorage.setItem('access_token', accessToken);
+                if (refreshToken) {
+                    localStorage.setItem('refresh_token', refreshToken);
+                }
             }
             
             // Get user data
@@ -177,9 +235,14 @@ export function AuthProvider({ children }) {
             const response = await authAPI.register(userData);
             
             // Store tokens if provided (some setups auto-login after registration)
-            if (response.access_token) {
-                localStorage.setItem('access_token', response.access_token);
-                localStorage.setItem('refresh_token', response.refresh_token);
+            if (response.access_token || response.access) {
+                const accessToken = response.access_token || response.access;
+                const refreshToken = response.refresh_token || response.refresh;
+                
+                localStorage.setItem('access_token', accessToken);
+                if (refreshToken) {
+                    localStorage.setItem('refresh_token', refreshToken);
+                }
                 
                 // Get user data
                 const currentUser = await authAPI.getCurrentUser();

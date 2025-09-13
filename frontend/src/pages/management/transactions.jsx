@@ -1,4 +1,4 @@
-// frontend/src/pages/management/transactions.jsx
+// frontend/src/pages/management/transactions.jsx (fixed)
 import React, { useState, useEffect } from "react";
 import {
     Card,
@@ -40,6 +40,9 @@ export function Transactions() {
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [selectedType, setSelectedType] = useState("");
 
+    // NEW: prevent double-loading (StrictMode)
+    const [mounted, setMounted] = useState(false);
+
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
@@ -67,16 +70,25 @@ export function Transactions() {
         return: "orange",
     };
 
+    // NEW: one-shot initializer like assets.jsx
     useEffect(() => {
-        fetchTransactions();
-        fetchAssets();
-        fetchEmployees();
-        fetchDepartments();
-    }, []);
+        if (!mounted) {
+            setMounted(true);
+            initializeData();
+        }
+    }, [mounted]);
+
+    const initializeData = async () => {
+        try {
+            setLoading(true);
+            await Promise.all([fetchTransactions(), fetchAssets(), fetchEmployees(), fetchDepartments()]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchTransactions = async () => {
         try {
-            setLoading(true);
             const params = {};
             if (selectedDepartment) params.asset__department = selectedDepartment;
             if (selectedType) params.transaction_type = selectedType;
@@ -87,8 +99,6 @@ export function Transactions() {
         } catch (err) {
             setError("Failed to fetch transactions");
             console.error(err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -119,12 +129,14 @@ export function Transactions() {
         }
     };
 
+    // Debounced search/filter effect — skip until mounted
     useEffect(() => {
+        if (!mounted) return;
         const timer = setTimeout(() => {
             fetchTransactions();
         }, 300);
         return () => clearTimeout(timer);
-    }, [searchTerm, selectedDepartment, selectedType]);
+    }, [searchTerm, selectedDepartment, selectedType, mounted]);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -169,32 +181,22 @@ export function Transactions() {
         }
         setShowFaceModal(false);
         
-        // Here you would typically send this to a face recognition service
-        // For now, we'll simulate the verification
         await simulateFaceVerification(imageData);
     };
 
     const simulateFaceVerification = async (faceData) => {
-        // Simulate face verification API call
         try {
             const selectedEmployee = employees.find(emp => emp.id.toString() === formData.employee);
             if (selectedEmployee && selectedEmployee.face_recognition_data) {
-                // In a real implementation, you would compare the captured face data
-                // with the stored face_recognition_data using a face recognition service
-                
-                // For simulation, we'll randomly return success/failure
-                // In production, replace this with actual face comparison
-                const verificationSuccess = Math.random() > 0.3; // 70% success rate for demo
-                
+                const verificationSuccess = Math.random() > 0.3; // demo only
                 setFormData(prev => ({
                     ...prev,
                     face_verification_success: verificationSuccess
                 }));
-
                 if (!verificationSuccess) {
                     setError("Face verification failed. The captured face does not match the employee's registered face.");
                 } else {
-                    setError(""); // Clear any previous errors
+                    setError("");
                 }
             } else {
                 setError("Employee does not have face recognition data registered.");
@@ -216,7 +218,6 @@ export function Transactions() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Check if face verification is required and successful
         if (formData.employee && !formData.face_verification_success) {
             setError("Face verification is required and must be successful before creating a transaction.");
             return;
@@ -238,7 +239,7 @@ export function Transactions() {
                 damage_notes: "",
             });
             setCapturedFaceData(null);
-            fetchTransactions();
+            await fetchTransactions();
         } catch (err) {
             setError(err.message || "Failed to create transaction");
         } finally {
@@ -278,13 +279,13 @@ export function Transactions() {
 
     const handleModalClose = () => {
         setShowAddModal(false);
-        // Clean up camera stream if active
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
             setStream(null);
         }
         setShowFaceModal(false);
         setCapturedFaceData(null);
+        setError("");
         setFormData({
             asset: "",
             employee: "",
@@ -295,6 +296,15 @@ export function Transactions() {
             damage_notes: "",
         });
     };
+
+    // (Optional) cleanup on unmount to avoid camera leak in StrictMode
+    useEffect(() => {
+        return () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [stream]);
 
     if (loading) {
         return (
@@ -672,7 +682,6 @@ export function Transactions() {
                                 </Card>
                             </div>
 
-                            {/* Notes and Additional Info */}
                             {(selectedTransaction.notes || selectedTransaction.return_condition || selectedTransaction.damage_notes) && (
                                 <Card className="mt-6 shadow-sm">
                                     <CardHeader color="orange" className="relative h-16">

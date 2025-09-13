@@ -55,18 +55,30 @@ export function Employees() {
     const [faceRecording, setFaceRecording] = useState(false);
     const [capturedFaceData, setCapturedFaceData] = useState(null);
 
-    // Use useRef for video element
     const videoRef = useRef(null);
     const [stream, setStream] = useState(null);
 
+    // Prevent double loading
+    const [mounted, setMounted] = useState(false);
+
     useEffect(() => {
-        fetchEmployees();
-        fetchDepartments();
-    }, []);
+        if (!mounted) {
+            setMounted(true);
+            initializeData();
+        }
+    }, [mounted]);
+
+    const initializeData = async () => {
+        try {
+            setLoading(true);
+            await Promise.all([fetchEmployees(), fetchDepartments()]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchEmployees = async () => {
         try {
-            setLoading(true);
             const params = {};
             if (selectedDepartment) params.department = selectedDepartment;
             if (searchTerm) params.search = searchTerm;
@@ -74,10 +86,9 @@ export function Employees() {
             const response = await employeeAPI.getAll(params);
             setEmployees(response.results || response);
         } catch (err) {
+            if (!mounted) return; // Prevent setting error if component unmounted
             setError("Failed to fetch employees");
             console.error(err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -91,18 +102,16 @@ export function Employees() {
     };
 
     useEffect(() => {
+        if (!mounted) return;
         const timer = setTimeout(() => {
             fetchEmployees();
         }, 300);
-        return () => clearTimeout(timer);
-    }, [searchTerm, selectedDepartment]);
+        return () => clearTimeout(timer);}, [searchTerm, selectedDepartment, mounted]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
-
-    // Face recognition functions
     const startFaceRecording = async () => {
         try {
             setFaceRecording(true);
@@ -147,11 +156,7 @@ export function Employees() {
             canvas.width = videoRef.current.videoWidth;
             canvas.height = videoRef.current.videoHeight;
             context.drawImage(videoRef.current, 0, 0);
-
-            // Convert to data URL with good quality
             const imageData = canvas.toDataURL("image/jpeg", 0.8);
-
-            // Simulate processing face data (in real app, you'd extract face encodings)
             const processedFaceData = btoa(JSON.stringify({
                 image: imageData,
                 timestamp: new Date().toISOString(),
@@ -175,6 +180,9 @@ export function Employees() {
         if (stream) {
             stream.getTracks().forEach((track) => track.stop());
             setStream(null);
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
         }
         setShowFaceModal(false);
         setFaceRecording(false);
@@ -200,7 +208,7 @@ export function Employees() {
             }
 
             resetForm();
-            fetchEmployees();
+            await fetchEmployees(); // Refresh the list
         } catch (err) {
             setError(err.message || "Failed to save employee");
         } finally {
@@ -235,8 +243,7 @@ export function Employees() {
             setShowDeleteModal(false);
             setSelectedEmployee(null);
             setError("");
-            // Refresh the employee list
-            await fetchEmployees();
+            await fetchEmployees(); // Refresh the list
         } catch (err) {
             console.error("Delete error:", err);
             setError(err.message || "Failed to delete employee");
@@ -268,12 +275,7 @@ export function Employees() {
         });
         setCapturedFaceData(null);
         setSelectedEmployee(null);
-
-        // Clean up video stream
-        if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
-            setStream(null);
-        }
+        stopVideoStream();
     };
 
     const handleModalClose = () => {
@@ -284,6 +286,15 @@ export function Employees() {
         resetForm();
         setError("");
     };
+
+    // Cleanup effect
+    useEffect(() => {
+        return () => {
+            if (stream) {
+                stream.getTracks().forEach((track) => track.stop());
+            }
+        };
+    }, [stream]);
 
     if (loading) {
         return (
@@ -535,7 +546,7 @@ export function Employees() {
                                 size="sm"
                                 color={(capturedFaceData && capturedFaceData !== "existing") ? "green" : "blue"}
                                 onClick={startFaceRecording}
-                                loading={faceRecording}
+                                disabled={faceRecording}
                                 className="flex items-center gap-2"
                             >
                                 <CameraIcon className="h-4 w-4" />

@@ -38,8 +38,8 @@ export function Dashboard() {
           {routes.map(
             ({ layout, pages }) =>
               layout === "dashboard" &&
-              pages.map(({ path, element }) => (
-                <Route exact path={path} element={element} />
+              pages.map(({ path, element }, index) => (
+                <Route key={`dashboard-${index}`} path={path} element={element} />
               ))
           )}
         </Routes>

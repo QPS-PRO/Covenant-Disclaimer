@@ -1,3 +1,4 @@
+// departments.jsx (fixed)
 import React, { useState, useEffect } from "react";
 import {
     Card,
@@ -15,7 +16,15 @@ import {
     Option,
     Alert,
 } from "@material-tailwind/react";
-import { PlusIcon, PencilIcon, EyeIcon, TrashIcon, MagnifyingGlassIcon, UsersIcon, CubeIcon } from "@heroicons/react/24/outline";
+import {
+    PlusIcon,
+    PencilIcon,
+    EyeIcon,
+    TrashIcon,
+    MagnifyingGlassIcon,
+    UsersIcon,
+    CubeIcon,
+} from "@heroicons/react/24/outline";
 import { departmentAPI, employeeAPI } from "@/lib/assetApi";
 
 export function Departments() {
@@ -24,6 +33,9 @@ export function Departments() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
+
+    // NEW: prevent double-loading like assets.jsx
+    const [mounted, setMounted] = useState(false);
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
@@ -39,14 +51,26 @@ export function Departments() {
     });
     const [formLoading, setFormLoading] = useState(false);
 
+    // NEW: run once only
     useEffect(() => {
-        fetchDepartments();
-        fetchUsers();
-    }, []);
+        if (!mounted) {
+            setMounted(true);
+            initializeData();
+        }
+    }, [mounted]);
+
+    // NEW: one-shot initializer (matches assets.jsx pattern)
+    const initializeData = async () => {
+        try {
+            setLoading(true);
+            await Promise.all([fetchDepartments(), fetchUsers()]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchDepartments = async () => {
         try {
-            setLoading(true);
             const params = {};
             if (searchTerm) params.search = searchTerm;
 
@@ -55,8 +79,6 @@ export function Departments() {
         } catch (err) {
             setError("Failed to fetch departments");
             console.error(err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -64,11 +86,10 @@ export function Departments() {
         try {
             const response = await employeeAPI.getAll();
             const employeeData = response.results || response;
-            // Extract user data from employees for manager selection
-            const userData = employeeData.map(emp => ({
+            const userData = employeeData.map((emp) => ({
                 id: emp.user_data.id,
                 name: emp.name,
-                email: emp.user_data.email
+                email: emp.user_data.email,
             }));
             setUsers(userData);
         } catch (err) {
@@ -76,16 +97,20 @@ export function Departments() {
         }
     };
 
+    // Debounced search, but skip until mounted (prevents second call on first render)
     useEffect(() => {
+        if (!mounted) return;
+
         const timer = setTimeout(() => {
             fetchDepartments();
         }, 300);
+
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+    }, [searchTerm, mounted]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
@@ -98,17 +123,17 @@ export function Departments() {
                 name: formData.name,
                 manager: formData.manager || null,
             };
-            
-            if (selectedDepartment) {
+
+            if (selectedDepartment && showEditModal) {
                 await departmentAPI.update(selectedDepartment.id, submitData);
                 setShowEditModal(false);
             } else {
                 await departmentAPI.create(submitData);
                 setShowAddModal(false);
             }
-            
+
             resetForm();
-            fetchDepartments();
+            await fetchDepartments();
         } catch (err) {
             setError(err.message || "Failed to save department");
         } finally {
@@ -127,15 +152,22 @@ export function Departments() {
 
     const handleDelete = async () => {
         if (!selectedDepartment) return;
-        
+
         setFormLoading(true);
+        setError("");
+
         try {
             await departmentAPI.delete(selectedDepartment.id);
             setShowDeleteModal(false);
             setSelectedDepartment(null);
-            fetchDepartments();
+            setError("");
+            await fetchDepartments();
         } catch (err) {
-            setError("Failed to delete department. Make sure it has no employees or assets assigned.");
+            console.error("Delete error:", err);
+            setError(
+                err.message ||
+                "Failed to delete department. Make sure it has no employees or assets assigned."
+            );
         } finally {
             setFormLoading(false);
         }
@@ -143,10 +175,12 @@ export function Departments() {
 
     const handleViewDepartment = async (department) => {
         try {
+            setError("");
             const response = await departmentAPI.getById(department.id);
             setSelectedDepartment(response);
             setShowViewModal(true);
         } catch (err) {
+            console.error("View department error:", err);
             setError("Failed to fetch department details");
         }
     };
@@ -162,7 +196,10 @@ export function Departments() {
     const handleModalClose = () => {
         setShowAddModal(false);
         setShowEditModal(false);
+        setShowViewModal(false);
+        // (optional) don't force-close delete modal here; match current UX
         resetForm();
+        setError("");
     };
 
     if (loading) {
@@ -194,7 +231,12 @@ export function Departments() {
 
                 <CardBody className="px-0 pt-0 pb-2">
                     {error && (
-                        <Alert color="red" className="mb-6 mx-6">
+                        <Alert
+                            color="red"
+                            className="mb-6 mx-6"
+                            dismissible
+                            onClose={() => setError("")}
+                        >
                             {error}
                         </Alert>
                     )}
@@ -216,9 +258,22 @@ export function Departments() {
                         <table className="w-full min-w-[640px] table-auto">
                             <thead>
                                 <tr>
-                                    {["Department Name", "Manager", "Employees", "Assets", "Created", "Actions"].map((el) => (
-                                        <th key={el} className="border-b border-blue-gray-50 py-3 px-5 text-left">
-                                            <Typography variant="small" className="text-[11px] font-bold uppercase text-blue-gray-400">
+                                    {[
+                                        "Department Name",
+                                        "Manager",
+                                        "Employees",
+                                        "Assets",
+                                        "Created",
+                                        "Actions",
+                                    ].map((el) => (
+                                        <th
+                                            key={el}
+                                            className="border-b border-blue-gray-50 py-3 px-5 text-left"
+                                        >
+                                            <Typography
+                                                variant="small"
+                                                className="text-[11px] font-bold uppercase text-blue-gray-400"
+                                            >
                                                 {el}
                                             </Typography>
                                         </th>
@@ -227,12 +282,19 @@ export function Departments() {
                             </thead>
                             <tbody>
                                 {departments.map((department, key) => {
-                                    const className = `py-3 px-5 ${key === departments.length - 1 ? "" : "border-b border-blue-gray-50"}`;
+                                    const className = `py-3 px-5 ${key === departments.length - 1
+                                            ? ""
+                                            : "border-b border-blue-gray-50"
+                                        }`;
 
                                     return (
                                         <tr key={department.id}>
                                             <td className={className}>
-                                                <Typography variant="small" color="blue-gray" className="font-semibold">
+                                                <Typography
+                                                    variant="small"
+                                                    color="blue-gray"
+                                                    className="font-semibold"
+                                                >
                                                     {department.name}
                                                 </Typography>
                                             </td>
@@ -302,16 +364,32 @@ export function Departments() {
                             </tbody>
                         </table>
                     </div>
+
+                    {departments.length === 0 && !loading && (
+                        <div className="text-center py-8">
+                            <Typography color="blue-gray" className="font-normal">
+                                No departments found.
+                            </Typography>
+                        </div>
+                    )}
                 </CardBody>
             </Card>
 
             {/* Add/Edit Department Modal */}
             <Dialog open={showAddModal || showEditModal} handler={handleModalClose} size="md">
                 <DialogHeader>
-                    {selectedDepartment ? "Edit Department" : "Add New Department"}
+                    {selectedDepartment && showEditModal
+                        ? "Edit Department"
+                        : "Add New Department"}
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="flex flex-col gap-4">
+                        {error && (
+                            <Alert color="red" className="mb-4">
+                                {error}
+                            </Alert>
+                        )}
+
                         <Input
                             label="Department Name"
                             name="name"
@@ -322,7 +400,9 @@ export function Departments() {
                         <Select
                             label="Manager (Optional)"
                             value={formData.manager}
-                            onChange={(value) => setFormData(prev => ({ ...prev, manager: value }))}
+                            onChange={(value) =>
+                                setFormData((prev) => ({ ...prev, manager: value }))
+                            }
                         >
                             <Option value="">No manager</Option>
                             {users.map((user) => (
@@ -337,7 +417,9 @@ export function Departments() {
                             Cancel
                         </Button>
                         <Button type="submit" loading={formLoading}>
-                            {selectedDepartment ? "Update Department" : "Create Department"}
+                            {selectedDepartment && showEditModal
+                                ? "Update Department"
+                                : "Create Department"}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -347,6 +429,11 @@ export function Departments() {
             <Dialog open={showDeleteModal} handler={() => setShowDeleteModal(false)} size="sm">
                 <DialogHeader>Confirm Delete</DialogHeader>
                 <DialogBody>
+                    {error && (
+                        <Alert color="red" className="mb-4">
+                            {error}
+                        </Alert>
+                    )}
                     Are you sure you want to delete this department? This action cannot be undone and will fail if the department has employees or assets assigned.
                     {selectedDepartment && (
                         <div className="mt-2 p-2 bg-gray-100 rounded">
@@ -360,7 +447,15 @@ export function Departments() {
                     )}
                 </DialogBody>
                 <DialogFooter>
-                    <Button variant="text" color="gray" onClick={() => setShowDeleteModal(false)} className="mr-1">
+                    <Button
+                        variant="text"
+                        color="gray"
+                        onClick={() => {
+                            setShowDeleteModal(false);
+                            setError("");
+                        }}
+                        className="mr-1"
+                    >
                         Cancel
                     </Button>
                     <Button color="red" onClick={handleDelete} loading={formLoading}>
@@ -374,7 +469,7 @@ export function Departments() {
                 {selectedDepartment && (
                     <>
                         <DialogHeader>Department Details - {selectedDepartment.name}</DialogHeader>
-                        <DialogBody>
+                        <DialogBody className="max-h-[70vh] overflow-y-auto">
                             <Card className="shadow-sm">
                                 <CardHeader color="blue" className="relative h-16">
                                     <Typography variant="h6" color="white" className="text-center">
@@ -389,7 +484,9 @@ export function Departments() {
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="font-semibold">Manager:</span>
-                                            <span>{selectedDepartment.manager_name || "No manager assigned"}</span>
+                                            <span>
+                                                {selectedDepartment.manager_name || "No manager assigned"}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="font-semibold">Active Employees:</span>
@@ -407,11 +504,15 @@ export function Departments() {
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="font-semibold">Created:</span>
-                                            <span>{new Date(selectedDepartment.created_at).toLocaleDateString()}</span>
+                                            <span>
+                                                {new Date(selectedDepartment.created_at).toLocaleDateString()}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="font-semibold">Last Updated:</span>
-                                            <span>{new Date(selectedDepartment.updated_at).toLocaleDateString()}</span>
+                                            <span>
+                                                {new Date(selectedDepartment.updated_at).toLocaleDateString()}
+                                            </span>
                                         </div>
                                     </div>
                                 </CardBody>
