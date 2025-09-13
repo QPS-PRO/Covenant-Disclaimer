@@ -54,7 +54,7 @@ export function Employees() {
     const [formLoading, setFormLoading] = useState(false);
     const [faceRecording, setFaceRecording] = useState(false);
     const [capturedFaceData, setCapturedFaceData] = useState(null);
-    
+
     // Use useRef for video element
     const videoRef = useRef(null);
     const [stream, setStream] = useState(null);
@@ -106,23 +106,26 @@ export function Employees() {
     const startFaceRecording = async () => {
         try {
             setFaceRecording(true);
-            setError(""); // Clear previous errors
-            
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    width: { ideal: 640 }, 
-                    height: { ideal: 480 } 
-                } 
+            setError("");
+
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user'
+                }
             });
-            
+
             setStream(mediaStream);
             setShowFaceModal(true);
-            
+
             // Wait for modal to be shown and video element to be available
             setTimeout(() => {
                 if (videoRef.current && mediaStream) {
                     videoRef.current.srcObject = mediaStream;
-                    videoRef.current.play();
+                    videoRef.current.onloadedmetadata = () => {
+                        videoRef.current.play().catch(console.error);
+                    };
                 }
             }, 100);
         } catch (error) {
@@ -133,8 +136,8 @@ export function Employees() {
     };
 
     const captureFaceData = async () => {
-        if (!videoRef.current) {
-            setError("Video not ready for capture");
+        if (!videoRef.current || !videoRef.current.videoWidth) {
+            setError("Video not ready for capture. Please wait for camera to initialize.");
             return;
         }
 
@@ -145,24 +148,36 @@ export function Employees() {
             canvas.height = videoRef.current.videoHeight;
             context.drawImage(videoRef.current, 0, 0);
 
+            // Convert to data URL with good quality
             const imageData = canvas.toDataURL("image/jpeg", 0.8);
-            setCapturedFaceData(imageData);
+
+            // Simulate processing face data (in real app, you'd extract face encodings)
+            const processedFaceData = btoa(JSON.stringify({
+                image: imageData,
+                timestamp: new Date().toISOString(),
+                quality: 'good'
+            }));
+
+            setCapturedFaceData(processedFaceData);
 
             // Stop the video stream
-            if (stream) {
-                stream.getTracks().forEach((track) => track.stop());
-                setStream(null);
-            }
-            
-            setShowFaceModal(false);
-            setFaceRecording(false);
-            setError("");
+            stopVideoStream();
 
+            setError("");
             console.log("Face data captured successfully");
         } catch (error) {
             console.error("Face capture error:", error);
             setError("Failed to capture face data");
         }
+    };
+
+    const stopVideoStream = () => {
+        if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+            setStream(null);
+        }
+        setShowFaceModal(false);
+        setFaceRecording(false);
     };
 
     const handleSubmit = async (e) => {
@@ -173,7 +188,7 @@ export function Employees() {
         try {
             const submitData = {
                 ...formData,
-                face_recognition_data: capturedFaceData || "", // Include face data
+                face_recognition_data: capturedFaceData || "",
             };
 
             if (selectedEmployee && showEditModal) {
@@ -203,8 +218,8 @@ export function Employees() {
             phone_number: employee.phone_number || "",
             department: employee.department?.toString() || "",
         });
-        
-        // If employee has face data, we won't show it but we'll preserve it
+
+        // If employee has face data, we'll preserve it
         setCapturedFaceData(employee.has_face_data ? "existing" : null);
         setShowEditModal(true);
     };
@@ -214,14 +229,14 @@ export function Employees() {
 
         setFormLoading(true);
         setError("");
-        
+
         try {
             await employeeAPI.delete(selectedEmployee.id);
             setShowDeleteModal(false);
             setSelectedEmployee(null);
-            fetchEmployees();
-            // Clear any errors after successful deletion
             setError("");
+            // Refresh the employee list
+            await fetchEmployees();
         } catch (err) {
             console.error("Delete error:", err);
             setError(err.message || "Failed to delete employee");
@@ -253,7 +268,7 @@ export function Employees() {
         });
         setCapturedFaceData(null);
         setSelectedEmployee(null);
-        
+
         // Clean up video stream
         if (stream) {
             stream.getTracks().forEach((track) => track.stop());
@@ -265,17 +280,9 @@ export function Employees() {
         setShowAddModal(false);
         setShowEditModal(false);
         setShowFaceModal(false);
+        stopVideoStream();
         resetForm();
-        setError(""); // Clear errors when closing modals
-    };
-
-    const stopVideoStream = () => {
-        if (stream) {
-            stream.getTracks().forEach((track) => track.stop());
-            setStream(null);
-        }
-        setShowFaceModal(false);
-        setFaceRecording(false);
+        setError("");
     };
 
     if (loading) {
@@ -447,50 +454,50 @@ export function Employees() {
                                 {error}
                             </Alert>
                         )}
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input 
-                                label="First Name" 
-                                name="first_name" 
-                                value={formData.first_name} 
-                                onChange={handleInputChange} 
-                                required 
+                            <Input
+                                label="First Name"
+                                name="first_name"
+                                value={formData.first_name}
+                                onChange={handleInputChange}
+                                required
                             />
-                            <Input 
-                                label="Last Name" 
-                                name="last_name" 
-                                value={formData.last_name} 
-                                onChange={handleInputChange} 
-                                required 
+                            <Input
+                                label="Last Name"
+                                name="last_name"
+                                value={formData.last_name}
+                                onChange={handleInputChange}
+                                required
                             />
                         </div>
-                        
-                        <Input 
-                            label="Email" 
-                            name="email" 
-                            type="email" 
-                            value={formData.email} 
-                            onChange={handleInputChange} 
-                            required 
+
+                        <Input
+                            label="Email"
+                            name="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            required
                         />
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Input 
-                                label="Employee ID" 
-                                name="employee_id" 
-                                value={formData.employee_id} 
-                                onChange={handleInputChange} 
-                                required 
+                            <Input
+                                label="Employee ID"
+                                name="employee_id"
+                                value={formData.employee_id}
+                                onChange={handleInputChange}
+                                required
                             />
-                            <Input 
-                                label="Phone Number" 
-                                name="phone_number" 
-                                value={formData.phone_number} 
-                                onChange={handleInputChange} 
-                                required 
+                            <Input
+                                label="Phone Number"
+                                name="phone_number"
+                                value={formData.phone_number}
+                                onChange={handleInputChange}
+                                required
                             />
                         </div>
-                        
+
                         <Select
                             label="Department"
                             value={formData.department}
@@ -532,8 +539,8 @@ export function Employees() {
                                 className="flex items-center gap-2"
                             >
                                 <CameraIcon className="h-4 w-4" />
-                                {capturedFaceData === "existing" ? "Update Face Data" : 
-                                 capturedFaceData ? "Re-capture Face" : "Capture Face"}
+                                {capturedFaceData === "existing" ? "Update Face Data" :
+                                    capturedFaceData ? "Re-capture Face" : "Capture Face"}
                             </Button>
                         </div>
                     </DialogBody>
@@ -553,10 +560,10 @@ export function Employees() {
                 <DialogHeader>Capture Face for Recognition</DialogHeader>
                 <DialogBody className="text-center">
                     <div className="mb-4">
-                        <video 
-                            ref={videoRef} 
-                            autoPlay 
-                            muted 
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            muted
                             playsInline
                             className="w-full max-w-md mx-auto rounded-lg border"
                             style={{ maxHeight: '360px' }}
@@ -580,7 +587,11 @@ export function Employees() {
                     >
                         Cancel
                     </Button>
-                    <Button onClick={captureFaceData} disabled={!videoRef.current}>
+                    <Button
+                        onClick={captureFaceData}
+                        disabled={!videoRef.current || faceRecording}
+                        loading={faceRecording}
+                    >
                         Capture Face
                     </Button>
                 </DialogFooter>
@@ -608,7 +619,10 @@ export function Employees() {
                     )}
                 </DialogBody>
                 <DialogFooter>
-                    <Button variant="text" color="gray" onClick={() => setShowDeleteModal(false)} className="mr-1">
+                    <Button variant="text" color="gray" onClick={() => {
+                        setShowDeleteModal(false);
+                        setError("");
+                    }} className="mr-1">
                         Cancel
                     </Button>
                     <Button color="red" onClick={handleDelete} loading={formLoading}>
@@ -680,9 +694,9 @@ export function Employees() {
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Current Assets:</span>
                                                 <span>
-                                                    {profileStats?.current_assets_count || 
-                                                     selectedEmployee.current_assets_count || 
-                                                     currentAssets.length || 0}
+                                                    {profileStats?.current_assets_count ||
+                                                        selectedEmployee.current_assets_count ||
+                                                        currentAssets.length || 0}
                                                 </span>
                                             </div>
                                             {profileStats && (

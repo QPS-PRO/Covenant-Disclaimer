@@ -27,8 +27,18 @@ export async function apiRequest(endpoint, options = {}) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
         }
+        if (response.status === 204) {
+            return null;
+        }
+        // Check if response has content to parse
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
+        }
         
-        return await response.json();
+        return await response.text();
+        // return await response.json();
     } catch (error) {
         console.error('API request failed:', error);
         throw error;

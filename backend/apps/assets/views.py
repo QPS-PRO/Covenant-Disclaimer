@@ -102,15 +102,17 @@ class AssetTransactionDetailView(generics.RetrieveAPIView):
 def employee_profile_view(request, employee_id):
     """Get employee profile with transaction history"""
     try:
-        employee = Employee.objects.select_related('user', 'department').get(id=employee_id)
+        employee = Employee.objects.select_related('user', 'department').get(
+            id=employee_id, is_active=True
+        )
         
         # Get employee basic info
         employee_data = EmployeeSerializer(employee).data
         
-        # Get transaction history
+        # Get transaction history (last 50 transactions)
         transactions = AssetTransaction.objects.filter(employee=employee).select_related(
             'asset', 'processed_by'
-        ).order_by('-transaction_date')[:50]  # Last 50 transactions
+        ).order_by('-transaction_date')[:50]
         
         transaction_data = AssetTransactionSerializer(transactions, many=True).data
         
@@ -118,20 +120,36 @@ def employee_profile_view(request, employee_id):
         current_assets = Asset.objects.filter(current_holder=employee).select_related('department')
         current_assets_data = AssetSerializer(current_assets, many=True).data
         
+        # Calculate stats
+        total_issues = AssetTransaction.objects.filter(
+            employee=employee, transaction_type='issue'
+        ).count()
+        total_returns = AssetTransaction.objects.filter(
+            employee=employee, transaction_type='return'
+        ).count()
+        
         return Response({
             'employee': employee_data,
             'current_assets': current_assets_data,
             'transaction_history': transaction_data,
             'stats': {
-                'total_transactions': transactions.count(),
+                'total_transactions': AssetTransaction.objects.filter(employee=employee).count(),
                 'current_assets_count': current_assets.count(),
-                'total_issues': transactions.filter(transaction_type='issue').count(),
-                'total_returns': transactions.filter(transaction_type='return').count(),
+                'total_issues': total_issues,
+                'total_returns': total_returns,
             }
         })
         
     except Employee.DoesNotExist:
-        return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {'error': 'Employee not found or inactive'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Internal server error: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -166,13 +184,6 @@ def perform_face_verification(stored_face_data, captured_face_data):
     """
     try:
         # Simulate face verification process
-        # In a real implementation, you would:
-        # 1. Load face recognition model
-        # 2. Extract face encodings from both images
-        # 3. Calculate similarity/distance (e.g., using face_recognition library)
-        # 4. Compare against threshold
-        
-        # For demo purposes, simulate verification
         stored_hash = hashlib.md5(stored_face_data.encode()).hexdigest()
         captured_hash = hashlib.md5(captured_face_data.encode()).hexdigest()
         
@@ -181,7 +192,6 @@ def perform_face_verification(stored_face_data, captured_face_data):
         threshold = 0.7
         
         # Add some logic to make verification more realistic
-        # If hashes are similar, higher chance of success
         if stored_hash[:4] == captured_hash[:4]:
             confidence += 0.1
         
@@ -206,7 +216,7 @@ def perform_face_verification(stored_face_data, captured_face_data):
 def update_employee_face_data(request, employee_id):
     """Update employee face recognition data"""
     try:
-        employee = Employee.objects.get(id=employee_id)
+        employee = Employee.objects.get(id=employee_id, is_active=True)
         face_data = request.data.get('face_recognition_data')
         
         if not face_data:
@@ -224,7 +234,15 @@ def update_employee_face_data(request, employee_id):
         })
         
     except Employee.DoesNotExist:
-        return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {'error': 'Employee not found or inactive'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Internal server error: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

@@ -149,8 +149,9 @@ export function Assets() {
             await assetAPI.delete(selectedAsset.id);
             setShowDeleteModal(false);
             setSelectedAsset(null);
-            fetchAssets();
             setError("");
+            // Refresh the assets list
+            await fetchAssets();
         } catch (err) {
             console.error("Delete error:", err);
             setError(err.message || "Failed to delete asset");
@@ -480,7 +481,15 @@ export function Assets() {
                     )}
                 </DialogBody>
                 <DialogFooter>
-                    <Button variant="text" color="gray" onClick={() => setShowDeleteModal(false)} className="mr-1">
+                    <Button 
+                        variant="text" 
+                        color="gray" 
+                        onClick={() => {
+                            setShowDeleteModal(false);
+                            setError(""); // Clear any errors when closing
+                        }} 
+                        className="mr-1"
+                    >
                         Cancel
                     </Button>
                     <Button color="red" onClick={handleDelete} loading={formLoading}>
