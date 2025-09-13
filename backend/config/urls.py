@@ -21,9 +21,11 @@ from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("api/v1/auth/", include("dj_rest_auth.urls")),
-    path("api/v1/auth/register", include("dj_rest_auth.registration.urls")),
-    # path("api/v1/core/", include("apps.core.urls")),
+    # Auth endpoints - match what frontend expects
+    path('api/auth/', include('dj_rest_auth.urls')),
+    path('api/auth/registration/', include('dj_rest_auth.registration.urls')),
+    path('api/users/', include('apps.users.urls')),
+    # path('api/', include('apps.core.urls')),
     
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
