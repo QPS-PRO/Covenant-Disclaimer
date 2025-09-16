@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from './api';
+import cameraManager from './cameraManager';
 
 // Department API
 export const departmentAPI = {
@@ -98,7 +99,7 @@ export const dashboardAPI = {
     }
 };
 
-// Real Face Recognition Utilities
+// Enhanced Face Recognition API using camera manager
 export const faceRecognitionAPI = {
     // Capture image from video element
     captureImageFromVideo: (videoElement, quality = 0.8) => {
@@ -124,22 +125,29 @@ export const faceRecognitionAPI = {
         });
     },
 
-    // Start camera stream
-    startCamera: async (constraints = { video: { width: 640, height: 480, facingMode: 'user' } }) => {
+    // Start camera stream using camera manager
+    startCamera: async (constraints) => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            return stream;
+            return await cameraManager.startCamera(constraints);
         } catch (error) {
             console.error('Error accessing camera:', error);
             throw new Error('Could not access camera. Please check permissions.');
         }
     },
 
-    // Stop camera stream
+    // Stop camera stream using camera manager
     stopCamera: (stream) => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
+        cameraManager.stopCamera();
+    },
+
+    // Check if camera is active
+    isCameraActive: () => {
+        return cameraManager.isStreamActive();
+    },
+
+    // Get active stream
+    getActiveStream: () => {
+        return cameraManager.getActiveStream();
     },
 
     // Validate image quality before processing
@@ -197,29 +205,24 @@ export const faceRecognitionAPI = {
                 details: error.message
             };
         }
+    },
+
+    // Cleanup camera resources
+    cleanup: () => {
+        cameraManager.cleanup();
     }
 };
 
-// Camera utilities
+// Camera utilities using camera manager
 export const cameraUtils = {
     // Check if camera is available
     isCameraAvailable: async () => {
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices.some(device => device.kind === 'videoinput');
-        } catch (error) {
-            return false;
-        }
+        return await cameraManager.checkCameraAvailability();
     },
 
     // Get available cameras
     getAvailableCameras: async () => {
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            return devices.filter(device => device.kind === 'videoinput');
-        } catch (error) {
-            return [];
-        }
+        return await cameraManager.getAvailableCameras();
     },
 
     // Get optimal camera constraints
@@ -231,7 +234,12 @@ export const cameraUtils = {
             frameRate: { ideal: 30 }
         },
         audio: false
-    })
+    }),
+
+    // Check if a stream is active
+    isStreamActive: () => {
+        return cameraManager.isStreamActive();
+    }
 };
 
 // Export utility functions for data formatting

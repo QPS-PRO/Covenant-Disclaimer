@@ -1,5 +1,5 @@
-// frontend/src/components/FaceRecognitionComponent.jsx
-import React, { useState, useRef, useEffect } from 'react';
+// frontend/src/components/FaceRecognitionComponent.jsx (Fixed version)
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     Dialog,
     DialogHeader,
@@ -31,7 +31,7 @@ const FaceRecognitionComponent = ({
     onError
 }) => {
     const videoRef = useRef(null);
-    const [stream, setStream] = useState(null);
+    const streamRef = useRef(null);
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState('camera'); // 'camera', 'capture', 'processing', 'result'
     const [capturedImage, setCapturedImage] = useState(null);
@@ -40,21 +40,62 @@ const FaceRecognitionComponent = ({
     const [cameraReady, setCameraReady] = useState(false);
     const [validationResult, setValidationResult] = useState(null);
 
+    // Cleanup camera stream function
+    const cleanupCamera = useCallback(() => {
+        console.log('Cleaning up camera...');
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => {
+                track.stop();
+                console.log('Stopped track:', track);
+            });
+            streamRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+        setCameraReady(false);
+    }, []);
+
+    // Initialize camera when modal opens
     useEffect(() => {
         if (open && step === 'camera') {
             initializeCamera();
         }
+
+        // Cleanup when modal closes or component unmounts
         return () => {
-            if (stream) {
-                faceRecognitionAPI.stopCamera(stream);
+            if (open === false) {
+                cleanupCamera();
             }
         };
-    }, [open]);
+    }, [open, step, cleanupCamera]);
+
+    // Additional cleanup effect for when open changes
+    useEffect(() => {
+        if (!open) {
+            console.log('Modal closed, cleaning up...');
+            cleanupCamera();
+            resetState();
+        }
+    }, [open, cleanupCamera]);
+
+    const resetState = useCallback(() => {
+        setStep('camera');
+        setCapturedImage(null);
+        setResult(null);
+        setError('');
+        setCameraReady(false);
+        setValidationResult(null);
+        setIsLoading(false);
+    }, []);
 
     const initializeCamera = async () => {
         try {
             setIsLoading(true);
             setError('');
+
+            // Clean up any existing stream first
+            cleanupCamera();
 
             // Check if camera is available
             const isAvailable = await cameraUtils.isCameraAvailable();
@@ -62,22 +103,33 @@ const FaceRecognitionComponent = ({
                 throw new Error('No camera found on this device');
             }
 
-            // Start camera
+            // Start camera with a small delay to ensure cleanup is complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             const constraints = cameraUtils.getOptimalConstraints();
             const cameraStream = await faceRecognitionAPI.startCamera(constraints);
-            setStream(cameraStream);
+
+            // Store stream reference
+            streamRef.current = cameraStream;
 
             // Set video stream
-            if (videoRef.current) {
+            if (videoRef.current && cameraStream) {
                 videoRef.current.srcObject = cameraStream;
                 videoRef.current.onloadedmetadata = () => {
                     setCameraReady(true);
                     setIsLoading(false);
                 };
+                videoRef.current.onerror = (err) => {
+                    console.error('Video error:', err);
+                    setError('Failed to display camera feed');
+                    setIsLoading(false);
+                };
             }
         } catch (err) {
+            console.error('Camera initialization error:', err);
             setError(err.message || 'Failed to access camera');
             setIsLoading(false);
+            cleanupCamera();
         }
     };
 
@@ -111,6 +163,7 @@ const FaceRecognitionComponent = ({
                 await verifyFace(imageData);
             }
         } catch (err) {
+            console.error('Capture error:', err);
             setError(err.message || 'Failed to capture image');
             setStep('capture');
             setIsLoading(false);
@@ -127,6 +180,7 @@ const FaceRecognitionComponent = ({
                 onSuccess(response);
             }
         } catch (err) {
+            console.error('Registration error:', err);
             setError(err.message || 'Face registration failed');
             if (onError) onError(err);
         } finally {
@@ -146,6 +200,7 @@ const FaceRecognitionComponent = ({
                 onError(response);
             }
         } catch (err) {
+            console.error('Verification error:', err);
             setError(err.message || 'Face verification failed');
             if (onError) onError(err);
         } finally {
@@ -153,25 +208,24 @@ const FaceRecognitionComponent = ({
         }
     };
 
-    const handleClose = () => {
-        if (stream) {
-            faceRecognitionAPI.stopCamera(stream);
-            setStream(null);
+    const handleClose = useCallback(() => {
+        console.log('Handle close called');
+        cleanupCamera();
+        resetState();
+        if (onClose) {
+            onClose();
         }
-        setStep('camera');
-        setCapturedImage(null);
-        setResult(null);
-        setError('');
-        setCameraReady(false);
-        setValidationResult(null);
-        onClose();
-    };
+    }, [cleanupCamera, resetState, onClose]);
 
     const retakePhoto = () => {
         setCapturedImage(null);
         setValidationResult(null);
         setStep('camera');
         setError('');
+        // Reinitialize camera
+        setTimeout(() => {
+            initializeCamera();
+        }, 100);
     };
 
     const renderCameraView = () => (
@@ -181,6 +235,7 @@ const FaceRecognitionComponent = ({
                     ref={videoRef}
                     autoPlay
                     muted
+                    playsInline
                     className="w-full max-w-md mx-auto rounded-lg border-2 border-gray-300"
                     style={{ transform: 'scaleX(-1)' }} // Mirror effect
                 />
@@ -323,8 +378,19 @@ const FaceRecognitionComponent = ({
         </div>
     );
 
+    // Don't render if not open
+    if (!open) {
+        return null;
+    }
+
     return (
-        <Dialog open={open} handler={handleClose} size="lg" className="max-w-2xl">
+        <Dialog
+            open={open}
+            handler={handleClose}
+            size="lg"
+            className="max-w-2xl"
+            dismiss={{ enabled: false }} // Prevent accidental closes
+        >
             <DialogHeader className="flex items-center gap-2">
                 <CameraIcon className="h-6 w-6" />
                 Face {mode === 'register' ? 'Registration' : 'Verification'}

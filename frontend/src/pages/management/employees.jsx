@@ -1,5 +1,5 @@
-// frontend/src/pages/management/employees.jsx (Updated with Face Recognition)
-import React, { useState, useEffect } from "react";
+// frontend/src/pages/management/employees.jsx (Fixed version)
+import React, { useState, useEffect, useCallback } from "react";
 import {
     Card,
     CardHeader,
@@ -45,7 +45,7 @@ export function Employees() {
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [mounted, setMounted] = useState(false);
 
-    // Modal states
+    // Modal states - explicitly managing each modal
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
@@ -63,7 +63,7 @@ export function Employees() {
         department: "",
     });
     const [formLoading, setFormLoading] = useState(false);
-    const [faceRegistrationMode, setFaceRegistrationMode] = useState("register"); // "register" or "update"
+    const [faceRegistrationMode, setFaceRegistrationMode] = useState("register");
 
     // Initialize data
     useEffect(() => {
@@ -180,32 +180,61 @@ export function Employees() {
         }
     };
 
-    const handleFaceRegistration = (employee, mode = "register") => {
-        setSelectedEmployee(employee);
-        setFaceRegistrationMode(mode);
-        setShowFaceModal(true);
-    };
+    // Face registration handlers with proper modal management
+    const handleFaceRegistration = useCallback((employee, mode = "register") => {
+        console.log('Opening face registration for:', employee.name, 'Mode:', mode);
 
-    const handleFaceRegistrationSuccess = async (result) => {
+        // Close any open modals first
+        setShowEditModal(false);
+        setShowViewModal(false);
+        setShowAddModal(false);
+
+        // Small delay to ensure modals are closed
+        setTimeout(() => {
+            setSelectedEmployee(employee);
+            setFaceRegistrationMode(mode);
+            setShowFaceModal(true);
+        }, 100);
+    }, []);
+
+    const handleFaceRegistrationSuccess = useCallback(async (result) => {
+        console.log('Face registration success:', result);
+
         setShowFaceModal(false);
-        await fetchEmployees(); // Refresh to show updated face data status
+        setSelectedEmployee(null);
+
+        // Refresh employees data
+        await fetchEmployees();
+
+        // Clear any errors
         setError("");
 
         // Show success message
         const action = faceRegistrationMode === "register" ? "registered" : "updated";
-        alert(`Face ${action} successfully for ${selectedEmployee?.name}!`);
-    };
+        setTimeout(() => {
+            alert(`Face ${action} successfully!`);
+        }, 100);
+    }, [faceRegistrationMode]);
 
-    const handleFaceRegistrationError = (error) => {
+    const handleFaceRegistrationError = useCallback((error) => {
+        console.log('Face registration error:', error);
+
         setShowFaceModal(false);
+        setSelectedEmployee(null);
+
         setError(error.error || "Face registration failed");
-    };
+    }, []);
+
+    const handleFaceModalClose = useCallback(() => {
+        console.log('Face modal close called');
+        setShowFaceModal(false);
+        setSelectedEmployee(null);
+    }, []);
 
     const handleModalClose = () => {
         setShowAddModal(false);
         setShowEditModal(false);
         setShowViewModal(false);
-        setShowFaceModal(false);
         setSelectedEmployee(null);
         setFormData({
             first_name: "",
@@ -567,7 +596,7 @@ export function Employees() {
                                             <div className="flex justify-center gap-3">
                                                 <Button
                                                     color="blue"
-                                                    onClick={() => handleFaceRegistration(selectedEmployee, "register")}
+                                                    onClick={() => handleFaceRegistration(selectedEmployee, selectedEmployee?.has_face_data ? "update" : "register")}
                                                     className="flex items-center gap-2"
                                                 >
                                                     <CameraIcon className="h-4 w-4" />
@@ -742,18 +771,16 @@ export function Employees() {
                 )}
             </Dialog>
 
-            {/* Face Registration Modal */}
-            {showFaceModal && selectedEmployee && (
-                <FaceRecognitionComponent
-                    open={showFaceModal}
-                    mode="register"
-                    employeeId={selectedEmployee.id}
-                    employeeName={selectedEmployee.name}
-                    onClose={() => setShowFaceModal(false)}
-                    onSuccess={handleFaceRegistrationSuccess}
-                    onError={handleFaceRegistrationError}
-                />
-            )}
+            {/* Face Registration Modal - Rendered separately with proper state management */}
+            <FaceRecognitionComponent
+                open={showFaceModal}
+                mode="register"
+                employeeId={selectedEmployee?.id}
+                employeeName={selectedEmployee?.name}
+                onClose={handleFaceModalClose}
+                onSuccess={handleFaceRegistrationSuccess}
+                onError={handleFaceRegistrationError}
+            />
         </div>
     );
 }
