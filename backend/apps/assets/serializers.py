@@ -3,6 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Department, Employee, Asset, AssetTransaction
 import json
+from .face_recognition_service import verify_employee_face
 
 User = get_user_model()
 
@@ -161,6 +162,16 @@ class AssetTransactionSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('transaction_date', 'processed_by')
 
+class DashboardStatsSerializer(serializers.Serializer):
+    total_employees = serializers.IntegerField()
+    total_assets = serializers.IntegerField()
+    total_departments = serializers.IntegerField()
+    assets_assigned = serializers.IntegerField()
+    assets_available = serializers.IntegerField()
+    recent_transactions = serializers.IntegerField()
+    weekly_data = serializers.ListField()
+    department_distribution = serializers.ListField()
+
 class AssetTransactionCreateSerializer(serializers.ModelSerializer):
     face_verification_data = serializers.CharField(write_only=True, required=False, allow_blank=True)
     
@@ -174,49 +185,55 @@ class AssetTransactionCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """
-        Validate transaction data and perform face verification if needed
+        Validate transaction data and perform real face verification
         """
         employee = data.get('employee')
         face_verification_data = data.get('face_verification_data')
         
+        # Initialize face verification as False
+        data['face_verification_success'] = False
+        
         # If employee has face recognition data and face verification data is provided
         if employee and employee.face_recognition_data and face_verification_data:
-            # In a real implementation, you would call a face recognition service here
-            # For now, we'll simulate the verification
-            verification_result = self.simulate_face_verification(
-                employee.face_recognition_data, 
-                face_verification_data
-            )
-            data['face_verification_success'] = verification_result
-        else:
-            # If no face data available, verification fails
-            data['face_verification_success'] = False
-            
+            try:
+                # Perform real face verification
+                verification_result = verify_employee_face(employee, face_verification_data)
+                data['face_verification_success'] = verification_result['success']
+                
+                # Store verification details in notes if verification fails
+                if not verification_result['success']:
+                    error_detail = verification_result.get('error', 'Face verification failed')
+                    confidence = verification_result.get('confidence', 0.0)
+                    
+                    # Add verification failure info to notes
+                    verification_note = f"[Face Verification Failed: {error_detail}, Confidence: {confidence:.3f}]"
+                    if data.get('notes'):
+                        data['notes'] = f"{verification_note} {data['notes']}"
+                    else:
+                        data['notes'] = verification_note
+                        
+                    # You might want to raise a validation error here to prevent the transaction
+                    # Uncomment the next line if you want to block transactions with failed face verification
+                    # raise serializers.ValidationError(f"Face verification failed: {error_detail}")
+                
+            except Exception as e:
+                # Handle face verification errors
+                data['face_verification_success'] = False
+                error_note = f"[Face Verification Error: {str(e)}]"
+                if data.get('notes'):
+                    data['notes'] = f"{error_note} {data['notes']}"
+                else:
+                    data['notes'] = error_note
+                    
+        elif employee and not employee.face_recognition_data:
+            # Employee doesn't have face data registered
+            error_note = "[Face Verification Skipped: No face data registered for employee]"
+            if data.get('notes'):
+                data['notes'] = f"{error_note} {data['notes']}"
+            else:
+                data['notes'] = error_note
+                
         return data
-    
-    def simulate_face_verification(self, stored_face_data, captured_face_data):
-        """
-        Simulate face verification process
-        In production, this would integrate with a real face recognition service
-        """
-        try:
-            # Simulate face comparison logic
-            # In reality, you would:
-            # 1. Extract face encodings from both images
-            # 2. Calculate similarity/distance
-            # 3. Compare against threshold
-            
-            # For demo purposes, let's simulate based on data similarity
-            import hashlib
-            stored_hash = hashlib.md5(stored_face_data.encode()).hexdigest()
-            captured_hash = hashlib.md5(captured_face_data.encode()).hexdigest()
-            
-            # Simulate 80% success rate for demo
-            import random
-            return random.random() > 0.2
-            
-        except Exception:
-            return False
 
     def create(self, validated_data):
         # Remove face verification data before saving
@@ -255,12 +272,20 @@ class FaceVerificationSerializer(serializers.Serializer):
         
         return data
 
-class DashboardStatsSerializer(serializers.Serializer):
-    total_employees = serializers.IntegerField()
-    total_assets = serializers.IntegerField()
-    total_departments = serializers.IntegerField()
-    assets_assigned = serializers.IntegerField()
-    assets_available = serializers.IntegerField()
-    recent_transactions = serializers.IntegerField()
-    weekly_data = serializers.ListField()
-    department_distribution = serializers.ListField()
+class FaceRegistrationSerializer(serializers.Serializer):
+    """Serializer for face registration"""
+    employee_id = serializers.IntegerField()
+    face_image_data = serializers.CharField()
+    
+    def validate(self, data):
+        try:
+            employee = Employee.objects.get(id=data['employee_id'], is_active=True)
+            data['employee'] = employee
+        except Employee.DoesNotExist:
+            raise serializers.ValidationError("Employee not found or inactive")
+        
+        return data
+
+class FaceImageValidationSerializer(serializers.Serializer):
+    """Serializer for face image validation"""
+    face_image_data = serializers.CharField()

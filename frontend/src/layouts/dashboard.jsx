@@ -17,7 +17,7 @@ export function Dashboard() {
     <div className="min-h-screen bg-blue-gray-50/50">
       <Sidenav
         routes={routes}
-        brandName="Qutubah Schools"
+        brandName="Qurtubah Schools"
         brandImg={
           sidenavType === "dark" ? "/img/qurtubah_logo.png" : "/img/qurtubah_logo.png"
         }

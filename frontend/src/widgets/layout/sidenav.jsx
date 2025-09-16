@@ -29,7 +29,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
           {brandImg && (
             <img
               src={brandImg}
-              alt="Qutubah Schools Logo"
+              alt="Qurtubah Schools Logo"
               className="h-8 w-8 object-contain"
             />
           )}
@@ -106,7 +106,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
 
 Sidenav.defaultProps = {
   brandImg: null,
-  brandName: "Qutubah Schools",
+  brandName: "Qurtubah Schools",
 };
 
 Sidenav.propTypes = {

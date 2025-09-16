@@ -1,4 +1,4 @@
-// frontend/src/pages/management/transactions.jsx (fixed)
+// frontend/src/pages/management/transactions.jsx (Updated with real face recognition)
 import React, { useState, useEffect } from "react";
 import {
     Card,
@@ -17,17 +17,19 @@ import {
     Option,
     Alert,
     Textarea,
-    Switch,
 } from "@material-tailwind/react";
-import { 
-    PlusIcon, 
-    EyeIcon, 
-    MagnifyingGlassIcon, 
-    ArrowRightIcon, 
+import {
+    PlusIcon,
+    EyeIcon,
+    MagnifyingGlassIcon,
+    ArrowRightIcon,
     ArrowLeftIcon,
-    CameraIcon 
+    CameraIcon,
+    CheckCircleIcon,
+    XCircleIcon
 } from "@heroicons/react/24/outline";
-import { transactionAPI, assetAPI, employeeAPI, departmentAPI } from "@/lib/assetApi";
+import { transactionAPI, assetAPI, employeeAPI, departmentAPI, formatters } from "@/lib/assetApi";
+import FaceRecognitionComponent from "../../components/FaceRecognitionComponent";
 
 export function Transactions() {
     const [transactions, setTransactions] = useState([]);
@@ -39,8 +41,6 @@ export function Transactions() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [selectedType, setSelectedType] = useState("");
-
-    // NEW: prevent double-loading (StrictMode)
     const [mounted, setMounted] = useState(false);
 
     // Modal states
@@ -60,17 +60,15 @@ export function Transactions() {
         damage_notes: "",
     });
     const [formLoading, setFormLoading] = useState(false);
-    const [faceVerificationInProgress, setFaceVerificationInProgress] = useState(false);
+    const [verificationResult, setVerificationResult] = useState(null);
     const [capturedFaceData, setCapturedFaceData] = useState(null);
-    const [videoRef, setVideoRef] = useState(null);
-    const [stream, setStream] = useState(null);
 
     const transactionTypeColors = {
         issue: "green",
         return: "orange",
     };
 
-    // NEW: one-shot initializer like assets.jsx
+    // Initialize data
     useEffect(() => {
         if (!mounted) {
             setMounted(true);
@@ -81,7 +79,12 @@ export function Transactions() {
     const initializeData = async () => {
         try {
             setLoading(true);
-            await Promise.all([fetchTransactions(), fetchAssets(), fetchEmployees(), fetchDepartments()]);
+            await Promise.all([
+                fetchTransactions(),
+                fetchAssets(),
+                fetchEmployees(),
+                fetchDepartments()
+            ]);
         } finally {
             setLoading(false);
         }
@@ -129,7 +132,7 @@ export function Transactions() {
         }
     };
 
-    // Debounced search/filter effect — skip until mounted
+    // Debounced search/filter effect
     useEffect(() => {
         if (!mounted) return;
         const timer = setTimeout(() => {
@@ -144,80 +147,58 @@ export function Transactions() {
             ...prev,
             [name]: type === "checkbox" ? checked : value
         }));
-    };
 
-    // Face verification functions
-    const startFaceVerification = async () => {
-        setFaceVerificationInProgress(true);
-        try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            setStream(mediaStream);
-            if (videoRef) {
-                videoRef.srcObject = mediaStream;
-            }
-            setShowFaceModal(true);
-        } catch (error) {
-            setError("Failed to access camera for face verification");
-            setFaceVerificationInProgress(false);
-        }
-    };
-
-    const captureFaceData = async () => {
-        if (!videoRef) return;
-
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = videoRef.videoWidth;
-        canvas.height = videoRef.videoHeight;
-        context.drawImage(videoRef, 0, 0);
-        
-        const imageData = canvas.toDataURL('image/jpeg');
-        setCapturedFaceData(imageData);
-        
-        // Stop the video stream
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
-        setShowFaceModal(false);
-        
-        await simulateFaceVerification(imageData);
-    };
-
-    const simulateFaceVerification = async (faceData) => {
-        try {
-            const selectedEmployee = employees.find(emp => emp.id.toString() === formData.employee);
-            if (selectedEmployee && selectedEmployee.face_recognition_data) {
-                const verificationSuccess = Math.random() > 0.3; // demo only
-                setFormData(prev => ({
-                    ...prev,
-                    face_verification_success: verificationSuccess
-                }));
-                if (!verificationSuccess) {
-                    setError("Face verification failed. The captured face does not match the employee's registered face.");
-                } else {
-                    setError("");
-                }
-            } else {
-                setError("Employee does not have face recognition data registered.");
-                setFormData(prev => ({
-                    ...prev,
-                    face_verification_success: false
-                }));
-            }
-        } catch (error) {
-            setError("Face verification service error");
+        // Reset face verification when employee changes
+        if (name === 'employee') {
             setFormData(prev => ({
                 ...prev,
                 face_verification_success: false
             }));
+            setVerificationResult(null);
+            setCapturedFaceData(null);
         }
-        setFaceVerificationInProgress(false);
+    };
+
+    const handleFaceVerificationSuccess = (result) => {
+        setVerificationResult(result);
+        setCapturedFaceData(result.capturedImage);
+        setFormData(prev => ({
+            ...prev,
+            face_verification_success: result.success
+        }));
+        setShowFaceModal(false);
+        setError("");
+    };
+
+    const handleFaceVerificationError = (error) => {
+        setVerificationResult(error);
+        setFormData(prev => ({
+            ...prev,
+            face_verification_success: false
+        }));
+        setShowFaceModal(false);
+        setError(error.error || "Face verification failed");
+    };
+
+    const startFaceVerification = () => {
+        if (!formData.employee) {
+            setError("Please select an employee first");
+            return;
+        }
+
+        const selectedEmployee = employees.find(emp => emp.id.toString() === formData.employee);
+        if (!selectedEmployee?.has_face_data) {
+            setError("Employee does not have face recognition data registered. Please register face data first.");
+            return;
+        }
+
+        setShowFaceModal(true);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
+        // Validate face verification requirement
         if (formData.employee && !formData.face_verification_success) {
             setError("Face verification is required and must be successful before creating a transaction.");
             return;
@@ -227,24 +208,39 @@ export function Transactions() {
         setError("");
 
         try {
-            await transactionAPI.create(formData);
+            // Create transaction with face verification data
+            const transactionData = {
+                ...formData,
+                face_verification_data: capturedFaceData
+            };
+
+            await transactionAPI.create(transactionData);
+
+            // Reset form
             setShowAddModal(false);
-            setFormData({
-                asset: "",
-                employee: "",
-                transaction_type: "issue",
-                notes: "",
-                face_verification_success: false,
-                return_condition: "",
-                damage_notes: "",
-            });
-            setCapturedFaceData(null);
+            resetForm();
             await fetchTransactions();
+
         } catch (err) {
-            setError(err.message || "Failed to create transaction");
+            setError(err.response?.data?.detail || err.message || "Failed to create transaction");
         } finally {
             setFormLoading(false);
         }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            asset: "",
+            employee: "",
+            transaction_type: "issue",
+            notes: "",
+            face_verification_success: false,
+            return_condition: "",
+            damage_notes: "",
+        });
+        setVerificationResult(null);
+        setCapturedFaceData(null);
+        setError("");
     };
 
     const handleViewTransaction = async (transaction) => {
@@ -255,6 +251,12 @@ export function Transactions() {
         } catch (err) {
             setError("Failed to fetch transaction details");
         }
+    };
+
+    const handleModalClose = () => {
+        setShowAddModal(false);
+        setShowFaceModal(false);
+        resetForm();
     };
 
     // Filter assets based on transaction type
@@ -277,34 +279,9 @@ export function Transactions() {
         return employees;
     };
 
-    const handleModalClose = () => {
-        setShowAddModal(false);
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
-        setShowFaceModal(false);
-        setCapturedFaceData(null);
-        setError("");
-        setFormData({
-            asset: "",
-            employee: "",
-            transaction_type: "issue",
-            notes: "",
-            face_verification_success: false,
-            return_condition: "",
-            damage_notes: "",
-        });
+    const getSelectedEmployee = () => {
+        return employees.find(emp => emp.id.toString() === formData.employee);
     };
-
-    // (Optional) cleanup on unmount to avoid camera leak in StrictMode
-    useEffect(() => {
-        return () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-        };
-    }, [stream]);
 
     if (loading) {
         return (
@@ -434,9 +411,7 @@ export function Transactions() {
                                             </td>
                                             <td className={className}>
                                                 <Typography className="text-xs font-normal text-blue-gray-500">
-                                                    {new Date(transaction.transaction_date).toLocaleDateString()}
-                                                    <br />
-                                                    {new Date(transaction.transaction_date).toLocaleTimeString()}
+                                                    {formatters.formatDate(transaction.transaction_date)}
                                                 </Typography>
                                             </td>
                                             <td className={className}>
@@ -445,12 +420,19 @@ export function Transactions() {
                                                 </Typography>
                                             </td>
                                             <td className={className}>
-                                                <Chip
-                                                    variant="gradient"
-                                                    color={transaction.face_verification_success ? "green" : "red"}
-                                                    value={transaction.face_verification_success ? "VERIFIED" : "NOT VERIFIED"}
-                                                    className="py-0.5 px-2 text-[11px] font-medium w-fit"
-                                                />
+                                                <div className="flex items-center gap-1">
+                                                    {transaction.face_verification_success ? (
+                                                        <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                                                    ) : (
+                                                        <XCircleIcon className="h-4 w-4 text-red-500" />
+                                                    )}
+                                                    <Chip
+                                                        variant="gradient"
+                                                        color={transaction.face_verification_success ? "green" : "red"}
+                                                        value={transaction.face_verification_success ? "VERIFIED" : "NOT VERIFIED"}
+                                                        className="py-0.5 px-2 text-[11px] font-medium w-fit"
+                                                    />
+                                                </div>
                                             </td>
                                             <td className={className}>
                                                 <IconButton
@@ -474,7 +456,7 @@ export function Transactions() {
             <Dialog open={showAddModal} handler={handleModalClose} size="md">
                 <DialogHeader>Create New Transaction</DialogHeader>
                 <form onSubmit={handleSubmit}>
-                    <DialogBody className="flex flex-col gap-4">
+                    <DialogBody className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
                         <Select
                             label="Transaction Type"
                             value={formData.transaction_type}
@@ -509,29 +491,71 @@ export function Transactions() {
                             {getAvailableEmployees().map((employee) => (
                                 <Option key={employee.id} value={employee.id.toString()}>
                                     {employee.name} ({employee.employee_id}) - {employee.department_name}
+                                    {employee.has_face_data ? " 🔒" : " ⚠️"}
                                 </Option>
                             ))}
                         </Select>
 
+                        {/* Face Verification Section */}
                         {formData.employee && (
-                            <div className="flex items-center justify-between p-4 border rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <CameraIcon className="h-5 w-5 text-blue-500" />
-                                    <span className="text-sm">Face Verification</span>
+                            <Card className="p-4 border">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <CameraIcon className="h-5 w-5 text-blue-500" />
+                                        <Typography variant="h6" color="blue-gray">
+                                            Face Verification
+                                        </Typography>
+                                    </div>
                                     {formData.face_verification_success && (
-                                        <Chip color="green" value="VERIFIED" className="text-xs" />
+                                        <Chip
+                                            color="green"
+                                            value="VERIFIED"
+                                            icon={<CheckCircleIcon className="h-4 w-4" />}
+                                        />
                                     )}
                                 </div>
-                                <Button
-                                    size="sm"
-                                    color={formData.face_verification_success ? "green" : "blue"}
-                                    onClick={startFaceVerification}
-                                    loading={faceVerificationInProgress}
-                                    disabled={faceVerificationInProgress}
-                                >
-                                    {formData.face_verification_success ? "Re-verify" : "Verify Face"}
-                                </Button>
-                            </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <Typography variant="small" color="gray">
+                                            Employee: {getSelectedEmployee()?.name}
+                                        </Typography>
+                                        <Typography variant="small" color={getSelectedEmployee()?.has_face_data ? "green" : "red"}>
+                                            {getSelectedEmployee()?.has_face_data ? "Face data available" : "No face data"}
+                                        </Typography>
+                                    </div>
+
+                                    {getSelectedEmployee()?.has_face_data ? (
+                                        <div className="flex items-center justify-between">
+                                            <Button
+                                                size="sm"
+                                                color={formData.face_verification_success ? "green" : "blue"}
+                                                onClick={startFaceVerification}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <CameraIcon className="h-4 w-4" />
+                                                {formData.face_verification_success ? "Re-verify Face" : "Verify Face"}
+                                            </Button>
+
+                                            {verificationResult && (
+                                                <Typography variant="small" color={verificationResult.success ? "green" : "red"}>
+                                                    {verificationResult.success ?
+                                                        `Confidence: ${formatters.formatConfidence(verificationResult.confidence)}` :
+                                                        "Verification failed"
+                                                    }
+                                                </Typography>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <Alert color="amber">
+                                            <Typography variant="small">
+                                                This employee doesn't have face recognition data registered.
+                                                Please register face data in the employee management section first.
+                                            </Typography>
+                                        </Alert>
+                                    )}
+                                </div>
+                            </Card>
                         )}
 
                         <Textarea
@@ -563,8 +587,8 @@ export function Transactions() {
                         <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
                             Cancel
                         </Button>
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             loading={formLoading}
                             disabled={formData.employee && !formData.face_verification_success}
                         >
@@ -575,36 +599,17 @@ export function Transactions() {
             </Dialog>
 
             {/* Face Verification Modal */}
-            <Dialog open={showFaceModal} handler={() => setShowFaceModal(false)} size="md">
-                <DialogHeader>Face Verification</DialogHeader>
-                <DialogBody className="text-center">
-                    <div className="mb-4">
-                        <video
-                            ref={setVideoRef}
-                            autoPlay
-                            muted
-                            className="w-full max-w-md mx-auto rounded-lg border"
-                        />
-                    </div>
-                    <Typography className="mb-4 text-sm text-gray-600">
-                        Position your face in the camera frame and click capture to verify your identity.
-                    </Typography>
-                </DialogBody>
-                <DialogFooter>
-                    <Button variant="text" color="red" onClick={() => {
-                        if (stream) {
-                            stream.getTracks().forEach(track => track.stop());
-                            setStream(null);
-                        }
-                        setShowFaceModal(false);
-                    }} className="mr-1">
-                        Cancel
-                    </Button>
-                    <Button onClick={captureFaceData}>
-                        Capture & Verify
-                    </Button>
-                </DialogFooter>
-            </Dialog>
+            {showFaceModal && (
+                <FaceRecognitionComponent
+                    open={showFaceModal}
+                    mode="verify"
+                    employeeId={parseInt(formData.employee)}
+                    employeeName={getSelectedEmployee()?.name}
+                    onClose={() => setShowFaceModal(false)}
+                    onSuccess={handleFaceVerificationSuccess}
+                    onError={handleFaceVerificationError}
+                />
+            )}
 
             {/* View Transaction Modal */}
             <Dialog open={showViewModal} handler={() => setShowViewModal(false)} size="lg">
@@ -634,7 +639,7 @@ export function Transactions() {
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Date:</span>
-                                                <span>{new Date(selectedTransaction.transaction_date).toLocaleString()}</span>
+                                                <span>{formatters.formatDate(selectedTransaction.transaction_date)}</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Processed By:</span>
@@ -642,12 +647,19 @@ export function Transactions() {
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-semibold">Face Verification:</span>
-                                                <Chip
-                                                    variant="gradient"
-                                                    color={selectedTransaction.face_verification_success ? "green" : "red"}
-                                                    value={selectedTransaction.face_verification_success ? "VERIFIED" : "NOT VERIFIED"}
-                                                    className="py-0.5 px-2 text-[11px] font-medium w-fit"
-                                                />
+                                                <div className="flex items-center gap-1">
+                                                    {selectedTransaction.face_verification_success ? (
+                                                        <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                                                    ) : (
+                                                        <XCircleIcon className="h-4 w-4 text-red-500" />
+                                                    )}
+                                                    <Chip
+                                                        variant="gradient"
+                                                        color={selectedTransaction.face_verification_success ? "green" : "red"}
+                                                        value={selectedTransaction.face_verification_success ? "VERIFIED" : "NOT VERIFIED"}
+                                                        className="py-0.5 px-2 text-[11px] font-medium w-fit"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </CardBody>

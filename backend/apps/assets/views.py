@@ -15,7 +15,11 @@ from .serializers import (
     AssetSerializer, AssetTransactionSerializer, AssetTransactionCreateSerializer,
     DashboardStatsSerializer, FaceVerificationSerializer
 )
-
+from .face_recognition_service import (
+    get_face_recognition_service,
+    process_employee_face_registration,
+    verify_employee_face
+)
 class DepartmentListCreateView(generics.ListCreateAPIView):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
@@ -96,153 +100,6 @@ class AssetTransactionDetailView(generics.RetrieveAPIView):
     )
     serializer_class = AssetTransactionSerializer
     permission_classes = [IsAuthenticated]
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def employee_profile_view(request, employee_id):
-    """Get employee profile with transaction history"""
-    try:
-        employee = Employee.objects.select_related('user', 'department').get(
-            id=employee_id, is_active=True
-        )
-        
-        # Get employee basic info
-        employee_data = EmployeeSerializer(employee).data
-        
-        # Get transaction history (last 50 transactions)
-        transactions = AssetTransaction.objects.filter(employee=employee).select_related(
-            'asset', 'processed_by'
-        ).order_by('-transaction_date')[:50]
-        
-        transaction_data = AssetTransactionSerializer(transactions, many=True).data
-        
-        # Get current assets
-        current_assets = Asset.objects.filter(current_holder=employee).select_related('department')
-        current_assets_data = AssetSerializer(current_assets, many=True).data
-        
-        # Calculate stats
-        total_issues = AssetTransaction.objects.filter(
-            employee=employee, transaction_type='issue'
-        ).count()
-        total_returns = AssetTransaction.objects.filter(
-            employee=employee, transaction_type='return'
-        ).count()
-        
-        return Response({
-            'employee': employee_data,
-            'current_assets': current_assets_data,
-            'transaction_history': transaction_data,
-            'stats': {
-                'total_transactions': AssetTransaction.objects.filter(employee=employee).count(),
-                'current_assets_count': current_assets.count(),
-                'total_issues': total_issues,
-                'total_returns': total_returns,
-            }
-        })
-        
-    except Employee.DoesNotExist:
-        return Response(
-            {'error': 'Employee not found or inactive'}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
-    except Exception as e:
-        return Response(
-            {'error': f'Internal server error: {str(e)}'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def verify_face_view(request):
-    """Verify face data against stored employee face data"""
-    serializer = FaceVerificationSerializer(data=request.data)
-    
-    if serializer.is_valid():
-        employee = serializer.validated_data['employee']
-        face_data = serializer.validated_data['face_data']
-        
-        # Perform face verification
-        verification_result = perform_face_verification(
-            employee.face_recognition_data,
-            face_data
-        )
-        
-        return Response({
-            'success': verification_result['success'],
-            'confidence': verification_result['confidence'],
-            'threshold': verification_result['threshold'],
-            'employee_name': employee.name,
-            'employee_id': employee.employee_id
-        })
-    
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-def perform_face_verification(stored_face_data, captured_face_data):
-    """
-    Perform face verification between stored and captured face data
-    In production, this would integrate with a real face recognition service
-    """
-    try:
-        # Simulate face verification process
-        stored_hash = hashlib.md5(stored_face_data.encode()).hexdigest()
-        captured_hash = hashlib.md5(captured_face_data.encode()).hexdigest()
-        
-        # Simulate confidence score
-        confidence = random.uniform(0.3, 0.95)
-        threshold = 0.7
-        
-        # Add some logic to make verification more realistic
-        if stored_hash[:4] == captured_hash[:4]:
-            confidence += 0.1
-        
-        success = confidence >= threshold
-        
-        return {
-            'success': success,
-            'confidence': round(confidence, 2),
-            'threshold': threshold
-        }
-        
-    except Exception as e:
-        return {
-            'success': False,
-            'confidence': 0.0,
-            'threshold': 0.7,
-            'error': str(e)
-        }
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def update_employee_face_data(request, employee_id):
-    """Update employee face recognition data"""
-    try:
-        employee = Employee.objects.get(id=employee_id, is_active=True)
-        face_data = request.data.get('face_recognition_data')
-        
-        if not face_data:
-            return Response(
-                {'error': 'Face recognition data is required'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        employee.face_recognition_data = face_data
-        employee.save()
-        
-        return Response({
-            'success': True,
-            'message': 'Face recognition data updated successfully'
-        })
-        
-    except Employee.DoesNotExist:
-        return Response(
-            {'error': 'Employee not found or inactive'}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
-    except Exception as e:
-        return Response(
-            {'error': f'Internal server error: {str(e)}'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
 
 
 @api_view(['GET'])
@@ -489,5 +346,163 @@ def dashboard_charts_data_view(request):
     except Exception as e:
         return Response(
             {'error': 'Failed to fetch chart data', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        
+        
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def employee_profile_view(request, employee_id):
+    """Get employee profile with transaction history"""
+    try:
+        employee = Employee.objects.select_related('user', 'department').get(
+            id=employee_id, is_active=True
+        )
+        
+        # Get employee basic info
+        employee_data = EmployeeSerializer(employee).data
+        
+        # Get transaction history (last 50 transactions)
+        transactions = AssetTransaction.objects.filter(employee=employee).select_related(
+            'asset', 'processed_by'
+        ).order_by('-transaction_date')[:50]
+        
+        transaction_data = AssetTransactionSerializer(transactions, many=True).data
+        
+        # Get current assets
+        current_assets = Asset.objects.filter(current_holder=employee).select_related('department')
+        current_assets_data = AssetSerializer(current_assets, many=True).data
+        
+        # Calculate stats
+        total_issues = AssetTransaction.objects.filter(
+            employee=employee, transaction_type='issue'
+        ).count()
+        total_returns = AssetTransaction.objects.filter(
+            employee=employee, transaction_type='return'
+        ).count()
+        
+        # Face recognition stats
+        face_verified_transactions = AssetTransaction.objects.filter(
+            employee=employee, face_verification_success=True
+        ).count()
+        
+        return Response({
+            'employee': employee_data,
+            'current_assets': current_assets_data,
+            'transaction_history': transaction_data,
+            'stats': {
+                'total_transactions': AssetTransaction.objects.filter(employee=employee).count(),
+                'current_assets_count': current_assets.count(),
+                'total_issues': total_issues,
+                'total_returns': total_returns,
+                'face_verified_transactions': face_verified_transactions,
+                'has_face_data': bool(employee.face_recognition_data),
+            }
+        })
+        
+    except Employee.DoesNotExist:
+        return Response(
+            {'error': 'Employee not found or inactive'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Internal server error: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_face_view(request):
+    """Verify face data against stored employee face data"""
+    serializer = FaceVerificationSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        employee = serializer.validated_data['employee']
+        face_data = serializer.validated_data['face_data']
+        
+        # Perform real face verification
+        verification_result = verify_employee_face(employee, face_data)
+        
+        return Response({
+            'success': verification_result['success'],
+            'confidence': verification_result.get('confidence', 0.0),
+            'threshold': verification_result.get('threshold', 0.6),
+            'face_distance': verification_result.get('face_distance'),
+            'employee_name': employee.name,
+            'employee_id': employee.employee_id,
+            'error': verification_result.get('error'),
+            'match_details': verification_result.get('match_details', {}),
+            'quality_info': {
+                'captured_quality': verification_result.get('captured_quality', {}),
+                'stored_quality': verification_result.get('stored_quality', {})
+            }
+        })
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_employee_face_data(request, employee_id):
+    """Update employee face recognition data with real face encoding"""
+    try:
+        employee = Employee.objects.get(id=employee_id, is_active=True)
+        face_image_data = request.data.get('face_recognition_data')
+        
+        if not face_image_data:
+            return Response(
+                {'error': 'Face image data is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Process the face registration
+        result = process_employee_face_registration(employee, face_image_data)
+        
+        if result['success']:
+            return Response({
+                'success': True,
+                'message': result['message'],
+                'quality_score': result['quality_score']
+            })
+        else:
+            return Response({
+                'success': False,
+                'error': result['error'],
+                'issues': result.get('issues', []),
+                'recommendations': result.get('recommendations', [])
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Employee.DoesNotExist:
+        return Response(
+            {'error': 'Employee not found or inactive'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': f'Internal server error: {str(e)}'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def validate_face_image_view(request):
+    """Validate if an image is suitable for face recognition"""
+    try:
+        face_image_data = request.data.get('face_image_data')
+        
+        if not face_image_data:
+            return Response(
+                {'error': 'Face image data is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        service = get_face_recognition_service()
+        validation_result = service.validate_image_quality(face_image_data)
+        
+        return Response(validation_result)
+        
+    except Exception as e:
+        return Response(
+            {'error': f'Image validation failed: {str(e)}'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

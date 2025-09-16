@@ -34,7 +34,7 @@ class Employee(models.Model):
         validators=[RegexValidator(r'^\+?1?\d{9,15}$', 'Phone number must be valid')]
     )
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='employees')
-    face_recognition_data = models.TextField(blank=True, null=True)  # Store face encoding data
+    face_recognition_data = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
