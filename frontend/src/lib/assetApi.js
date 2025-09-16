@@ -56,12 +56,45 @@ export const transactionAPI = {
         ...data,
         face_verification_data: faceData
     }),
+    // Get recent transactions for dashboard
+    getRecent: (limit = 10) => apiGet(`/api/transactions/?ordering=-transaction_date&limit=${limit}`),
 };
 
 // Dashboard API
 export const dashboardAPI = {
     getStats: () => apiGet('/api/dashboard/stats/'),
+    
+    // Additional dashboard specific methods
+    getAssetStatusDistribution: () => apiGet('/api/dashboard/stats/').then(data => ({
+        assigned: data.assets_assigned,
+        available: data.assets_available,
+        maintenance: data.assets_maintenance || 0,
+        retired: data.assets_retired || 0
+    })),
+    
+    getWeeklyTransactions: () => apiGet('/api/dashboard/stats/').then(data => data.weekly_data),
+    
+    getDepartmentDistribution: () => apiGet('/api/dashboard/stats/').then(data => data.department_distribution),
+    
+    // Get comprehensive dashboard data in one call
+    getAllDashboardData: async () => {
+        try {
+            const [stats, recentTransactions] = await Promise.all([
+                dashboardAPI.getStats(),
+                transactionAPI.getRecent(10)
+            ]);
+            
+            return {
+                stats,
+                recentTransactions: recentTransactions.results || recentTransactions || [],
+            };
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            throw error;
+        }
+    }
 };
+
 // Face Recognition Utilities
 export const faceRecognitionAPI = {
     // Simulate face recognition comparison
@@ -99,5 +132,49 @@ export const faceRecognitionAPI = {
                 resolve(processedData);
             }, 1000);
         });
+    }
+};
+
+// Export utility functions for data formatting
+export const formatters = {
+    // Format date for display
+    formatDate: (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    },
+    
+    // Format currency
+    formatCurrency: (amount) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(amount);
+    },
+    
+    // Format numbers with commas
+    formatNumber: (number) => {
+        return new Intl.NumberFormat('en-US').format(number);
+    },
+    
+    // Get status color for assets
+    getAssetStatusColor: (status) => {
+        const statusColors = {
+            'available': 'green',
+            'assigned': 'blue',
+            'maintenance': 'orange',
+            'retired': 'red'
+        };
+        return statusColors[status] || 'gray';
+    },
+    
+    // Get transaction type color
+    getTransactionTypeColor: (type) => {
+        return type === 'issue' ? 'green' : 'blue';
     }
 };

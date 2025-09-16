@@ -23,6 +23,8 @@ urlpatterns = [
     path('transactions/', views.AssetTransactionListCreateView.as_view(), name='transaction-list-create'),
     path('transactions/<int:pk>/', views.AssetTransactionDetailView.as_view(), name='transaction-detail'),
     
-    # Dashboard
+    # Dashboard endpoints
     path('dashboard/stats/', views.dashboard_stats_view, name='dashboard-stats'),
+    path('dashboard/summary/', views.dashboard_summary_view, name='dashboard-summary'),
+    path('dashboard/charts/', views.dashboard_charts_data_view, name='dashboard-charts'),
 ]

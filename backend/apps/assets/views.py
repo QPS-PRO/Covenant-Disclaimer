@@ -4,9 +4,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, date
 import hashlib
 import random
 from .models import Department, Employee, Asset, AssetTransaction
@@ -244,60 +244,250 @@ def update_employee_face_data(request, employee_id):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_stats_view(request):
-    """Get dashboard statistics"""
+    """Get comprehensive dashboard statistics"""
     
-    # Basic counts
-    total_employees = Employee.objects.filter(is_active=True).count()
-    total_assets = Asset.objects.count()
-    total_departments = Department.objects.count()
-    assets_assigned = Asset.objects.filter(status='assigned').count()
-    assets_available = Asset.objects.filter(status='available').count()
-    
-    # Recent transactions (last 7 days)
-    week_ago = timezone.now() - timedelta(days=7)
-    recent_transactions = AssetTransaction.objects.filter(
-        transaction_date__gte=week_ago
-    ).count()
-    
-    # Weekly trends (last 7 days)
-    weekly_data = []
-    for i in range(7):
-        date = timezone.now().date() - timedelta(days=i)
-        daily_issues = AssetTransaction.objects.filter(
-            transaction_date__date=date,
-            transaction_type='issue'
-        ).count()
-        daily_returns = AssetTransaction.objects.filter(
-            transaction_date__date=date,
-            transaction_type='return'
+    try:
+        # Basic counts
+        total_employees = Employee.objects.filter(is_active=True).count()
+        total_assets = Asset.objects.count()
+        total_departments = Department.objects.count()
+        
+        # Asset status counts
+        assets_assigned = Asset.objects.filter(status='assigned').count()
+        assets_available = Asset.objects.filter(status='available').count()
+        assets_maintenance = Asset.objects.filter(status='maintenance').count()
+        assets_retired = Asset.objects.filter(status='retired').count()
+        
+        # Recent transactions (last 7 days)
+        week_ago = timezone.now() - timedelta(days=7)
+        recent_transactions = AssetTransaction.objects.filter(
+            transaction_date__gte=week_ago
         ).count()
         
-        weekly_data.append({
-            'date': date.strftime('%Y-%m-%d'),
-            'issues': daily_issues,
-            'returns': daily_returns
+        # Weekly trends (last 7 days)
+        weekly_data = []
+        for i in range(7):
+            target_date = timezone.now().date() - timedelta(days=6-i)  # Start from 6 days ago
+            daily_issues = AssetTransaction.objects.filter(
+                transaction_date__date=target_date,
+                transaction_type='issue'
+            ).count()
+            daily_returns = AssetTransaction.objects.filter(
+                transaction_date__date=target_date,
+                transaction_type='return'
+            ).count()
+            
+            weekly_data.append({
+                'date': target_date.strftime('%Y-%m-%d'),
+                'issues': daily_issues,
+                'returns': daily_returns
+            })
+        
+        # Department distribution with employee and asset counts
+        dept_stats = Department.objects.annotate(
+            employee_count=Count('employees', filter=Q(employees__is_active=True)),
+            asset_count=Count('assets')
+        ).values('name', 'employee_count', 'asset_count')
+        
+        # Monthly trends for the current year (optional enhancement)
+        current_year = timezone.now().year
+        monthly_data = []
+        for month in range(1, 13):
+            month_issues = AssetTransaction.objects.filter(
+                transaction_date__year=current_year,
+                transaction_date__month=month,
+                transaction_type='issue'
+            ).count()
+            month_returns = AssetTransaction.objects.filter(
+                transaction_date__year=current_year,
+                transaction_date__month=month,
+                transaction_type='return'
+            ).count()
+            
+            monthly_data.append({
+                'month': month,
+                'month_name': date(current_year, month, 1).strftime('%b'),
+                'issues': month_issues,
+                'returns': month_returns
+            })
+        
+        # Asset value statistics (if purchase_cost is available)
+        total_asset_value = Asset.objects.aggregate(
+            total_value=Sum('purchase_cost')
+        )['total_value'] or 0
+        
+        # Face verification statistics
+        total_transactions_with_verification = AssetTransaction.objects.count()
+        successful_verifications = AssetTransaction.objects.filter(
+            face_verification_success=True
+        ).count()
+        
+        verification_rate = 0
+        if total_transactions_with_verification > 0:
+            verification_rate = round(
+                (successful_verifications / total_transactions_with_verification) * 100, 2
+            )
+        
+        # Recent activity (last 24 hours)
+        yesterday = timezone.now() - timedelta(days=1)
+        recent_activity = {
+            'new_employees': Employee.objects.filter(created_at__gte=yesterday).count(),
+            'new_assets': Asset.objects.filter(created_at__gte=yesterday).count(),
+            'recent_issues': AssetTransaction.objects.filter(
+                transaction_date__gte=yesterday,
+                transaction_type='issue'
+            ).count(),
+            'recent_returns': AssetTransaction.objects.filter(
+                transaction_date__gte=yesterday,
+                transaction_type='return'
+            ).count(),
+        }
+        
+        data = {
+            # Basic counts
+            'total_employees': total_employees,
+            'total_assets': total_assets,
+            'total_departments': total_departments,
+            
+            # Asset status
+            'assets_assigned': assets_assigned,
+            'assets_available': assets_available,
+            'assets_maintenance': assets_maintenance,
+            'assets_retired': assets_retired,
+            
+            # Transactions
+            'recent_transactions': recent_transactions,
+            'total_transactions': AssetTransaction.objects.count(),
+            
+            # Time-based data
+            'weekly_data': weekly_data,
+            'monthly_data': monthly_data,
+            
+            # Department data
+            'department_distribution': list(dept_stats),
+            
+            # Value and verification stats
+            'total_asset_value': float(total_asset_value),
+            'verification_rate': verification_rate,
+            'successful_verifications': successful_verifications,
+            
+            # Recent activity
+            'recent_activity': recent_activity,
+            
+            # Computed metrics
+            'asset_utilization_rate': round(
+                (assets_assigned / total_assets * 100) if total_assets > 0 else 0, 2
+            ),
+            'average_assets_per_department': round(
+                total_assets / total_departments if total_departments > 0 else 0, 2
+            ),
+            'average_assets_per_employee': round(
+                assets_assigned / total_employees if total_employees > 0 else 0, 2
+            ),
+        }
+        
+        return Response(data)
+        
+    except Exception as e:
+        return Response(
+            {
+                'error': 'Failed to fetch dashboard statistics',
+                'detail': str(e),
+                # Provide minimal fallback data
+                'total_employees': 0,
+                'total_assets': 0,
+                'total_departments': 0,
+                'assets_assigned': 0,
+                'assets_available': 0,
+                'recent_transactions': 0,
+                'weekly_data': [],
+                'department_distribution': []
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_summary_view(request):
+    """Get quick dashboard summary for mobile or quick checks"""
+    
+    try:
+        summary = {
+            'employees': Employee.objects.filter(is_active=True).count(),
+            'assets': Asset.objects.count(),
+            'departments': Department.objects.count(),
+            'recent_transactions': AssetTransaction.objects.filter(
+                transaction_date__gte=timezone.now() - timedelta(days=7)
+            ).count(),
+            'assets_assigned': Asset.objects.filter(status='assigned').count(),
+            'timestamp': timezone.now().isoformat(),
+        }
+        
+        return Response(summary)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to fetch dashboard summary', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_charts_data_view(request):
+    """Get data specifically formatted for charts"""
+    
+    try:
+        # Asset status pie chart data
+        asset_status_data = {
+            'labels': ['Assigned', 'Available', 'Maintenance', 'Retired'],
+            'values': [
+                Asset.objects.filter(status='assigned').count(),
+                Asset.objects.filter(status='available').count(),
+                Asset.objects.filter(status='maintenance').count(),
+                Asset.objects.filter(status='retired').count(),
+            ]
+        }
+        
+        # Weekly transactions bar chart
+        weekly_data = []
+        for i in range(7):
+            target_date = timezone.now().date() - timedelta(days=6-i)
+            daily_data = {
+                'date': target_date.strftime('%Y-%m-%d'),
+                'label': target_date.strftime('%a'),
+                'issues': AssetTransaction.objects.filter(
+                    transaction_date__date=target_date,
+                    transaction_type='issue'
+                ).count(),
+                'returns': AssetTransaction.objects.filter(
+                    transaction_date__date=target_date,
+                    transaction_type='return'
+                ).count(),
+            }
+            weekly_data.append(daily_data)
+        
+        # Department assets donut chart
+        dept_data = Department.objects.annotate(
+            asset_count=Count('assets')
+        ).values('name', 'asset_count').filter(asset_count__gt=0)
+        
+        department_chart_data = {
+            'labels': [dept['name'] for dept in dept_data],
+            'values': [dept['asset_count'] for dept in dept_data]
+        }
+        
+        return Response({
+            'asset_status': asset_status_data,
+            'weekly_transactions': weekly_data,
+            'department_assets': department_chart_data,
         })
-    
-    weekly_data.reverse()  # Chronological order
-    
-    # Department distribution
-    dept_stats = Department.objects.annotate(
-        employee_count=Count('employees', filter=Q(employees__is_active=True)),
-        asset_count=Count('assets')
-    ).values('name', 'employee_count', 'asset_count')
-    
-    data = {
-        'total_employees': total_employees,
-        'total_assets': total_assets,
-        'total_departments': total_departments,
-        'assets_assigned': assets_assigned,
-        'assets_available': assets_available,
-        'recent_transactions': recent_transactions,
-        'weekly_data': weekly_data,
-        'department_distribution': list(dept_stats)
-    }
-    
-    return Response(data)
+        
+    except Exception as e:
+        return Response(
+            {'error': 'Failed to fetch chart data', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
