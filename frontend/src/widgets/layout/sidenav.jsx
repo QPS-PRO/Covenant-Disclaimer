@@ -25,10 +25,18 @@ export function Sidenav({ brandImg, brandName, routes }) {
       } fixed inset-0 z-50 my-4 ml-4 h-[calc(100vh-32px)] w-72 rounded-xl transition-transform duration-300 xl:translate-x-0 border border-blue-gray-100`}
     >
       <div className={`relative`}>
-        <Link to="/" className="py-6 px-8 text-center">
+        <Link to="/" className="py-6 px-8 text-center flex items-center justify-center gap-3">
+          {brandImg && (
+            <img
+              src={brandImg}
+              alt="Qutubah Schools Logo"
+              className="h-8 w-8 object-contain"
+            />
+          )}
           <Typography
             variant="h6"
             color={sidenavType === "dark" ? "white" : "blue-gray"}
+            className="font-bold"
           >
             {brandName}
           </Typography>
@@ -97,8 +105,8 @@ export function Sidenav({ brandImg, brandName, routes }) {
 }
 
 Sidenav.defaultProps = {
-  brandImg: "/img/logo-ct.png",
-  brandName: "Material Tailwind React",
+  brandImg: null,
+  brandName: "Qutubah Schools",
 };
 
 Sidenav.propTypes = {
@@ -107,6 +115,6 @@ Sidenav.propTypes = {
   routes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
 
-Sidenav.displayName = "/src/widgets/layout/sidnave.jsx";
+Sidenav.displayName = "/src/widgets/layout/sidenav.jsx";
 
 export default Sidenav;

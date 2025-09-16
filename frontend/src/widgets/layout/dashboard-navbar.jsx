@@ -5,7 +5,6 @@ import {
   Button,
   IconButton,
   Breadcrumbs,
-  Input,
   Menu,
   MenuHandler,
   MenuList,
@@ -26,18 +25,18 @@ import {
   setOpenConfigurator,
   setOpenSidenav,
 } from "@/context";
-import { removeAuthToken, getUserData } from "@/utils/auth";
+import { useAuth } from "@/lib/api";
 
 export function DashboardNavbar() {
   const [controller, dispatch] = useMaterialTailwindController();
   const { fixedNavbar, openSidenav } = controller;
   const { pathname } = useLocation();
   const [layout, page] = pathname.split("/").filter((el) => el !== "");
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const userData = getUserData();
 
-  const handleLogout = () => {
-    removeAuthToken();
+  const handleLogout = async () => {
+    await logout();
     navigate("/auth/sign-in", { replace: true });
   };
 
@@ -78,10 +77,7 @@ export function DashboardNavbar() {
             {page}
           </Typography>
         </div>
-        <div className="flex items-center">
-          <div className="mr-auto md:mr-4 md:w-56">
-            <Input label="Search" />
-          </div>
+        <div className="flex items-center gap-2">
           <IconButton
             variant="text"
             color="blue-gray"
@@ -100,7 +96,7 @@ export function DashboardNavbar() {
                 className="hidden items-center gap-1 px-4 xl:flex normal-case"
               >
                 <UserCircleIcon className="h-5 w-5 text-blue-gray-500" />
-                {userData?.first_name || "User"}
+                {user?.first_name || "User"}
               </Button>
             </MenuHandler>
             <MenuList className="w-max border-0">
