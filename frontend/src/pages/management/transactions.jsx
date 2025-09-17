@@ -1,4 +1,4 @@
-// frontend/src/pages/management/transactions.jsx (Fixed version with proper face verification)
+// frontend/src/pages/management/transactions.jsx (Complete Updated Version)
 import React, { useState, useEffect, useCallback } from "react";
 import {
     Card,
@@ -49,6 +49,10 @@ export function Transactions() {
     const [showFaceModal, setShowFaceModal] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [selectedEmployeeForVerification, setSelectedEmployeeForVerification] = useState(null);
+
+    // Search states for dropdowns
+    const [assetSearchTerm, setAssetSearchTerm] = useState("");
+    const [employeeSearchTerm, setEmployeeSearchTerm] = useState("");
 
     // Form states
     const [formData, setFormData] = useState({
@@ -180,9 +184,9 @@ export function Transactions() {
         setError("");
 
         // Show success message
-        setTimeout(() => {
-            alert(`Face verification successful! Confidence: ${formatters.formatConfidence(result.confidence)}`);
-        }, 100);
+        // setTimeout(() => {
+        //     alert(`Face verification successful! Confidence: ${formatters.formatConfidence(result.confidence)}`);
+        // }, 100);
     }, []);
 
     const handleFaceVerificationError = useCallback((error) => {
@@ -266,9 +270,9 @@ export function Transactions() {
             await fetchTransactions();
 
             // Show success message
-            setTimeout(() => {
-                alert('Transaction created successfully!');
-            }, 100);
+            // setTimeout(() => {
+            //     alert('Transaction created successfully!');
+            // }, 100);
 
         } catch (err) {
             console.error('Transaction creation error:', err);
@@ -315,6 +319,8 @@ export function Transactions() {
         setVerificationResult(null);
         setCapturedFaceData(null);
         setError("");
+        setAssetSearchTerm("");
+        setEmployeeSearchTerm("");
     };
 
     const handleViewTransaction = async (transaction) => {
@@ -328,29 +334,66 @@ export function Transactions() {
     };
 
     const handleModalClose = () => {
+        // Ensure camera is stopped when modal is closed
+        if (showFaceModal) {
+            setShowFaceModal(false);
+            setSelectedEmployeeForVerification(null);
+        }
+
         setShowAddModal(false);
         setShowViewModal(false);
         resetForm();
     };
 
-    // Filter assets based on transaction type
-    const getAvailableAssets = () => {
+    // Filter and search assets based on transaction type
+    const getFilteredAssets = () => {
+        let filteredAssets;
+
         if (formData.transaction_type === "issue") {
-            return assets.filter(asset => asset.status === "available");
+            // For issue transactions, only show available assets (not assigned)
+            filteredAssets = assets.filter(asset => asset.status === "available");
         } else {
-            return assets.filter(asset => asset.status === "assigned");
+            // For return transactions, only show assigned assets
+            filteredAssets = assets.filter(asset => asset.status === "assigned");
         }
+
+        // Apply search filter
+        if (assetSearchTerm) {
+            const searchLower = assetSearchTerm.toLowerCase();
+            filteredAssets = filteredAssets.filter(asset =>
+                asset.name.toLowerCase().includes(searchLower) ||
+                asset.serial_number.toLowerCase().includes(searchLower) ||
+                asset.department_name.toLowerCase().includes(searchLower)
+            );
+        }
+
+        return filteredAssets;
     };
 
-    // Filter employees based on selected asset for returns
-    const getAvailableEmployees = () => {
+    // Filter and search employees based on selected asset for returns
+    const getFilteredEmployees = () => {
+        let filteredEmployees;
+
         if (formData.transaction_type === "return" && formData.asset) {
             const selectedAsset = assets.find(a => a.id.toString() === formData.asset);
-            return selectedAsset?.current_holder
+            filteredEmployees = selectedAsset?.current_holder
                 ? employees.filter(emp => emp.id === selectedAsset.current_holder)
                 : [];
+        } else {
+            filteredEmployees = employees.filter(emp => emp.is_active);
         }
-        return employees.filter(emp => emp.is_active);
+
+        // Apply search filter
+        if (employeeSearchTerm) {
+            const searchLower = employeeSearchTerm.toLowerCase();
+            filteredEmployees = filteredEmployees.filter(employee =>
+                employee.name.toLowerCase().includes(searchLower) ||
+                employee.employee_id.toLowerCase().includes(searchLower) ||
+                employee.department_name.toLowerCase().includes(searchLower)
+            );
+        }
+
+        return filteredEmployees;
     };
 
     const getSelectedEmployee = () => {
@@ -364,6 +407,7 @@ export function Transactions() {
             </div>
         );
     }
+
     return (
         <div className="mt-12 mb-8 flex flex-col gap-12">
             <Card>
@@ -406,12 +450,10 @@ export function Transactions() {
                                 value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
                                 selected={(element) => {
-                                    // Case 1: MTW passes the actual <Option />
                                     if (React.isValidElement(element) && element.props?.children != null) {
-                                        return element.props.children; // e.g., the department name text
+                                        return element.props.children;
                                     }
 
-                                    // Case 2: MTW passes the raw value (string/number) OR element is undefined
                                     const rawValue =
                                         (typeof element === "string" || typeof element === "number")
                                             ? String(element)
@@ -430,8 +472,6 @@ export function Transactions() {
                                     </Option>
                                 ))}
                             </Select>
-
-
                         </div>
                         <div className="w-full md:w-48">
                             <Select
@@ -479,7 +519,6 @@ export function Transactions() {
                                                         value={transactionTypeLabels[transaction.transaction_type] ?? "—"}
                                                         className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                     />
-
                                                 </div>
                                             </td>
                                             <td className={className}>
@@ -566,97 +605,123 @@ export function Transactions() {
                             <Option value="return">Return Asset</Option>
                         </Select>
 
-                        <Select
-                            label="Asset"
-                            value={formData.asset ?? ""}
-                            onChange={(value) =>
-                                setFormData((prev) => ({
-                                    ...prev,
-                                    asset: value ?? "",
-                                    employee: formData.transaction_type === "return" ? "" : prev.employee,
-                                    face_verification_success: false,
-                                }))
-                            }
-                            required
-                            selected={(element) => {
-                                // If MTW passes the actual <Option />, use its children (the rendered label)
-                                if (React.isValidElement(element) && element.props?.children != null) {
-                                    return element.props.children;
+                        {/* Searchable Asset Select */}
+                        <div>
+                            <Input
+                                label="Search Assets..."
+                                value={assetSearchTerm}
+                                onChange={(e) => setAssetSearchTerm(e.target.value)}
+                                icon={<MagnifyingGlassIcon className="h-5 w-5" />}
+                                className="mb-2"
+                            />
+                            <Select
+                                label={`Asset (${formData.transaction_type === 'issue' ? 'Available Only' : 'Assigned Only'})`}
+                                value={formData.asset ?? ""}
+                                onChange={(value) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        asset: value ?? "",
+                                        employee: formData.transaction_type === "return" ? "" : prev.employee,
+                                        face_verification_success: false,
+                                    }))
                                 }
-                                // Fallback to deriving from current state
-                                const raw =
-                                    typeof element === "string" || typeof element === "number"
-                                        ? String(element)
-                                        : formData.asset ?? "";
-                                if (!raw) return "Select Asset";
+                                required
+                                selected={(element) => {
+                                    if (React.isValidElement(element) && element.props?.children != null) {
+                                        return element.props.children;
+                                    }
+                                    const raw =
+                                        typeof element === "string" || typeof element === "number"
+                                            ? String(element)
+                                            : formData.asset ?? "";
+                                    if (!raw) return "Select Asset";
 
-                                // Find the asset in available list first; fallback to all assets
-                                const list = getAvailableAssets();
-                                const a =
-                                    list.find((as) => as.id.toString() === raw) ||
-                                    assets.find((as) => as.id.toString() === raw);
-                                if (!a) return "Select Asset";
+                                    const list = getFilteredAssets();
+                                    const a =
+                                        list.find((as) => as.id.toString() === raw) ||
+                                        assets.find((as) => as.id.toString() === raw);
+                                    if (!a) return "Select Asset";
 
-                                let label = `${a.name} (${a.serial_number}) - ${a.department_name}`;
-                                if (formData.transaction_type === "return" && a.current_holder) {
-                                    const holder = employees.find((emp) => emp.id === a.current_holder);
-                                    label += ` - Currently with: ${holder?.name || "Unknown"}`;
+                                    let label = `${a.name} (${a.serial_number}) - ${a.department_name}`;
+                                    if (formData.transaction_type === "return" && a.current_holder) {
+                                        const holder = employees.find((emp) => emp.id === a.current_holder);
+                                        label += ` - Currently with: ${holder?.name || "Unknown"}`;
+                                    }
+                                    return label;
+                                }}
+                            >
+                                <Option value="">Select Asset</Option>
+                                {getFilteredAssets().map((asset) => (
+                                    <Option key={asset.id} value={asset.id.toString()}>
+                                        {asset.name} ({asset.serial_number}) - {asset.department_name}
+                                        {formData.transaction_type === "return" && asset.current_holder && (
+                                            <> - Currently with: {employees.find((emp) => emp.id === asset.current_holder)?.name || "Unknown"}</>
+                                        )}
+                                    </Option>
+                                ))}
+                            </Select>
+                            <Typography variant="small" color="gray" className="mt-1">
+                                {formData.transaction_type === 'issue'
+                                    ? `Showing ${getFilteredAssets().length} available assets`
+                                    : `Showing ${getFilteredAssets().length} assigned assets`
                                 }
-                                return label;
-                            }}
-                        >
-                            <Option value="">Select Asset</Option>
-                            {getAvailableAssets().map((asset) => (
-                                <Option key={asset.id} value={asset.id.toString()}>
-                                    {asset.name} ({asset.serial_number}) - {asset.department_name}
-                                    {formData.transaction_type === "return" && asset.current_holder && (
-                                        <> - Currently with: {employees.find((emp) => emp.id === asset.current_holder)?.name || "Unknown"}</>
-                                    )}
-                                </Option>
-                            ))}
-                        </Select>
+                            </Typography>
+                        </div>
 
-
-                        <Select
-                            label="Employee"
-                            value={formData.employee ?? ""}
-                            onChange={(value) =>
-                                setFormData((prev) => ({
-                                    ...prev,
-                                    employee: value ?? "",
-                                    face_verification_success: false,
-                                }))
-                            }
-                            required
-                            selected={(element) => {
-                                if (React.isValidElement(element) && element.props?.children != null) {
-                                    return element.props.children;
+                        {/* Searchable Employee Select */}
+                        <div>
+                            <Input
+                                label="Search Employees..."
+                                value={employeeSearchTerm}
+                                onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                                icon={<MagnifyingGlassIcon className="h-5 w-5" />}
+                                className="mb-2"
+                            />
+                            <Select
+                                label="Employee"
+                                value={formData.employee ?? ""}
+                                onChange={(value) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        employee: value ?? "",
+                                        face_verification_success: false,
+                                    }))
                                 }
-                                const raw =
-                                    typeof element === "string" || typeof element === "number"
-                                        ? String(element)
-                                        : formData.employee ?? "";
-                                if (!raw) return "Select Employee";
+                                required
+                                selected={(element) => {
+                                    if (React.isValidElement(element) && element.props?.children != null) {
+                                        return element.props.children;
+                                    }
+                                    const raw =
+                                        typeof element === "string" || typeof element === "number"
+                                            ? String(element)
+                                            : formData.employee ?? "";
+                                    if (!raw) return "Select Employee";
 
-                                // Prefer currently available employees; fallback to full list
-                                const list = getAvailableEmployees();
-                                const e =
-                                    list.find((emp) => emp.id.toString() === raw) ||
-                                    employees.find((emp) => emp.id.toString() === raw);
-                                if (!e) return "Select Employee";
+                                    const list = getFilteredEmployees();
+                                    const e =
+                                        list.find((emp) => emp.id.toString() === raw) ||
+                                        employees.find((emp) => emp.id.toString() === raw);
+                                    if (!e) return "Select Employee";
 
-                                return `${e.name} (${e.employee_id}) - ${e.department_name}${e.has_face_data ? " 🔒" : " ⚠️"
-                                    }`;
-                            }}
-                        >
-                            <Option value="">Select Employee</Option>
-                            {getAvailableEmployees().map((employee) => (
-                                <Option key={employee.id} value={employee.id.toString()}>
-                                    {employee.name} ({employee.employee_id}) - {employee.department_name}
-                                    {employee.has_face_data ? " 🔒" : " ⚠️"}
-                                </Option>
-                            ))}
-                        </Select>
+                                    return `${e.name} (${e.employee_id}) - ${e.department_name}${e.has_face_data ? " 🔒" : " ⚠️"}`;
+                                }}
+                            >
+                                <Option value="">Select Employee</Option>
+                                {getFilteredEmployees().map((employee) => (
+                                    <Option key={employee.id} value={employee.id.toString()}>
+                                        {employee.name} ({employee.employee_id}) - {employee.department_name}
+                                        {employee.has_face_data ? " 🔒" : " ⚠️"}
+                                    </Option>
+                                ))}
+                            </Select>
+                            <Typography variant="small" color="gray" className="mt-1">
+                                {formData.transaction_type === 'return' && formData.asset
+                                    ? "Showing employee currently assigned to this asset"
+                                    : `Showing ${getFilteredEmployees().length} active employees`
+                                }
+                            </Typography>
+                        </div>
 
                         {/* Face Verification Section */}
                         {formData.employee && (
@@ -859,6 +924,14 @@ export function Transactions() {
                                                     />
                                                 </dd>
                                             </div>
+                                            {selectedTransaction.face_verification_confidence > 0 && (
+                                                <div className="grid grid-cols-5 items-center py-2">
+                                                    <dt className="col-span-2 text-sm font-medium text-gray-600">Confidence</dt>
+                                                    <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                        {formatters.formatConfidence(selectedTransaction.face_verification_confidence)}
+                                                    </dd>
+                                                </div>
+                                            )}
                                         </dl>
                                     </CardBody>
                                 </Card>

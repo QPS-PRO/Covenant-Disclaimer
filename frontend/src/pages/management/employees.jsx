@@ -211,9 +211,9 @@ export function Employees() {
 
         // Show success message
         const action = faceRegistrationMode === "register" ? "registered" : "updated";
-        setTimeout(() => {
-            alert(`Face ${action} successfully!`);
-        }, 100);
+        // setTimeout(() => {
+        //     alert(`Face ${action} successfully!`);
+        // }, 100);
     }, [faceRegistrationMode]);
 
     const handleFaceRegistrationError = useCallback((error) => {
