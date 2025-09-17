@@ -1,5 +1,5 @@
-// frontend/src/pages/management/transactions.jsx (Updated with real face recognition)
-import React, { useState, useEffect } from "react";
+// frontend/src/pages/management/transactions.jsx (Fixed version with proper face verification)
+import React, { useState, useEffect, useCallback } from "react";
 import {
     Card,
     CardHeader,
@@ -43,11 +43,12 @@ export function Transactions() {
     const [selectedType, setSelectedType] = useState("");
     const [mounted, setMounted] = useState(false);
 
-    // Modal states
+    // Modal states - explicitly managing each modal
     const [showAddModal, setShowAddModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showFaceModal, setShowFaceModal] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
+    const [selectedEmployeeForVerification, setSelectedEmployeeForVerification] = useState(null);
 
     // Form states
     const [formData, setFormData] = useState({
@@ -66,6 +67,10 @@ export function Transactions() {
     const transactionTypeColors = {
         issue: "green",
         return: "orange",
+    };
+    const transactionTypeLabels = {
+        issue: "Assign",
+        return: "Return",
     };
 
     // Initialize data
@@ -159,28 +164,47 @@ export function Transactions() {
         }
     };
 
-    const handleFaceVerificationSuccess = (result) => {
+    // Face verification handlers with proper modal management
+    const handleFaceVerificationSuccess = useCallback((result) => {
+        console.log('Face verification success:', result);
+
         setVerificationResult(result);
-        setCapturedFaceData(result.capturedImage);
+        // Store the actual face image data that was used for verification
+        setCapturedFaceData(result.face_image_data || result.capturedImage || null);
         setFormData(prev => ({
             ...prev,
             face_verification_success: result.success
         }));
         setShowFaceModal(false);
+        setSelectedEmployeeForVerification(null);
         setError("");
-    };
 
-    const handleFaceVerificationError = (error) => {
+        // Show success message
+        setTimeout(() => {
+            alert(`Face verification successful! Confidence: ${formatters.formatConfidence(result.confidence)}`);
+        }, 100);
+    }, []);
+
+    const handleFaceVerificationError = useCallback((error) => {
+        console.log('Face verification error:', error);
+
         setVerificationResult(error);
         setFormData(prev => ({
             ...prev,
             face_verification_success: false
         }));
         setShowFaceModal(false);
+        setSelectedEmployeeForVerification(null);
         setError(error.error || "Face verification failed");
-    };
+    }, []);
 
-    const startFaceVerification = () => {
+    const handleFaceModalClose = useCallback(() => {
+        console.log('Face modal close called');
+        setShowFaceModal(false);
+        setSelectedEmployeeForVerification(null);
+    }, []);
+
+    const startFaceVerification = useCallback(() => {
         if (!formData.employee) {
             setError("Please select an employee first");
             return;
@@ -192,8 +216,17 @@ export function Transactions() {
             return;
         }
 
-        setShowFaceModal(true);
-    };
+        console.log('Starting face verification for:', selectedEmployee.name);
+
+        // Store the employee for verification but DON'T close the transaction modal
+        setSelectedEmployeeForVerification(selectedEmployee);
+        setError("");
+
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+            setShowFaceModal(true);
+        }, 100);
+    }, [formData.employee, employees]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -204,6 +237,12 @@ export function Transactions() {
             return;
         }
 
+        // Ensure we have face verification data if verification was successful
+        if (formData.face_verification_success && !capturedFaceData) {
+            setError("Face verification data is missing. Please verify face again.");
+            return;
+        }
+
         setFormLoading(true);
         setError("");
 
@@ -211,18 +250,53 @@ export function Transactions() {
             // Create transaction with face verification data
             const transactionData = {
                 ...formData,
-                face_verification_data: capturedFaceData
+                face_verification_data: capturedFaceData // This should contain the base64 image data
             };
+
+            console.log('Creating transaction with data:', {
+                ...transactionData,
+                face_verification_data: capturedFaceData ? 'IMAGE_DATA_PRESENT' : null // Don't log the actual image data
+            });
 
             await transactionAPI.create(transactionData);
 
-            // Reset form
-            setShowAddModal(false);
+            // Reset form and close modal
             resetForm();
+            setShowAddModal(false);
             await fetchTransactions();
 
+            // Show success message
+            setTimeout(() => {
+                alert('Transaction created successfully!');
+            }, 100);
+
         } catch (err) {
-            setError(err.response?.data?.detail || err.message || "Failed to create transaction");
+            console.error('Transaction creation error:', err);
+
+            // Try to get more detailed error information
+            let errorMessage = "Failed to create transaction";
+            if (err.response?.data) {
+                if (typeof err.response.data === 'string') {
+                    errorMessage = err.response.data;
+                } else if (err.response.data.detail) {
+                    errorMessage = err.response.data.detail;
+                } else if (err.response.data.error) {
+                    errorMessage = err.response.data.error;
+                } else {
+                    // Handle field-specific errors
+                    const errors = [];
+                    Object.keys(err.response.data).forEach(field => {
+                        if (Array.isArray(err.response.data[field])) {
+                            errors.push(`${field}: ${err.response.data[field].join(', ')}`);
+                        } else {
+                            errors.push(`${field}: ${err.response.data[field]}`);
+                        }
+                    });
+                    errorMessage = errors.join('; ') || errorMessage;
+                }
+            }
+
+            setError(errorMessage);
         } finally {
             setFormLoading(false);
         }
@@ -255,7 +329,7 @@ export function Transactions() {
 
     const handleModalClose = () => {
         setShowAddModal(false);
-        setShowFaceModal(false);
+        setShowViewModal(false);
         resetForm();
     };
 
@@ -276,7 +350,7 @@ export function Transactions() {
                 ? employees.filter(emp => emp.id === selectedAsset.current_holder)
                 : [];
         }
-        return employees;
+        return employees.filter(emp => emp.is_active);
     };
 
     const getSelectedEmployee = () => {
@@ -290,7 +364,6 @@ export function Transactions() {
             </div>
         );
     }
-
     return (
         <div className="mt-12 mb-8 flex flex-col gap-12">
             <Card>
@@ -330,8 +403,25 @@ export function Transactions() {
                         <div className="w-full md:w-48">
                             <Select
                                 label="Filter by Department"
-                                value={selectedDepartment}
-                                onChange={(value) => setSelectedDepartment(value)}
+                                value={selectedDepartment ?? ""}
+                                onChange={(value) => setSelectedDepartment(value ?? "")}
+                                selected={(element) => {
+                                    // Case 1: MTW passes the actual <Option />
+                                    if (React.isValidElement(element) && element.props?.children != null) {
+                                        return element.props.children; // e.g., the department name text
+                                    }
+
+                                    // Case 2: MTW passes the raw value (string/number) OR element is undefined
+                                    const rawValue =
+                                        (typeof element === "string" || typeof element === "number")
+                                            ? String(element)
+                                            : (selectedDepartment ?? "");
+
+                                    if (!rawValue) return "All Departments";
+
+                                    const d = departments.find(dep => dep.id.toString() === rawValue);
+                                    return d ? d.name : "All Departments";
+                                }}
                             >
                                 <Option value="">All Departments</Option>
                                 {departments.map((dept) => (
@@ -340,6 +430,8 @@ export function Transactions() {
                                     </Option>
                                 ))}
                             </Select>
+
+
                         </div>
                         <div className="w-full md:w-48">
                             <Select
@@ -348,7 +440,7 @@ export function Transactions() {
                                 onChange={(value) => setSelectedType(value)}
                             >
                                 <Option value="">All Types</Option>
-                                <Option value="issue">Issue</Option>
+                                <Option value="issue">Assign</Option>
                                 <Option value="return">Return</Option>
                             </Select>
                         </div>
@@ -384,9 +476,10 @@ export function Transactions() {
                                                     <Chip
                                                         variant="gradient"
                                                         color={transactionTypeColors[transaction.transaction_type]}
-                                                        value={transaction.transaction_type.toUpperCase()}
+                                                        value={transactionTypeLabels[transaction.transaction_type] ?? "—"}
                                                         className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                     />
+
                                                 </div>
                                             </td>
                                             <td className={className}>
@@ -453,39 +546,108 @@ export function Transactions() {
             </Card>
 
             {/* Add Transaction Modal */}
-            <Dialog open={showAddModal} handler={handleModalClose} size="md">
+            <Dialog open={showAddModal && !showFaceModal} handler={handleModalClose} size="md">
                 <DialogHeader>Create New Transaction</DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
                         <Select
                             label="Transaction Type"
                             value={formData.transaction_type}
-                            onChange={(value) => setFormData(prev => ({ ...prev, transaction_type: value }))}
+                            onChange={(value) => setFormData(prev => ({
+                                ...prev,
+                                transaction_type: value,
+                                asset: "", // Reset asset when type changes
+                                employee: "", // Reset employee when type changes
+                                face_verification_success: false
+                            }))}
                             required
                         >
-                            <Option value="issue">Issue Asset</Option>
+                            <Option value="issue">Assign Asset</Option>
                             <Option value="return">Return Asset</Option>
                         </Select>
 
                         <Select
                             label="Asset"
-                            value={formData.asset}
-                            onChange={(value) => setFormData(prev => ({ ...prev, asset: value }))}
+                            value={formData.asset ?? ""}
+                            onChange={(value) =>
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    asset: value ?? "",
+                                    employee: formData.transaction_type === "return" ? "" : prev.employee,
+                                    face_verification_success: false,
+                                }))
+                            }
                             required
+                            selected={(element) => {
+                                // If MTW passes the actual <Option />, use its children (the rendered label)
+                                if (React.isValidElement(element) && element.props?.children != null) {
+                                    return element.props.children;
+                                }
+                                // Fallback to deriving from current state
+                                const raw =
+                                    typeof element === "string" || typeof element === "number"
+                                        ? String(element)
+                                        : formData.asset ?? "";
+                                if (!raw) return "Select Asset";
+
+                                // Find the asset in available list first; fallback to all assets
+                                const list = getAvailableAssets();
+                                const a =
+                                    list.find((as) => as.id.toString() === raw) ||
+                                    assets.find((as) => as.id.toString() === raw);
+                                if (!a) return "Select Asset";
+
+                                let label = `${a.name} (${a.serial_number}) - ${a.department_name}`;
+                                if (formData.transaction_type === "return" && a.current_holder) {
+                                    const holder = employees.find((emp) => emp.id === a.current_holder);
+                                    label += ` - Currently with: ${holder?.name || "Unknown"}`;
+                                }
+                                return label;
+                            }}
                         >
                             <Option value="">Select Asset</Option>
                             {getAvailableAssets().map((asset) => (
                                 <Option key={asset.id} value={asset.id.toString()}>
                                     {asset.name} ({asset.serial_number}) - {asset.department_name}
+                                    {formData.transaction_type === "return" && asset.current_holder && (
+                                        <> - Currently with: {employees.find((emp) => emp.id === asset.current_holder)?.name || "Unknown"}</>
+                                    )}
                                 </Option>
                             ))}
                         </Select>
 
+
                         <Select
                             label="Employee"
-                            value={formData.employee}
-                            onChange={(value) => setFormData(prev => ({ ...prev, employee: value }))}
+                            value={formData.employee ?? ""}
+                            onChange={(value) =>
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    employee: value ?? "",
+                                    face_verification_success: false,
+                                }))
+                            }
                             required
+                            selected={(element) => {
+                                if (React.isValidElement(element) && element.props?.children != null) {
+                                    return element.props.children;
+                                }
+                                const raw =
+                                    typeof element === "string" || typeof element === "number"
+                                        ? String(element)
+                                        : formData.employee ?? "";
+                                if (!raw) return "Select Employee";
+
+                                // Prefer currently available employees; fallback to full list
+                                const list = getAvailableEmployees();
+                                const e =
+                                    list.find((emp) => emp.id.toString() === raw) ||
+                                    employees.find((emp) => emp.id.toString() === raw);
+                                if (!e) return "Select Employee";
+
+                                return `${e.name} (${e.employee_id}) - ${e.department_name}${e.has_face_data ? " 🔒" : " ⚠️"
+                                    }`;
+                            }}
                         >
                             <Option value="">Select Employee</Option>
                             {getAvailableEmployees().map((employee) => (
@@ -498,13 +660,18 @@ export function Transactions() {
 
                         {/* Face Verification Section */}
                         {formData.employee && (
-                            <Card className="p-4 border">
+                            <Card className="p-4 border border-blue-200">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-2">
                                         <CameraIcon className="h-5 w-5 text-blue-500" />
                                         <Typography variant="h6" color="blue-gray">
                                             Face Verification
                                         </Typography>
+                                        <Chip
+                                            color="red"
+                                            value="REQUIRED"
+                                            className="text-xs"
+                                        />
                                     </div>
                                     {formData.face_verification_success && (
                                         <Chip
@@ -521,29 +688,51 @@ export function Transactions() {
                                             Employee: {getSelectedEmployee()?.name}
                                         </Typography>
                                         <Typography variant="small" color={getSelectedEmployee()?.has_face_data ? "green" : "red"}>
-                                            {getSelectedEmployee()?.has_face_data ? "Face data available" : "No face data"}
+                                            {getSelectedEmployee()?.has_face_data ? "Face data available ✓" : "No face data ⚠️"}
                                         </Typography>
                                     </div>
 
                                     {getSelectedEmployee()?.has_face_data ? (
-                                        <div className="flex items-center justify-between">
-                                            <Button
-                                                size="sm"
-                                                color={formData.face_verification_success ? "green" : "blue"}
-                                                onClick={startFaceVerification}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <CameraIcon className="h-4 w-4" />
-                                                {formData.face_verification_success ? "Re-verify Face" : "Verify Face"}
-                                            </Button>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Button
+                                                    size="sm"
+                                                    color={formData.face_verification_success ? "green" : "blue"}
+                                                    onClick={startFaceVerification}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    <CameraIcon className="h-4 w-4" />
+                                                    {formData.face_verification_success ? "Re-verify Face" : "Verify Face"}
+                                                </Button>
 
-                                            {verificationResult && (
-                                                <Typography variant="small" color={verificationResult.success ? "green" : "red"}>
-                                                    {verificationResult.success ?
-                                                        `Confidence: ${formatters.formatConfidence(verificationResult.confidence)}` :
-                                                        "Verification failed"
-                                                    }
-                                                </Typography>
+                                                {verificationResult && (
+                                                    <Typography variant="small" color={verificationResult.success ? "green" : "red"}>
+                                                        {verificationResult.success ?
+                                                            `Confidence: ${formatters.formatConfidence(verificationResult.confidence)}` :
+                                                            "Verification failed"
+                                                        }
+                                                    </Typography>
+                                                )}
+                                            </div>
+
+                                            {!formData.face_verification_success && (
+                                                <Alert color="orange">
+                                                    <Typography variant="small">
+                                                        Face verification is required before creating the transaction.
+                                                        Click the "Verify Face" button above to proceed.
+                                                    </Typography>
+                                                </Alert>
+                                            )}
+
+                                            {verificationResult && !verificationResult.success && (
+                                                <Alert color="red">
+                                                    <Typography variant="small">
+                                                        Face verification failed: {verificationResult.error}
+                                                        {verificationResult.confidence && (
+                                                            ` (Confidence: ${formatters.formatConfidence(verificationResult.confidence)}, Required: ${((verificationResult.threshold || 0.6) * 100).toFixed(0)}%)`
+                                                        )}
+                                                    </Typography>
+                                                </Alert>
                                             )}
                                         </div>
                                     ) : (
@@ -591,21 +780,22 @@ export function Transactions() {
                             type="submit"
                             loading={formLoading}
                             disabled={formData.employee && !formData.face_verification_success}
+                            color={formData.face_verification_success ? "green" : "gray"}
                         >
-                            Create Transaction
+                            {formData.face_verification_success ? "Create Transaction" : "Verification Required"}
                         </Button>
                     </DialogFooter>
                 </form>
             </Dialog>
 
-            {/* Face Verification Modal */}
-            {showFaceModal && (
+            {/* Face Verification Modal - Rendered separately with proper state management */}
+            {selectedEmployeeForVerification && (
                 <FaceRecognitionComponent
                     open={showFaceModal}
                     mode="verify"
-                    employeeId={parseInt(formData.employee)}
-                    employeeName={getSelectedEmployee()?.name}
-                    onClose={() => setShowFaceModal(false)}
+                    employeeId={selectedEmployeeForVerification.id}
+                    employeeName={selectedEmployeeForVerification.name}
+                    onClose={handleFaceModalClose}
                     onSuccess={handleFaceVerificationSuccess}
                     onError={handleFaceVerificationError}
                 />
@@ -616,38 +806,46 @@ export function Transactions() {
                 {selectedTransaction && (
                     <>
                         <DialogHeader>
-                            Transaction Details - {selectedTransaction.transaction_type.toUpperCase()}
+                            Transaction Details - {transactionTypeLabels[selectedTransaction.transaction_type] ?? "—"}
                         </DialogHeader>
+
                         <DialogBody className="max-h-[70vh] overflow-y-auto">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <Card className="shadow-sm">
-                                    <CardHeader color="blue" className="relative h-16">
+                                {/* Transaction Info */}
+                                <Card className="shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader floated={false} shadow={false} className="bg-blue-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
                                             Transaction Information
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Type:</span>
-                                                <Chip
-                                                    variant="gradient"
-                                                    color={transactionTypeColors[selectedTransaction.transaction_type]}
-                                                    value={selectedTransaction.transaction_type.toUpperCase()}
-                                                    className="py-0.5 px-2 text-[11px] font-medium w-fit"
-                                                />
+                                    <CardBody className="p-6">
+                                        <dl className="divide-y divide-gray-100">
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Type</dt>
+                                                <dd className="col-span-3 flex justify-end">
+                                                    <Chip
+                                                        variant="gradient"
+                                                        color={transactionTypeColors[selectedTransaction.transaction_type] ?? "gray"}
+                                                        value={transactionTypeLabels[selectedTransaction.transaction_type] ?? "—"}
+                                                        className="py-0.5 px-2 text-[11px] font-medium w-fit"
+                                                    />
+                                                </dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Date:</span>
-                                                <span>{formatters.formatDate(selectedTransaction.transaction_date)}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Date</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {formatters.formatDate(selectedTransaction.transaction_date)}
+                                                </dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Processed By:</span>
-                                                <span>{selectedTransaction.processed_by_name || "System"}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Processed By</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {selectedTransaction.processed_by_name || "System"}
+                                                </dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Face Verification:</span>
-                                                <div className="flex items-center gap-1">
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Face Verification</dt>
+                                                <dd className="col-span-3 flex items-center justify-end gap-1">
                                                     {selectedTransaction.face_verification_success ? (
                                                         <CheckCircleIcon className="h-4 w-4 text-green-500" />
                                                     ) : (
@@ -659,49 +857,50 @@ export function Transactions() {
                                                         value={selectedTransaction.face_verification_success ? "VERIFIED" : "NOT VERIFIED"}
                                                         className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                     />
-                                                </div>
+                                                </dd>
                                             </div>
-                                        </div>
+                                        </dl>
                                     </CardBody>
                                 </Card>
 
-                                <Card className="shadow-sm">
-                                    <CardHeader color="green" className="relative h-16">
+                                {/* Asset & Employee */}
+                                <Card className="shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader floated={false} shadow={false} className="bg-green-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
                                             Asset & Employee Details
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Asset:</span>
-                                                <span>{selectedTransaction.asset_name}</span>
+                                    <CardBody className="p-6">
+                                        <dl className="divide-y divide-gray-100">
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Asset</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.asset_name}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Serial Number:</span>
-                                                <span>{selectedTransaction.asset_serial}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Serial Number</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.asset_serial}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Employee:</span>
-                                                <span>{selectedTransaction.employee_name}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Employee</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.employee_name}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Employee ID:</span>
-                                                <span>{selectedTransaction.employee_id}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Employee ID</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.employee_id}</dd>
                                             </div>
-                                        </div>
+                                        </dl>
                                     </CardBody>
                                 </Card>
                             </div>
 
                             {(selectedTransaction.notes || selectedTransaction.return_condition || selectedTransaction.damage_notes) && (
-                                <Card className="mt-6 shadow-sm">
-                                    <CardHeader color="orange" className="relative h-16">
+                                <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader floated={false} shadow={false} className="bg-orange-500 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
                                             Additional Information
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
+                                    <CardBody className="p-6">
                                         <div className="space-y-3">
                                             {selectedTransaction.notes && (
                                                 <div>
@@ -726,12 +925,14 @@ export function Transactions() {
                                 </Card>
                             )}
                         </DialogBody>
+
                         <DialogFooter>
                             <Button onClick={() => setShowViewModal(false)}>Close</Button>
                         </DialogFooter>
                     </>
                 )}
             </Dialog>
+
         </div>
     );
 }

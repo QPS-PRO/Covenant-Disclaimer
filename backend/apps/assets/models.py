@@ -101,14 +101,28 @@ class AssetTransaction(models.Model):
         related_name='processed_transactions'
     )
     notes = models.TextField(blank=True)
+    
+    # Face verification fields
     face_verification_success = models.BooleanField(default=False)
+    face_verification_confidence = models.FloatField(default=0.0, help_text="Confidence score from face verification (0.0 to 1.0)")
     
     # Return specific fields
-    return_condition = models.CharField(max_length=100, blank=True)
-    damage_notes = models.TextField(blank=True)
+    return_condition = models.CharField(max_length=100, blank=True, null=True)
+    damage_notes = models.TextField(blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
 
     def __str__(self):
         return f"{self.transaction_type.title()} - {self.asset.name} - {self.employee.name}"
 
     class Meta:
         ordering = ['-transaction_date']
+        
+    @property
+    def verification_status(self):
+        """Return human-readable verification status"""
+        if self.face_verification_success:
+            return f"Verified ({self.face_verification_confidence:.1%})"
+        return "Not Verified"

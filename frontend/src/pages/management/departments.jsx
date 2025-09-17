@@ -283,8 +283,8 @@ export function Departments() {
                             <tbody>
                                 {departments.map((department, key) => {
                                     const className = `py-3 px-5 ${key === departments.length - 1
-                                            ? ""
-                                            : "border-b border-blue-gray-50"
+                                        ? ""
+                                        : "border-b border-blue-gray-50"
                                         }`;
 
                                     return (
@@ -399,18 +399,41 @@ export function Departments() {
                         />
                         <Select
                             label="Manager (Optional)"
-                            value={formData.manager}
+                            value={formData.manager ?? ""} // keep it a string
                             onChange={(value) =>
-                                setFormData((prev) => ({ ...prev, manager: value }))
+                                setFormData((prev) => ({ ...prev, manager: value ?? "" }))
                             }
+                            selected={(element) => {
+                                // Case 1: MTW passes the actual <Option />
+                                if (React.isValidElement(element) && element.props?.children != null) {
+                                    return element.props.children; // e.g., "Jane Doe (jane@acme.com)"
+                                }
+
+                                // Case 2: raw value or undefined -> derive from current state
+                                const raw =
+                                    (typeof element === "string" || typeof element === "number")
+                                        ? String(element)
+                                        : (formData.manager ?? "");
+
+                                if (!raw) return "No manager";
+
+                                const u = users.find((usr) => usr.id.toString() === raw);
+                                if (!u) return "No manager";
+
+                                const name = u.name || [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email || "User";
+                                const email = u.email ? ` (${u.email})` : "";
+                                return `${name}${email}`;
+                            }}
                         >
                             <Option value="">No manager</Option>
                             {users.map((user) => (
                                 <Option key={user.id} value={user.id.toString()}>
-                                    {user.name} ({user.email})
+                                    {(user.name || [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email || "User")}
+                                    {user.email ? ` (${user.email})` : ""}
                                 </Option>
                             ))}
                         </Select>
+
                     </DialogBody>
                     <DialogFooter>
                         <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
@@ -469,61 +492,65 @@ export function Departments() {
                 {selectedDepartment && (
                     <>
                         <DialogHeader>Department Details - {selectedDepartment.name}</DialogHeader>
+
                         <DialogBody className="max-h-[70vh] overflow-y-auto">
-                            <Card className="shadow-sm">
-                                <CardHeader color="blue" className="relative h-16">
+                            <Card className="shadow-sm rounded-xl overflow-hidden">
+                                <CardHeader floated={false} shadow={false} className="bg-blue-600 px-5 py-3">
                                     <Typography variant="h6" color="white" className="text-center">
                                         Department Information
                                     </Typography>
                                 </CardHeader>
-                                <CardBody>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between">
-                                            <span className="font-semibold">Name:</span>
-                                            <span>{selectedDepartment.name}</span>
+
+                                <CardBody className="p-6">
+                                    <dl className="divide-y divide-gray-100">
+                                        <div className="grid grid-cols-5 items-center py-2">
+                                            <dt className="col-span-2 text-sm font-medium text-gray-600">Name</dt>
+                                            <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedDepartment.name}</dd>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="font-semibold">Manager:</span>
-                                            <span>
+                                        <div className="grid grid-cols-5 items-center py-2">
+                                            <dt className="col-span-2 text-sm font-medium text-gray-600">Manager</dt>
+                                            <dd className="col-span-3 text-sm text-gray-900 text-right">
                                                 {selectedDepartment.manager_name || "No manager assigned"}
-                                            </span>
+                                            </dd>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="font-semibold">Active Employees:</span>
-                                            <div className="flex items-center gap-1">
+                                        <div className="grid grid-cols-5 items-center py-2">
+                                            <dt className="col-span-2 text-sm font-medium text-gray-600">Active Employees</dt>
+                                            <dd className="col-span-3 flex items-center justify-end gap-1 text-sm text-gray-900">
                                                 <UsersIcon className="h-4 w-4 text-blue-500" />
-                                                <span>{selectedDepartment.employee_count}</span>
-                                            </div>
+                                                {selectedDepartment.employee_count}
+                                            </dd>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="font-semibold">Total Assets:</span>
-                                            <div className="flex items-center gap-1">
+                                        <div className="grid grid-cols-5 items-center py-2">
+                                            <dt className="col-span-2 text-sm font-medium text-gray-600">Total Assets</dt>
+                                            <dd className="col-span-3 flex items-center justify-end gap-1 text-sm text-gray-900">
                                                 <CubeIcon className="h-4 w-4 text-green-500" />
-                                                <span>{selectedDepartment.asset_count}</span>
-                                            </div>
+                                                {selectedDepartment.asset_count}
+                                            </dd>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="font-semibold">Created:</span>
-                                            <span>
+                                        <div className="grid grid-cols-5 items-center py-2">
+                                            <dt className="col-span-2 text-sm font-medium text-gray-600">Created</dt>
+                                            <dd className="col-span-3 text-sm text-gray-900 text-right">
                                                 {new Date(selectedDepartment.created_at).toLocaleDateString()}
-                                            </span>
+                                            </dd>
                                         </div>
-                                        <div className="flex justify-between">
-                                            <span className="font-semibold">Last Updated:</span>
-                                            <span>
+                                        <div className="grid grid-cols-5 items-center py-2">
+                                            <dt className="col-span-2 text-sm font-medium text-gray-600">Last Updated</dt>
+                                            <dd className="col-span-3 text-sm text-gray-900 text-right">
                                                 {new Date(selectedDepartment.updated_at).toLocaleDateString()}
-                                            </span>
+                                            </dd>
                                         </div>
-                                    </div>
+                                    </dl>
                                 </CardBody>
                             </Card>
                         </DialogBody>
+
                         <DialogFooter>
                             <Button onClick={() => setShowViewModal(false)}>Close</Button>
                         </DialogFooter>
                     </>
                 )}
             </Dialog>
+
         </div>
     );
 }

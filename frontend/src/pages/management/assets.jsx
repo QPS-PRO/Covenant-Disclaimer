@@ -108,7 +108,7 @@ export function Assets() {
     // Debounced search effect
     useEffect(() => {
         if (!mounted) return;
-        
+
         const timer = setTimeout(() => {
             fetchAssets();
         }, 300);
@@ -261,11 +261,26 @@ export function Assets() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
+
+                        {/* Department filter */}
                         <div className="w-full lg:w-60">
                             <Select
                                 label="Filter by Department"
-                                value={selectedDepartment}
-                                onChange={(value) => setSelectedDepartment(value || "")}
+                                value={selectedDepartment ?? ""} // keep it a string
+                                onChange={(value) => setSelectedDepartment(value ?? "")}
+                                selected={(element) => {
+                                    // If the selected node is an <Option />, show its children (the dept name)
+                                    if (React.isValidElement(element) && element.props?.children != null) {
+                                        return element.props.children;
+                                    }
+                                    // Fallback: derive from current state
+                                    const raw = typeof element === "string" || typeof element === "number"
+                                        ? String(element)
+                                        : (selectedDepartment ?? "");
+                                    if (!raw) return "All Departments";
+                                    const d = departments.find(dep => dep.id.toString() === raw);
+                                    return d ? d.name : "All Departments";
+                                }}
                             >
                                 <Option value="">All Departments</Option>
                                 {departments.map((dept) => (
@@ -275,21 +290,37 @@ export function Assets() {
                                 ))}
                             </Select>
                         </div>
+
+                        {/* Status filter */}
                         <div className="w-full lg:w-60">
                             <Select
                                 label="Filter by Status"
-                                value={selectedStatus}
-                                onChange={(value) => setSelectedStatus(value || "")}
+                                value={selectedStatus ?? ""} // keep it a string
+                                onChange={(value) => setSelectedStatus(value ?? "")}
+                                selected={(element) => {
+                                    // If the selected node is an <Option />, show its children (the label)
+                                    if (React.isValidElement(element) && element.props?.children != null) {
+                                        return element.props.children;
+                                    }
+                                    // Fallback: map value -> label from statusOptions
+                                    const raw = typeof element === "string" || typeof element === "number"
+                                        ? String(element)
+                                        : (selectedStatus ?? "");
+                                    if (!raw) return "All Statuses";
+                                    const opt = statusOptions.find(s => String(s.value) === raw);
+                                    return opt ? opt.label : "All Statuses";
+                                }}
                             >
                                 <Option value="">All Statuses</Option>
                                 {statusOptions.map((status) => (
-                                    <Option key={status.value} value={status.value}>
+                                    <Option key={status.value} value={String(status.value)}>
                                         {status.label}
                                     </Option>
                                 ))}
                             </Select>
                         </div>
                     </div>
+
 
                     {/* Table */}
                     <div className="overflow-x-scroll">
@@ -480,98 +511,103 @@ export function Assets() {
                 {showViewModal && selectedAsset && (
                     <>
                         <DialogHeader>Asset Details - {selectedAsset.name}</DialogHeader>
+
                         <DialogBody className="max-h-[70vh] overflow-y-auto">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Basic Information Card */}
-                                <Card className="shadow-sm">
-                                    <CardHeader color="blue" className="relative h-16">
+                                {/* Basic Information */}
+                                <Card className="shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader floated={false} shadow={false} className="bg-blue-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
                                             Basic Information
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Name:</span>
-                                                <span>{selectedAsset.name}</span>
+                                    <CardBody className="p-6">
+                                        <dl className="divide-y divide-gray-100">
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Name</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedAsset.name}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Serial Number:</span>
-                                                <span>{selectedAsset.serial_number}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Serial Number</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedAsset.serial_number}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Department:</span>
-                                                <span>{selectedAsset.department_name}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Department</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedAsset.department_name}</dd>
                                             </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="font-semibold">Status:</span>
-                                                <Chip
-                                                    variant="gradient"
-                                                    color={getStatusColor(selectedAsset.status)}
-                                                    value={selectedAsset.status?.toUpperCase()}
-                                                    className="py-0.5 px-2 text-[11px] font-medium w-fit"
-                                                />
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Status</dt>
+                                                <dd className="col-span-3 flex justify-end">
+                                                    <Chip
+                                                        variant="gradient"
+                                                        color={getStatusColor(selectedAsset.status)}
+                                                        value={selectedAsset.status?.toUpperCase()}
+                                                        className="py-0.5 px-2 text-[11px] font-medium w-fit"
+                                                    />
+                                                </dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Current Holder:</span>
-                                                <span>{selectedAsset.current_holder_name || "Unassigned"}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Current Holder</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {selectedAsset.current_holder_name || "Unassigned"}
+                                                </dd>
                                             </div>
-                                        </div>
+                                        </dl>
                                     </CardBody>
                                 </Card>
 
-                                {/* Purchase Information Card */}
-                                <Card className="shadow-sm">
-                                    <CardHeader color="green" className="relative h-16">
+                                {/* Purchase Information */}
+                                <Card className="shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader floated={false} shadow={false} className="bg-green-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
                                             Purchase Information
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Purchase Date:</span>
-                                                <span>{formatDate(selectedAsset.purchase_date)}</span>
+                                    <CardBody className="p-6">
+                                        <dl className="divide-y divide-gray-100">
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Purchase Date</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{formatDate(selectedAsset.purchase_date)}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Purchase Cost:</span>
-                                                <span>{formatCurrency(selectedAsset.purchase_cost)}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Purchase Cost</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{formatCurrency(selectedAsset.purchase_cost)}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Created:</span>
-                                                <span>{formatDate(selectedAsset.created_at)}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Created</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{formatDate(selectedAsset.created_at)}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Last Updated:</span>
-                                                <span>{formatDate(selectedAsset.updated_at)}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Last Updated</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{formatDate(selectedAsset.updated_at)}</dd>
                                             </div>
-                                        </div>
+                                        </dl>
                                     </CardBody>
                                 </Card>
                             </div>
 
                             {/* Description */}
                             {selectedAsset.description && (
-                                <Card className="mt-6 shadow-sm">
-                                    <CardHeader color="orange" className="relative h-16">
+                                <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader floated={false} shadow={false} className="bg-orange-500 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
                                             Description
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
-                                        <Typography className="text-sm text-gray-700">
-                                            {selectedAsset.description}
-                                        </Typography>
+                                    <CardBody className="p-6">
+                                        <Typography className="text-sm text-gray-700">{selectedAsset.description}</Typography>
                                     </CardBody>
                                 </Card>
                             )}
                         </DialogBody>
+
                         <DialogFooter>
                             <Button onClick={() => setShowViewModal(false)}>Close</Button>
                         </DialogFooter>
                     </>
                 )}
             </Dialog>
+
 
             {/* Delete Confirmation Modal */}
             <Dialog open={showDeleteModal} handler={() => setShowDeleteModal(false)} size="sm">

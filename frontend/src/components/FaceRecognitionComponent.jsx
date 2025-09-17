@@ -194,10 +194,18 @@ const FaceRecognitionComponent = ({
             setResult(response);
             setStep('result');
 
+            // Include the captured image data in the response for transaction use
             if (response.success && onSuccess) {
-                onSuccess(response);
+                onSuccess({
+                    ...response,
+                    face_image_data: imageData, // Pass the actual image data
+                    capturedImage: imageData
+                });
             } else if (!response.success && onError) {
-                onError(response);
+                onError({
+                    ...response,
+                    face_image_data: imageData // Pass image data even on failure for debugging
+                });
             }
         } catch (err) {
             console.error('Verification error:', err);

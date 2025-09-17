@@ -295,8 +295,22 @@ export function Employees() {
                         <div className="w-full md:w-48">
                             <Select
                                 label="Filter by Department"
-                                value={selectedDepartment}
-                                onChange={(value) => setSelectedDepartment(value)}
+                                value={selectedDepartment ?? ""}                      // keep it a string
+                                onChange={(value) => setSelectedDepartment(value ?? "")}
+                                selected={(element) => {
+                                    // Case 1: MTW passes the actual <Option />
+                                    if (React.isValidElement(element) && element.props?.children != null) {
+                                        return element.props.children; // department name
+                                    }
+                                    // Case 2: raw value or undefined -> derive from state
+                                    const raw =
+                                        (typeof element === "string" || typeof element === "number")
+                                            ? String(element)
+                                            : (selectedDepartment ?? "");
+                                    if (!raw) return "All Departments";
+                                    const d = departments.find(dep => dep.id.toString() === raw);
+                                    return d ? d.name : "All Departments";
+                                }}
                             >
                                 <Option value="">All Departments</Option>
                                 {departments.map((dept) => (
@@ -305,6 +319,7 @@ export function Employees() {
                                     </Option>
                                 ))}
                             </Select>
+
                         </div>
                     </div>
 
@@ -476,9 +491,25 @@ export function Employees() {
                                     </div>
                                     <Select
                                         label="Department"
-                                        value={formData.department}
-                                        onChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
+                                        value={formData.department ?? ""} // keep as string
+                                        onChange={(value) =>
+                                            setFormData((prev) => ({ ...prev, department: value ?? "" }))
+                                        }
                                         required
+                                        selected={(element) => {
+                                            // If MTW hands us the actual <Option />, use its children (the label)
+                                            if (React.isValidElement(element) && element.props?.children != null) {
+                                                return element.props.children;
+                                            }
+                                            // Fallback: element may be raw value or undefined — derive from state
+                                            const raw =
+                                                (typeof element === "string" || typeof element === "number")
+                                                    ? String(element)
+                                                    : (formData.department ?? "");
+                                            if (!raw) return "Select Department";
+                                            const d = departments.find((dep) => dep.id.toString() === raw);
+                                            return d ? d.name : "Select Department";
+                                        }}
                                     >
                                         <Option value="">Select Department</Option>
                                         {departments.map((dept) => (
@@ -487,6 +518,7 @@ export function Employees() {
                                             </Option>
                                         ))}
                                     </Select>
+
                                 </TabPanel>
                             </TabsBody>
                         </Tabs>
@@ -562,9 +594,25 @@ export function Employees() {
                                     </div>
                                     <Select
                                         label="Department"
-                                        value={formData.department}
-                                        onChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
+                                        value={formData.department ?? ""} // keep as string
+                                        onChange={(value) =>
+                                            setFormData((prev) => ({ ...prev, department: value ?? "" }))
+                                        }
                                         required
+                                        selected={(element) => {
+                                            // If MTW hands us the actual <Option />, use its children (the label)
+                                            if (React.isValidElement(element) && element.props?.children != null) {
+                                                return element.props.children;
+                                            }
+                                            // Fallback: element may be raw value or undefined — derive from state
+                                            const raw =
+                                                (typeof element === "string" || typeof element === "number")
+                                                    ? String(element)
+                                                    : (formData.department ?? "");
+                                            if (!raw) return "Select Department";
+                                            const d = departments.find((dep) => dep.id.toString() === raw);
+                                            return d ? d.name : "Select Department";
+                                        }}
                                     >
                                         <Option value="">Select Department</Option>
                                         {departments.map((dept) => (
@@ -573,6 +621,7 @@ export function Employees() {
                                             </Option>
                                         ))}
                                     </Select>
+
                                 </TabPanel>
                                 <TabPanel value="face" className="space-y-4">
                                     <Card className="p-4">
@@ -628,65 +677,75 @@ export function Employees() {
             <Dialog open={showViewModal} handler={handleModalClose} size="xl">
                 {selectedEmployee && (
                     <>
-                        <DialogHeader>
-                            Employee Profile - {selectedEmployee.name}
-                        </DialogHeader>
+                        <DialogHeader>Employee Profile - {selectedEmployee.name}</DialogHeader>
+
                         <DialogBody className="max-h-[70vh] overflow-y-auto">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Basic Info */}
-                                <Card className="shadow-sm">
-                                    <CardHeader color="blue" className="relative h-16">
+                                <Card className="shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader
+                                        floated={false}
+                                        shadow={false}
+                                        className="bg-blue-600 px-5 py-3"
+                                    >
                                         <Typography variant="h6" color="white" className="text-center">
                                             Basic Information
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Name:</span>
-                                                <span>{selectedEmployee.name}</span>
+
+                                    <CardBody className="p-6">
+                                        <dl className="divide-y divide-gray-100">
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Name</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right truncate">{selectedEmployee.name}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Employee ID:</span>
-                                                <span>{selectedEmployee.employee_id}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Employee ID</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedEmployee.employee_id}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Email:</span>
-                                                <span>{selectedEmployee.email}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Email</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right truncate">{selectedEmployee.email}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Phone:</span>
-                                                <span>{selectedEmployee.phone_number}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Phone</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedEmployee.phone_number}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Department:</span>
-                                                <span>{selectedEmployee.department_name}</span>
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Department</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedEmployee.department_name}</dd>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="font-semibold">Status:</span>
-                                                <Chip
-                                                    color={selectedEmployee.is_active ? "green" : "red"}
-                                                    value={selectedEmployee.is_active ? "ACTIVE" : "INACTIVE"}
-                                                    className="text-xs"
-                                                />
+                                            <div className="grid grid-cols-5 items-center py-2">
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Status</dt>
+                                                <dd className="col-span-3 flex justify-end">
+                                                    <Chip
+                                                        color={selectedEmployee.is_active ? "green" : "red"}
+                                                        value={selectedEmployee.is_active ? "ACTIVE" : "INACTIVE"}
+                                                        className="text-xs"
+                                                    />
+                                                </dd>
                                             </div>
-                                        </div>
+                                        </dl>
                                     </CardBody>
                                 </Card>
 
-                                {/* Face Recognition Status */}
-                                <Card className="shadow-sm">
-                                    <CardHeader color="green" className="relative h-16">
+                                {/* Face Recognition */}
+                                <Card className="shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader
+                                        floated={false}
+                                        shadow={false}
+                                        className="bg-green-600 px-5 py-3"
+                                    >
                                         <Typography variant="h6" color="white" className="text-center">
                                             Face Recognition
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
-                                        <div className="text-center space-y-4">
-                                            <div className="flex items-center justify-center">
-                                                <CameraIcon className="h-12 w-12 text-blue-500" />
-                                            </div>
-                                            <div className="flex items-center justify-center gap-2">
+
+                                    <CardBody className="p-6">
+                                        <div className="flex flex-col items-center gap-4">
+                                            <CameraIcon className="h-12 w-12 text-blue-500" />
+
+                                            <div className="flex items-center gap-2">
                                                 <Typography variant="small" color="gray">Status:</Typography>
                                                 {selectedEmployee.has_face_data ? (
                                                     <div className="flex items-center gap-1">
@@ -700,15 +759,22 @@ export function Employees() {
                                                     </div>
                                                 )}
                                             </div>
+
                                             <Button
                                                 size="sm"
                                                 color="blue"
-                                                onClick={() => handleFaceRegistration(selectedEmployee, selectedEmployee.has_face_data ? "update" : "register")}
-                                                className="flex items-center gap-2 mx-auto"
+                                                onClick={() =>
+                                                    handleFaceRegistration(
+                                                        selectedEmployee,
+                                                        selectedEmployee.has_face_data ? "update" : "register"
+                                                    )
+                                                }
+                                                className="flex items-center gap-2"
                                             >
                                                 <CameraIcon className="h-4 w-4" />
                                                 {selectedEmployee.has_face_data ? "Update Face Data" : "Register Face Data"}
                                             </Button>
+
                                             <Typography variant="small" color="gray" className="text-center">
                                                 Face data is required for secure transactions
                                             </Typography>
@@ -717,59 +783,60 @@ export function Employees() {
                                 </Card>
                             </div>
 
-                            {/* Statistics if available */}
+                            {/* Statistics (unchanged) */}
                             {selectedEmployee.stats && (
-                                <Card className="mt-6 shadow-sm">
-                                    <CardHeader color="orange" className="relative h-16">
+                                <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
+                                    <CardHeader
+                                        floated={false}
+                                        shadow={false}
+                                        className="bg-orange-500 px-5 py-3"
+                                    >
                                         <Typography variant="h6" color="white" className="text-center">
                                             Activity Statistics
                                         </Typography>
                                     </CardHeader>
-                                    <CardBody>
+                                    <CardBody className="p-6">
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                             <div className="text-center">
                                                 <Typography variant="h4" color="blue">
                                                     {selectedEmployee.stats.current_assets_count}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">
-                                                    Current Assets
-                                                </Typography>
+                                                <Typography variant="small" color="gray">Current Assets</Typography>
                                             </div>
                                             <div className="text-center">
                                                 <Typography variant="h4" color="green">
                                                     {selectedEmployee.stats.total_transactions}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">
-                                                    Total Transactions
-                                                </Typography>
+                                                <Typography variant="small" color="gray">Total Transactions</Typography>
                                             </div>
                                             <div className="text-center">
                                                 <Typography variant="h4" color="orange">
                                                     {selectedEmployee.stats.face_verified_transactions}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">
-                                                    Verified Transactions
-                                                </Typography>
+                                                <Typography variant="small" color="gray">Verified Transactions</Typography>
                                             </div>
                                             <div className="text-center">
                                                 <Typography variant="h4" color="purple">
-                                                    {Math.round((selectedEmployee.stats.face_verified_transactions / selectedEmployee.stats.total_transactions) * 100) || 0}%
+                                                    {Math.round(
+                                                        (selectedEmployee.stats.face_verified_transactions /
+                                                            selectedEmployee.stats.total_transactions) * 100
+                                                    ) || 0}%
                                                 </Typography>
-                                                <Typography variant="small" color="gray">
-                                                    Verification Rate
-                                                </Typography>
+                                                <Typography variant="small" color="gray">Verification Rate</Typography>
                                             </div>
                                         </div>
                                     </CardBody>
                                 </Card>
                             )}
                         </DialogBody>
+
                         <DialogFooter>
                             <Button onClick={handleModalClose}>Close</Button>
                         </DialogFooter>
                     </>
                 )}
             </Dialog>
+
 
             {/* Face Registration Modal - Rendered separately with proper state management */}
             <FaceRecognitionComponent

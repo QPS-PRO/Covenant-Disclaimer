@@ -145,22 +145,122 @@ class AssetSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('current_holder', 'created_at', 'updated_at')
 
+class AssetTransactionCreateSerializer(serializers.ModelSerializer):
+    face_verification_data = serializers.CharField(write_only=True, required=False)
+    
+    class Meta:
+        model = AssetTransaction
+        fields = [
+            'asset', 'employee', 'transaction_type', 'notes',
+            'return_condition', 'damage_notes', 'face_verification_data'
+        ]
+
+    def validate(self, attrs):
+        """
+        Validate the transaction data and perform face verification if required
+        """
+        employee = attrs.get('employee')
+        asset = attrs.get('asset')
+        transaction_type = attrs.get('transaction_type')
+        face_verification_data = attrs.get('face_verification_data')
+
+        print(f"Validating transaction - Employee: {employee.name if employee else None}, Asset: {asset.name if asset else None}")
+        print(f"Face verification data present: {bool(face_verification_data)}")
+
+        # Basic validation
+        if transaction_type == 'issue' and asset.status != 'available':
+            raise serializers.ValidationError(f"Asset '{asset.name}' is not available for issue (current status: {asset.status})")
+        
+        if transaction_type == 'return':
+            if asset.status != 'assigned':
+                raise serializers.ValidationError(f"Asset '{asset.name}' is not currently assigned (current status: {asset.status})")
+            if asset.current_holder != employee:
+                current_holder_name = asset.current_holder.name if asset.current_holder else "None"
+                raise serializers.ValidationError(f"Asset '{asset.name}' is not assigned to {employee.name} (currently assigned to: {current_holder_name})")
+
+        # Face verification validation
+        if employee and employee.face_recognition_data:
+            print(f"Employee {employee.name} has face data, checking verification...")
+            
+            if not face_verification_data:
+                raise serializers.ValidationError(
+                    f"Face verification is required for employee '{employee.name}' who has registered face data"
+                )
+            
+            # Perform face verification
+            try:
+                verification_result = verify_employee_face(employee, face_verification_data)
+                print(f"Verification result: {verification_result}")
+                
+                if not verification_result['success']:
+                    error_msg = f"Face verification failed for employee '{employee.name}': {verification_result.get('error', 'Unknown error')}"
+                    if verification_result.get('confidence'):
+                        confidence_pct = verification_result['confidence'] * 100
+                        threshold_pct = verification_result.get('threshold', 0.6) * 100
+                        error_msg += f" (Confidence: {confidence_pct:.1f}%, Required: {threshold_pct:.0f}%)"
+                    raise serializers.ValidationError(error_msg)
+                
+                # Store verification result
+                attrs['face_verification_success'] = True
+                attrs['face_verification_confidence'] = verification_result.get('confidence', 0.0)
+                print(f"Face verification successful with confidence: {verification_result.get('confidence', 0.0):.1%}")
+                
+            except Exception as e:
+                print(f"Face verification error: {str(e)}")
+                raise serializers.ValidationError(f"Face verification failed due to technical error: {str(e)}")
+                
+        else:
+            # No face data available, mark as not verified but allow transaction
+            attrs['face_verification_success'] = False
+            attrs['face_verification_confidence'] = 0.0
+            print(f"Employee {employee.name if employee else 'Unknown'} has no face data, marking as not verified")
+
+        return attrs
+
+    def create(self, validated_data):
+        # Remove face_verification_data from validated_data before creating
+        validated_data.pop('face_verification_data', None)
+        
+        # Get the current user as processed_by
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['processed_by'] = request.user
+
+        transaction = super().create(validated_data)
+        
+        # Update asset status based on transaction type
+        asset = transaction.asset
+        employee = transaction.employee
+        
+        if transaction.transaction_type == 'issue':
+            asset.status = 'assigned'
+            asset.current_holder = employee
+        elif transaction.transaction_type == 'return':
+            asset.status = 'available'
+            asset.current_holder = None
+            
+        asset.save()
+        
+        return transaction
+
 class AssetTransactionSerializer(serializers.ModelSerializer):
     asset_name = serializers.CharField(source='asset.name', read_only=True)
     asset_serial = serializers.CharField(source='asset.serial_number', read_only=True)
     employee_name = serializers.CharField(source='employee.name', read_only=True)
     employee_id = serializers.CharField(source='employee.employee_id', read_only=True)
     processed_by_name = serializers.CharField(source='processed_by.get_full_name', read_only=True)
-
+    
     class Meta:
         model = AssetTransaction
-        fields = (
+        fields = [
             'id', 'asset', 'asset_name', 'asset_serial',
             'employee', 'employee_name', 'employee_id',
-            'transaction_type', 'transaction_date', 'processed_by', 'processed_by_name',
-            'notes', 'face_verification_success', 'return_condition', 'damage_notes'
-        )
-        read_only_fields = ('transaction_date', 'processed_by')
+            'transaction_type', 'transaction_date', 'notes',
+            'processed_by', 'processed_by_name',
+            'face_verification_success', 'face_verification_confidence',
+            'return_condition', 'damage_notes'
+        ]
+        read_only_fields = ['id', 'transaction_date']
 
 class DashboardStatsSerializer(serializers.Serializer):
     total_employees = serializers.IntegerField()
@@ -171,90 +271,6 @@ class DashboardStatsSerializer(serializers.Serializer):
     recent_transactions = serializers.IntegerField()
     weekly_data = serializers.ListField()
     department_distribution = serializers.ListField()
-
-class AssetTransactionCreateSerializer(serializers.ModelSerializer):
-    face_verification_data = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    
-    class Meta:
-        model = AssetTransaction
-        fields = (
-            'asset', 'employee', 'transaction_type', 'notes',
-            'face_verification_success', 'return_condition', 'damage_notes',
-            'face_verification_data'
-        )
-
-    def validate(self, data):
-        """
-        Validate transaction data and perform real face verification
-        """
-        employee = data.get('employee')
-        face_verification_data = data.get('face_verification_data')
-        
-        # Initialize face verification as False
-        data['face_verification_success'] = False
-        
-        # If employee has face recognition data and face verification data is provided
-        if employee and employee.face_recognition_data and face_verification_data:
-            try:
-                # Perform real face verification
-                verification_result = verify_employee_face(employee, face_verification_data)
-                data['face_verification_success'] = verification_result['success']
-                
-                # Store verification details in notes if verification fails
-                if not verification_result['success']:
-                    error_detail = verification_result.get('error', 'Face verification failed')
-                    confidence = verification_result.get('confidence', 0.0)
-                    
-                    # Add verification failure info to notes
-                    verification_note = f"[Face Verification Failed: {error_detail}, Confidence: {confidence:.3f}]"
-                    if data.get('notes'):
-                        data['notes'] = f"{verification_note} {data['notes']}"
-                    else:
-                        data['notes'] = verification_note
-                        
-                    # You might want to raise a validation error here to prevent the transaction
-                    # Uncomment the next line if you want to block transactions with failed face verification
-                    # raise serializers.ValidationError(f"Face verification failed: {error_detail}")
-                
-            except Exception as e:
-                # Handle face verification errors
-                data['face_verification_success'] = False
-                error_note = f"[Face Verification Error: {str(e)}]"
-                if data.get('notes'):
-                    data['notes'] = f"{error_note} {data['notes']}"
-                else:
-                    data['notes'] = error_note
-                    
-        elif employee and not employee.face_recognition_data:
-            # Employee doesn't have face data registered
-            error_note = "[Face Verification Skipped: No face data registered for employee]"
-            if data.get('notes'):
-                data['notes'] = f"{error_note} {data['notes']}"
-            else:
-                data['notes'] = error_note
-                
-        return data
-
-    def create(self, validated_data):
-        # Remove face verification data before saving
-        validated_data.pop('face_verification_data', None)
-        
-        # Set processed_by to current user
-        validated_data['processed_by'] = self.context['request'].user
-        
-        transaction = super().create(validated_data)
-        
-        # Update asset status and current holder
-        asset = transaction.asset
-        if transaction.transaction_type == 'issue':
-            asset.status = 'assigned'
-            asset.current_holder = transaction.employee
-        elif transaction.transaction_type == 'return':
-            asset.status = 'available'
-            asset.current_holder = None
-        
-        asset.save()
-        return transaction
 
 class FaceVerificationSerializer(serializers.Serializer):
     """Serializer for face verification endpoint"""

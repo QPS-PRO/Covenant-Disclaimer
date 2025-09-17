@@ -21,7 +21,7 @@ import {
 import { StatisticsCard } from "@/widgets/cards";
 import Chart from "react-apexcharts";
 import { useDashboard } from "@/hooks/useDashboard";
-
+import { Link } from "react-router-dom";
 export function Home() {
   const {
     stats,
@@ -71,6 +71,7 @@ export function Home() {
         value: "+3%",
         label: "than last month",
       },
+      to: "/departments",
     },
     {
       color: "green",
@@ -82,6 +83,7 @@ export function Home() {
         value: "+5%",
         label: "than last month",
       },
+      to: "/assets",
     },
     {
       color: "pink",
@@ -93,6 +95,7 @@ export function Home() {
         value: "+2%",
         label: "than last month",
       },
+      to: "/employees",
     },
     {
       color: "orange",
@@ -104,10 +107,22 @@ export function Home() {
         value: "+12%",
         label: "than last week",
       },
+      to: "/transactions",
     },
   ];
 
-  // Chart configurations
+  const rawStatusLabels = chartData?.assetStatusChart?.labels || ["No data"];
+
+  const normalizeLabel = (label) => {
+    const L = String(label).trim().toLowerCase();
+    if (L === "issue" || L === "issues" || L === "issued") return "Assigns";
+    if (L === "assigned") return "Assigned";
+    if (L === "return" || L === "returns" || L === "returned") return "Return";
+    return label;
+  };
+
+  const displayStatusLabels = rawStatusLabels.map(normalizeLabel);
+
   const assetStatusChart = {
     type: "pie",
     height: 280,
@@ -117,36 +132,51 @@ export function Home() {
       title: { show: false },
       dataLabels: { enabled: true },
       colors: ["#1e40af", "#10b981", "#f59e0b", "#ef4444"],
-      labels: chartData?.assetStatusChart?.labels || ["No data"],
+      labels: displayStatusLabels,
       legend: {
         show: true,
         position: "bottom",
+        formatter: (seriesName) => normalizeLabel(seriesName), // ensure legend uses "Assigns"
       },
-      responsive: [{
-        breakpoint: 480,
-        options: {
-          chart: { width: 200 },
-          legend: { position: 'bottom' }
-        }
-      }]
+      tooltip: {
+        y: {
+          formatter: (value, { seriesIndex, w }) => {
+            const name = displayStatusLabels[seriesIndex] || "";
+            return `${name}: ${value}`;
+          },
+        },
+      },
+      responsive: [
+        {
+          breakpoint: 480,
+          options: {
+            chart: { width: 200 },
+            legend: { position: "bottom" },
+          },
+        },
+      ],
     },
   };
+
+  const rawWeeklySeries = chartData?.weeklyChart?.series || [{ name: "No data", data: [0] }];
+  const weeklySeriesDisplay = rawWeeklySeries.map((s) => ({
+    ...s,
+    name: normalizeLabel(s.name),
+  }));
+
+  const weeklyMax = Math.max(0, ...weeklySeriesDisplay.flatMap((s) => s.data ?? []));
+  const yMaxInt = Math.max(1, Math.ceil(weeklyMax)); // at least 1 so we see a scale
 
   const weeklyTransactionsChart = {
     type: "bar",
     height: 280,
-    series: chartData?.weeklyChart?.series || [{ name: "No data", data: [0] }],
+    series: weeklySeriesDisplay,
     options: {
       chart: { toolbar: { show: false } },
       title: { show: false },
       dataLabels: { enabled: false },
       colors: ["#1e40af", "#f59e0b"],
-      plotOptions: {
-        bar: {
-          columnWidth: "40%",
-          borderRadius: 2,
-        },
-      },
+      plotOptions: { bar: { columnWidth: "40%", borderRadius: 2 } },
       xaxis: {
         categories: chartData?.weeklyChart?.categories || ["No data"],
         axisTicks: { show: false },
@@ -160,8 +190,13 @@ export function Home() {
           },
         },
       },
+      // ✅ Integer-only y-axis
       yaxis: {
+        min: 0,
+        max: yMaxInt,                 // top at an integer
+        tickAmount: yMaxInt,          // one tick per integer (0..max). If max gets large, cap it.
         labels: {
+          formatter: (val) => `${Math.round(val)}`, // display integers only
           style: {
             colors: "#616161",
             fontSize: "12px",
@@ -169,6 +204,11 @@ export function Home() {
             fontWeight: 400,
           },
         },
+      },
+      legend: {
+        show: true,
+        position: "bottom",
+        formatter: (seriesName) => normalizeLabel(seriesName),
       },
       grid: {
         show: true,
@@ -178,9 +218,13 @@ export function Home() {
         padding: { top: 5, right: 20 },
       },
       fill: { opacity: 0.8 },
-      tooltip: { theme: "dark" },
+      tooltip: {
+        theme: "dark",
+        y: { formatter: (val) => `${Math.round(val)}` },
+      },
     },
   };
+
 
   const departmentAssetsChart = {
     type: "donut",
@@ -270,6 +314,27 @@ export function Home() {
 
   const getTransactionColor = (type) => type === 'issue' ? 'green' : 'blue';
   const getTransactionIcon = (type) => type === 'issue' ? '📤' : '📥';
+  const transactionTypeLabels = {
+    issue: "Assign",
+    return: "Return",
+  };
+
+  const getTransactionLabel = (type) =>
+    transactionTypeLabels[type] ?? (type ? type[0].toUpperCase() + type.slice(1) : "—");
+
+  const getAssetName = (t) =>
+    t.asset_name ?? t.asset?.name ?? "N/A";
+
+  const getAssetSerial = (t) =>
+    t.asset_serial ?? t.asset?.serial_number ?? "N/A";
+
+  const getEmployeeName = (t) =>
+    t.employee_name
+    ?? t.employee?.name
+    ?? (t.employee?.user
+      ? `${t.employee.user.first_name} ${t.employee.user.last_name}`
+      : null)
+    ?? "N/A";
 
   return (
     <div className="mt-12">
@@ -299,29 +364,30 @@ export function Home() {
 
       {/* Statistics Cards */}
       <div className="mb-12 grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4">
-        {statisticsCardsConfig.map(({ icon, title, value, footer, color }) => (
-          <StatisticsCard
+        {statisticsCardsConfig.map(({ icon, title, value, footer, color, to }) => (
+          <Link
             key={title}
-            color={color}
-            value={value}
-            title={title}
-            icon={React.createElement(icon, {
-              className: "w-6 h-6 text-white",
-            })}
-            footer={
-              <Typography className="font-normal text-blue-gray-600">
-                <strong className={footer.color}>{footer.value}</strong>
-                &nbsp;{footer.label}
-              </Typography>
-            }
-          />
+            to={to}
+            className="block rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label={`Go to ${title}`}
+          >
+            <StatisticsCard
+              color={color}
+              value={value}
+              title={title}
+              icon={React.createElement(icon, {
+                className: "w-6 h-6 text-white",
+              })}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+            />
+          </Link>
         ))}
       </div>
 
       {/* Charts Row */}
-      <div className="mb-6 grid grid-cols-1 gap-y-12 gap-x-6 md:grid-cols-2 xl:grid-cols-2">
+      < div className="mb-6 grid grid-cols-1 gap-y-12 gap-x-6 md:grid-cols-2 xl:grid-cols-2" >
         {/* Asset Status Pie Chart */}
-        <Card className="border border-blue-gray-100 shadow-sm">
+        < Card className="border border-blue-gray-100 shadow-sm" >
           <CardHeader variant="gradient" floated={false} shadow={false}>
             <Chart {...assetStatusChart} />
           </CardHeader>
@@ -345,7 +411,7 @@ export function Home() {
               Weekly Transactions
             </Typography>
             <Typography variant="small" className="font-normal text-blue-gray-600">
-              Asset issues and returns over the past week
+              Assets assigns and returns over the past week
             </Typography>
           </CardBody>
         </Card>
@@ -378,7 +444,7 @@ export function Home() {
               Yearly Transaction Trends
             </Typography>
             <Typography variant="small" className="font-normal text-blue-gray-600">
-              Monthly asset issues and returns throughout the year
+              Monthly assets assigns and returns throughout the year
             </Typography>
           </CardBody>
         </Card>
@@ -428,34 +494,26 @@ export function Home() {
               <tbody>
                 {recentTransactions.map((transaction, key) => {
                   const className = `py-3 px-5 ${key === recentTransactions.length - 1
-                      ? ""
-                      : "border-b border-blue-gray-50"
+                    ? ""
+                    : "border-b border-blue-gray-50"
                     }`;
 
                   return (
                     <tr key={transaction.id}>
                       <td className={className}>
                         <div>
-                          <Typography
-                            variant="small"
-                            color="blue-gray"
-                            className="font-bold"
-                          >
-                            {transaction.asset?.name || 'N/A'}
+                          <Typography variant="small" color="blue-gray" className="font-bold">
+                            {getAssetName(transaction)}
                           </Typography>
                           <Typography className="text-xs font-normal text-blue-gray-500">
-                            {transaction.asset?.serial_number || 'N/A'}
+                            {getAssetSerial(transaction)}
                           </Typography>
                         </div>
                       </td>
+
                       <td className={className}>
-                        <Typography
-                          variant="small"
-                          className="font-medium text-blue-gray-600"
-                        >
-                          {transaction.employee?.user ?
-                            `${transaction.employee.user.first_name} ${transaction.employee.user.last_name}` :
-                            'N/A'}
+                        <Typography variant="small" className="font-medium text-blue-gray-600">
+                          {getEmployeeName(transaction)}
                         </Typography>
                       </td>
                       <td className={className}>
@@ -465,11 +523,12 @@ export function Home() {
                           value={
                             <div className="flex items-center gap-1">
                               <span>{getTransactionIcon(transaction.transaction_type)}</span>
-                              <span className="capitalize">{transaction.transaction_type}</span>
+                              <span>{getTransactionLabel(transaction.transaction_type)}</span>
                             </div>
                           }
                           className="py-0.5 px-2 text-[11px] font-medium"
                         />
+
                       </td>
                       <td className={className}>
                         <Typography
@@ -488,8 +547,8 @@ export function Home() {
                           )}
                           <Typography
                             className={`ml-2 text-xs font-medium ${transaction.face_verification_success
-                                ? 'text-green-600'
-                                : 'text-red-600'
+                              ? 'text-green-600'
+                              : 'text-red-600'
                               }`}
                           >
                             {transaction.face_verification_success ? 'Verified' : 'Not Verified'}
@@ -510,7 +569,7 @@ export function Home() {
           )}
         </CardBody>
       </Card>
-    </div>
+    </div >
   );
 }
 
