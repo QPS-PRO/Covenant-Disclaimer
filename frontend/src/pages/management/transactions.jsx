@@ -1,4 +1,4 @@
-// frontend/src/pages/management/transactions.jsx (Complete Updated Version)
+// frontend/src/pages/management/transactions.jsx (Fixed Updated Version)
 import React, { useState, useEffect, useCallback } from "react";
 import {
     Card,
@@ -62,7 +62,6 @@ export function Transactions() {
         notes: "",
         face_verification_success: false,
         return_condition: "",
-        damage_notes: "",
     });
     const [formLoading, setFormLoading] = useState(false);
     const [verificationResult, setVerificationResult] = useState(null);
@@ -76,6 +75,15 @@ export function Transactions() {
         issue: "Assign",
         return: "Return",
     };
+
+    // Return condition options
+    const returnConditionOptions = [
+        { value: "excellent", label: "Excellent" },
+        { value: "good", label: "Good" },
+        { value: "fair", label: "Fair" },
+        { value: "poor", label: "Poor" },
+        { value: "damaged", label: "Damaged" },
+    ];
 
     // Initialize data
     useEffect(() => {
@@ -168,8 +176,8 @@ export function Transactions() {
         }
     };
 
-    // Face verification handlers with proper modal management
-    const handleFaceVerificationSuccess = useCallback((result) => {
+    // Face verification handlers with proper modal management (FIXED LOGIC)
+    const handleFaceVerificationSuccess = useCallback(async (result) => {
         console.log('Face verification success:', result);
 
         setVerificationResult(result);
@@ -264,9 +272,9 @@ export function Transactions() {
 
             await transactionAPI.create(transactionData);
 
-            // Reset form and close modal
+            // FIXED: Reset form, close modals, and refresh data
             resetForm();
-            setShowAddModal(false);
+            handleModalClose(); // This will close the add modal properly
             await fetchTransactions();
 
             // Show success message
@@ -314,7 +322,6 @@ export function Transactions() {
             notes: "",
             face_verification_success: false,
             return_condition: "",
-            damage_notes: "",
         });
         setVerificationResult(null);
         setCapturedFaceData(null);
@@ -345,7 +352,7 @@ export function Transactions() {
         resetForm();
     };
 
-    // Filter and search assets based on transaction type
+    // Filter and search assets based on transaction type with improved filtering
     const getFilteredAssets = () => {
         let filteredAssets;
 
@@ -370,7 +377,7 @@ export function Transactions() {
         return filteredAssets;
     };
 
-    // Filter and search employees based on selected asset for returns
+    // Filter and search employees based on selected asset for returns with improved filtering
     const getFilteredEmployees = () => {
         let filteredEmployees;
 
@@ -607,13 +614,6 @@ export function Transactions() {
 
                         {/* Searchable Asset Select */}
                         <div>
-                            <Input
-                                label="Search Assets..."
-                                value={assetSearchTerm}
-                                onChange={(e) => setAssetSearchTerm(e.target.value)}
-                                icon={<MagnifyingGlassIcon className="h-5 w-5" />}
-                                className="mb-2"
-                            />
                             <Select
                                 label={`Asset (${formData.transaction_type === 'issue' ? 'Available Only' : 'Assigned Only'})`}
                                 value={formData.asset ?? ""}
@@ -642,41 +642,66 @@ export function Transactions() {
                                         assets.find((as) => as.id.toString() === raw);
                                     if (!a) return "Select Asset";
 
-                                    let label = `${a.name} (${a.serial_number}) - ${a.department_name}`;
+                                    let label = `${a.name} (${a.serial_number})`;
                                     if (formData.transaction_type === "return" && a.current_holder) {
                                         const holder = employees.find((emp) => emp.id === a.current_holder);
-                                        label += ` - Currently with: ${holder?.name || "Unknown"}`;
+                                        label += ` - ${holder?.name || "Unknown"}`;
                                     }
                                     return label;
                                 }}
+                                menuProps={{
+                                    className: "max-h-48 overflow-y-auto"
+                                }}
                             >
+                                <Option
+                                    value="__search"
+                                    className="sticky top-0 z-10 bg-white cursor-default pointer-events-none"
+                                >
+                                    <div
+                                        className="p-2 border-b border-gray-200 pointer-events-auto"
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                    >
+                                        <Input
+                                            placeholder="Search assets..."
+                                            value={assetSearchTerm}
+                                            onChange={(e) => setAssetSearchTerm(e.target.value)}
+                                            icon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                                            size="sm"
+                                            className="!border-t-blue-gray-200 focus:!border-t-gray-900"
+                                            labelProps={{ className: "hidden" }}
+                                        />
+                                    </div>
+                                </Option>
+
                                 <Option value="">Select Asset</Option>
                                 {getFilteredAssets().map((asset) => (
                                     <Option key={asset.id} value={asset.id.toString()}>
-                                        {asset.name} ({asset.serial_number}) - {asset.department_name}
-                                        {formData.transaction_type === "return" && asset.current_holder && (
-                                            <> - Currently with: {employees.find((emp) => emp.id === asset.current_holder)?.name || "Unknown"}</>
-                                        )}
+                                        <div>
+                                            <div className="font-medium">
+                                                {asset.name} ({asset.serial_number})
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                {asset.department_name}
+                                                {formData.transaction_type === "return" && asset.current_holder && (
+                                                    <> • Currently with: {employees.find((emp) => emp.id === asset.current_holder)?.name || "Unknown"}</>
+                                                )}
+                                            </div>
+                                        </div>
                                     </Option>
                                 ))}
                             </Select>
                             <Typography variant="small" color="gray" className="mt-1">
                                 {formData.transaction_type === 'issue'
-                                    ? `Showing ${getFilteredAssets().length} available assets`
-                                    : `Showing ${getFilteredAssets().length} assigned assets`
+                                    ? `${getFilteredAssets().length} available assets found`
+                                    : `${getFilteredAssets().length} assigned assets found`
                                 }
                             </Typography>
                         </div>
 
                         {/* Searchable Employee Select */}
                         <div>
-                            <Input
-                                label="Search Employees..."
-                                value={employeeSearchTerm}
-                                onChange={(e) => setEmployeeSearchTerm(e.target.value)}
-                                icon={<MagnifyingGlassIcon className="h-5 w-5" />}
-                                className="mb-2"
-                            />
                             <Select
                                 label="Employee"
                                 value={formData.employee ?? ""}
@@ -704,21 +729,51 @@ export function Transactions() {
                                         employees.find((emp) => emp.id.toString() === raw);
                                     if (!e) return "Select Employee";
 
-                                    return `${e.name} (${e.employee_id}) - ${e.department_name}${e.has_face_data ? " 🔒" : " ⚠️"}`;
+                                    return `${e.name} (${e.employee_id}) ${e.has_face_data ? " 🔒" : " ⚠️"}`;
                                 }}
+                                menuProps={{ className: "max-h-48 overflow-y-auto" }}
                             >
+                                {/* SEARCH ROW (interactive, not selectable) */}
+                                <Option
+                                    value="__search"
+                                    className="sticky top-0 z-10 bg-white cursor-default pointer-events-none"
+                                >
+                                    <div
+                                        className="p-2 border-b border-gray-200 pointer-events-auto"
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                    >
+                                        <Input
+                                            placeholder="Search employees..."
+                                            value={employeeSearchTerm}
+                                            onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                                            icon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                                            size="sm"
+                                            className="!border-t-blue-gray-200 focus:!border-t-gray-900"
+                                            labelProps={{ className: "hidden" }}
+                                        />
+                                    </div>
+                                </Option>
+
                                 <Option value="">Select Employee</Option>
                                 {getFilteredEmployees().map((employee) => (
                                     <Option key={employee.id} value={employee.id.toString()}>
-                                        {employee.name} ({employee.employee_id}) - {employee.department_name}
-                                        {employee.has_face_data ? " 🔒" : " ⚠️"}
+                                        <div>
+                                            <div className="font-medium flex items-center gap-1">
+                                                {employee.name} ({employee.employee_id})
+                                                {employee.has_face_data ? " 🔒" : " ⚠️"}
+                                            </div>
+                                            <div className="text-xs text-gray-500">{employee.department_name}</div>
+                                        </div>
                                     </Option>
                                 ))}
                             </Select>
+
                             <Typography variant="small" color="gray" className="mt-1">
                                 {formData.transaction_type === 'return' && formData.asset
                                     ? "Showing employee currently assigned to this asset"
-                                    : `Showing ${getFilteredEmployees().length} active employees`
+                                    : `${getFilteredEmployees().length} active employees found`
                                 }
                             </Typography>
                         </div>
@@ -820,21 +875,45 @@ export function Transactions() {
                         />
 
                         {formData.transaction_type === "return" && (
-                            <>
-                                <Input
-                                    label="Return Condition"
-                                    name="return_condition"
-                                    value={formData.return_condition}
-                                    onChange={handleInputChange}
-                                    placeholder="e.g., Good, Fair, Damaged"
-                                />
-                                <Textarea
-                                    label="Damage Notes (if any)"
-                                    name="damage_notes"
-                                    value={formData.damage_notes}
-                                    onChange={handleInputChange}
-                                />
-                            </>
+                            <Select
+                                label="Return Condition"
+                                value={formData.return_condition ?? ""}
+                                onChange={(value) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        return_condition: value ?? "",
+                                    }))
+                                }
+                                required={formData.transaction_type === "return"}
+                                selected={(element) => {
+                                    // If MTW passes the selected <Option/>, show its children
+                                    if (React.isValidElement(element) && element.props?.children != null) {
+                                        return element.props.children;
+                                    }
+                                    // Fallback: map stored value -> label
+                                    const v =
+                                        typeof element === "string" || typeof element === "number"
+                                            ? String(element)
+                                            : formData.return_condition ?? "";
+                                    if (!v) return "Select Condition";
+                                    return (
+                                        returnConditionOptions.find((o) => o.value === v)?.label ||
+                                        "Select Condition"
+                                    );
+                                }}
+                            >
+                                {/* Make placeholder non-selectable to avoid “sticking” */}
+                                <Option value="" disabled>
+                                    Select Condition
+                                </Option>
+
+                                {returnConditionOptions.map((option) => (
+                                    <Option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </Option>
+                                ))}
+                            </Select>
+
                         )}
                     </DialogBody>
                     <DialogFooter>
@@ -966,7 +1045,7 @@ export function Transactions() {
                                 </Card>
                             </div>
 
-                            {(selectedTransaction.notes || selectedTransaction.return_condition || selectedTransaction.damage_notes) && (
+                            {(selectedTransaction.notes || selectedTransaction.return_condition) && (
                                 <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-orange-500 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
@@ -984,13 +1063,16 @@ export function Transactions() {
                                             {selectedTransaction.return_condition && (
                                                 <div className="flex justify-between">
                                                     <span className="font-semibold">Return Condition:</span>
-                                                    <span>{selectedTransaction.return_condition}</span>
-                                                </div>
-                                            )}
-                                            {selectedTransaction.damage_notes && (
-                                                <div>
-                                                    <span className="font-semibold">Damage Notes:</span>
-                                                    <p className="mt-1 text-sm text-gray-700">{selectedTransaction.damage_notes}</p>
+                                                    <Chip
+                                                        color={
+                                                            selectedTransaction.return_condition === "excellent" ? "green" :
+                                                                selectedTransaction.return_condition === "good" ? "blue" :
+                                                                    selectedTransaction.return_condition === "fair" ? "orange" :
+                                                                        selectedTransaction.return_condition === "poor" ? "amber" : "red"
+                                                        }
+                                                        value={selectedTransaction.return_condition.toUpperCase()}
+                                                        className="text-xs"
+                                                    />
                                                 </div>
                                             )}
                                         </div>

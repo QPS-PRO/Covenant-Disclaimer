@@ -23,12 +23,14 @@ import {
     EyeIcon,
     TrashIcon,
     MagnifyingGlassIcon,
+    ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-import { assetAPI, departmentAPI } from "@/lib/assetApi";
+import { assetAPI, departmentAPI, employeeAPI } from "@/lib/assetApi";
 
 export function Assets() {
     const [assets, setAssets] = useState([]);
     const [departments, setDepartments] = useState([]);
+    const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
@@ -47,6 +49,8 @@ export function Assets() {
         name: "",
         serial_number: "",
         department: "",
+        status: "available",
+        current_holder: "",
         description: "",
         purchase_date: "",
         purchase_cost: "",
@@ -74,7 +78,7 @@ export function Assets() {
     const initializeData = async () => {
         try {
             setLoading(true);
-            await Promise.all([fetchAssets(), fetchDepartments()]);
+            await Promise.all([fetchAssets(), fetchDepartments(), fetchEmployees()]);
         } finally {
             setLoading(false);
         }
@@ -105,6 +109,15 @@ export function Assets() {
         }
     };
 
+    const fetchEmployees = async () => {
+        try {
+            const response = await employeeAPI.getAll();
+            setEmployees(response.results || response);
+        } catch (err) {
+            console.error("Failed to fetch employees:", err);
+        }
+    };
+
     // Debounced search effect
     useEffect(() => {
         if (!mounted) return;
@@ -120,6 +133,15 @@ export function Assets() {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    const handleStatusChange = (value) => {
+        setFormData((prev) => ({
+            ...prev,
+            status: value,
+            // Clear current_holder if status is not 'assigned'
+            current_holder: value === 'assigned' ? prev.current_holder : ""
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setFormLoading(true);
@@ -130,6 +152,7 @@ export function Assets() {
                 ...formData,
                 purchase_cost: formData.purchase_cost ? parseFloat(formData.purchase_cost) : null,
                 purchase_date: formData.purchase_date || null,
+                current_holder: formData.current_holder || null,
             };
 
             if (selectedAsset && showEditModal) {
@@ -143,7 +166,24 @@ export function Assets() {
             resetForm();
             await fetchAssets();
         } catch (err) {
-            setError(err.message || "Failed to save asset");
+            console.error("Submit error:", err);
+            if (err.response?.data) {
+                if (typeof err.response.data === 'string') {
+                    setError(err.response.data);
+                } else if (err.response.data.error) {
+                    setError(err.response.data.error);
+                } else if (err.response.data.non_field_errors) {
+                    setError(err.response.data.non_field_errors[0]);
+                } else {
+                    // Handle field-specific errors
+                    const errorMessages = Object.entries(err.response.data)
+                        .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+                        .join('; ');
+                    setError(errorMessages);
+                }
+            } else {
+                setError(err.message || "Failed to save asset");
+            }
         } finally {
             setFormLoading(false);
         }
@@ -155,6 +195,8 @@ export function Assets() {
             name: asset.name || "",
             serial_number: asset.serial_number || "",
             department: asset.department?.toString() || "",
+            status: asset.status || "available",
+            current_holder: asset.current_holder?.toString() || "",
             description: asset.description || "",
             purchase_date: asset.purchase_date || "",
             purchase_cost: asset.purchase_cost || "",
@@ -176,7 +218,19 @@ export function Assets() {
             await fetchAssets();
         } catch (err) {
             console.error("Delete error:", err);
-            setError(err.message || "Failed to delete asset");
+
+            // Handle specific error responses from backend
+            if (err.response?.data) {
+                if (err.response.data.error) {
+                    setError(err.response.data.error);
+                } else if (typeof err.response.data === 'string') {
+                    setError(err.response.data);
+                } else {
+                    setError(JSON.stringify(err.response.data));
+                }
+            } else {
+                setError(err.message || "Failed to delete asset");
+            }
         } finally {
             setFormLoading(false);
         }
@@ -192,6 +246,8 @@ export function Assets() {
             name: "",
             serial_number: "",
             department: "",
+            status: "available",
+            current_holder: "",
             description: "",
             purchase_date: "",
             purchase_cost: "",
@@ -219,6 +275,12 @@ export function Assets() {
 
     const formatDate = (dateString) => {
         return dateString ? new Date(dateString).toLocaleDateString() : "N/A";
+    };
+
+    // Get employees for the selected department
+    const getDepartmentEmployees = () => {
+        if (!formData.department) return employees;
+        return employees.filter(emp => emp.department.toString() === formData.department);
     };
 
     if (loading) {
@@ -266,14 +328,12 @@ export function Assets() {
                         <div className="w-full lg:w-60">
                             <Select
                                 label="Filter by Department"
-                                value={selectedDepartment ?? ""} // keep it a string
+                                value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
                                 selected={(element) => {
-                                    // If the selected node is an <Option />, show its children (the dept name)
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
                                     }
-                                    // Fallback: derive from current state
                                     const raw = typeof element === "string" || typeof element === "number"
                                         ? String(element)
                                         : (selectedDepartment ?? "");
@@ -295,14 +355,12 @@ export function Assets() {
                         <div className="w-full lg:w-60">
                             <Select
                                 label="Filter by Status"
-                                value={selectedStatus ?? ""} // keep it a string
+                                value={selectedStatus ?? ""}
                                 onChange={(value) => setSelectedStatus(value ?? "")}
                                 selected={(element) => {
-                                    // If the selected node is an <Option />, show its children (the label)
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
                                     }
-                                    // Fallback: map value -> label from statusOptions
                                     const raw = typeof element === "string" || typeof element === "number"
                                         ? String(element)
                                         : (selectedStatus ?? "");
@@ -320,7 +378,6 @@ export function Assets() {
                             </Select>
                         </div>
                     </div>
-
 
                     {/* Table */}
                     <div className="overflow-x-scroll">
@@ -401,11 +458,13 @@ export function Assets() {
                                                     </IconButton>
                                                     <IconButton
                                                         variant="text"
-                                                        color="red"
+                                                        color={asset.can_be_deleted === false ? "gray" : "red"}
                                                         onClick={() => {
                                                             setSelectedAsset(asset);
                                                             setShowDeleteModal(true);
                                                         }}
+                                                        disabled={asset.can_be_deleted === false}
+                                                        className={asset.can_be_deleted === false ? "opacity-50 cursor-not-allowed" : ""}
                                                     >
                                                         <TrashIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -456,18 +515,78 @@ export function Assets() {
                             />
                         </div>
 
-                        <Select
-                            label="Department"
-                            value={formData.department}
-                            onChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
-                            required
-                        >
-                            {departments.map((dept) => (
-                                <Option key={dept.id} value={dept.id.toString()}>
-                                    {dept.name}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Select
+                                label="Department"
+                                value={formData.department}
+                                onChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
+                                required
+                            >
+                                {departments.map((dept) => (
+                                    <Option key={dept.id} value={dept.id.toString()}>
+                                        {dept.name}
+                                    </Option>
+                                ))}
+                            </Select>
+
+                            <Select
+                                label="Status"
+                                value={formData.status}
+                                onChange={handleStatusChange}
+                                required
+                            >
+                                {statusOptions.map((status) => (
+                                    <Option key={status.value} value={status.value}>
+                                        {status.label}
+                                    </Option>
+                                ))}
+                            </Select>
+                        </div>
+
+                        {/* Current Holder field - only show if status is 'assigned' */}
+                        {formData.status === 'assigned' && (
+                            <Select
+                                label="Current Holder"
+                                value={formData.current_holder ?? ""}                // keep it a string
+                                onChange={(value) =>
+                                    setFormData((prev) => ({ ...prev, current_holder: value ?? "" }))
+                                }
+                                required
+                                selected={(element) => {
+                                    // If MTW gives us the selected <Option/>, show its children
+                                    if (React.isValidElement(element) && element.props?.children != null) {
+                                        return element.props.children;
+                                    }
+
+                                    // Fallback: map the stored id -> "Name (EMPID)"
+                                    const id =
+                                        typeof element === "string" || typeof element === "number"
+                                            ? String(element)
+                                            : formData.current_holder ?? "";
+
+                                    if (!id) return "Select Employee";
+
+                                    const e =
+                                        (getDepartmentEmployees?.() || []).find((emp) => emp.id.toString() === id) ||
+                                        (employees || []).find((emp) => emp.id.toString() === id); // extra fallback
+
+                                    return e ? `${e.name} (${e.employee_id})` : "Select Employee";
+                                }}
+                                menuProps={{ className: "max-h-48 overflow-y-auto" }}
+                            >
+                                {/* Make placeholder non-selectable */}
+                                <Option value="" disabled>
+                                    Select Employee
                                 </Option>
-                            ))}
-                        </Select>
+
+                                {getDepartmentEmployees().map((employee) => (
+                                    <Option key={employee.id} value={employee.id.toString()}>
+                                        {employee.name} ({employee.employee_id})
+                                    </Option>
+                                ))}
+                            </Select>
+
+                        )}
 
                         <Textarea
                             label="Description"
@@ -608,38 +727,90 @@ export function Assets() {
                 )}
             </Dialog>
 
-
             {/* Delete Confirmation Modal */}
             <Dialog open={showDeleteModal} handler={() => setShowDeleteModal(false)} size="sm">
-                <DialogHeader>Confirm Delete</DialogHeader>
+                <DialogHeader className="flex items-center gap-2">
+                    <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
+                    Confirm Delete
+                </DialogHeader>
                 <DialogBody>
                     {error && (
                         <Alert color="red" className="mb-4">
                             {error}
                         </Alert>
                     )}
-                    Are you sure you want to delete this asset? This action cannot be undone.
-                    {selectedAsset && (
-                        <div className="mt-2 p-2 bg-gray-100 rounded">
-                            <Typography variant="small" className="font-semibold">
-                                {selectedAsset.name}
+
+                    {selectedAsset?.can_be_deleted === false ? (
+                        <div className="space-y-4">
+                            <Alert color="amber" className="flex items-center gap-2">
+                                <ExclamationTriangleIcon className="h-5 w-5" />
+                                <Typography variant="small">
+                                    This asset cannot be deleted because it is currently assigned to an employee.
+                                </Typography>
+                            </Alert>
+
+                            {selectedAsset && (
+                                <div className="p-4 bg-gray-50 rounded-lg">
+                                    <Typography variant="small" className="font-semibold text-gray-800 mb-2">
+                                        Asset Details:
+                                    </Typography>
+                                    <div className="space-y-1 text-sm text-gray-600">
+                                        <div><strong>Name:</strong> {selectedAsset.name}</div>
+                                        <div><strong>Serial:</strong> {selectedAsset.serial_number}</div>
+                                        <div><strong>Status:</strong> {selectedAsset.status?.toUpperCase()}</div>
+                                        <div><strong>Assigned to:</strong> {selectedAsset.current_holder_name}</div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <Typography variant="small" className="text-gray-700">
+                                To delete this asset, please return it first by creating a return transaction.
                             </Typography>
-                            <Typography variant="small" className="text-gray-600">
-                                Serial: {selectedAsset.serial_number}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <Typography variant="paragraph">
+                                Are you sure you want to delete this asset? This action cannot be undone.
                             </Typography>
+
+                            {selectedAsset && (
+                                <div className="p-3 bg-gray-100 rounded-lg">
+                                    <Typography variant="small" className="font-semibold text-gray-800">
+                                        {selectedAsset.name}
+                                    </Typography>
+                                    <Typography variant="small" className="text-gray-600">
+                                        Serial: {selectedAsset.serial_number}
+                                    </Typography>
+                                    <Typography variant="small" className="text-gray-600">
+                                        Status: {selectedAsset.status?.toUpperCase()}
+                                    </Typography>
+                                </div>
+                            )}
                         </div>
                     )}
                 </DialogBody>
                 <DialogFooter>
-                    <Button variant="text" color="gray" onClick={() => {
-                        setShowDeleteModal(false);
-                        setError("");
-                    }} className="mr-1">
-                        Cancel
+                    <Button
+                        variant="text"
+                        color="gray"
+                        onClick={() => {
+                            setShowDeleteModal(false);
+                            setError("");
+                        }}
+                        className="mr-1"
+                    >
+                        {selectedAsset?.can_be_deleted === false ? "Close" : "Cancel"}
                     </Button>
-                    <Button color="red" onClick={handleDelete} loading={formLoading}>
-                        Delete Asset
-                    </Button>
+
+                    {selectedAsset?.can_be_deleted !== false && (
+                        <Button
+                            color="red"
+                            onClick={handleDelete}
+                            loading={formLoading}
+                        >
+                            Delete Asset
+                        </Button>
+                    )}
                 </DialogFooter>
             </Dialog>
         </div>

@@ -18,9 +18,9 @@ export function Dashboard() {
       <Sidenav
         routes={routes}
         brandName="Qurtubah Schools"
-        brandImg={
-          sidenavType === "dark" ? "/img/qurtubah_logo.png" : "/img/qurtubah_logo.png"
-        }
+        // brandImg={
+        //   sidenavType === "dark" ? "/img/qurtubah_logo.png" : "/img/qurtubah_logo.png"
+        // }
 
       />
       <div className="p-4 xl:ml-80">

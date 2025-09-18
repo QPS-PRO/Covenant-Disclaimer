@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -18,7 +19,6 @@ class Department(models.Model):
 
     def __str__(self):
         return self.name
-
     class Meta:
         ordering = ['name']
 
@@ -81,6 +81,34 @@ class Asset(models.Model):
     def __str__(self):
         return f"{self.name} ({self.serial_number})"
 
+    def clean(self):
+        """Custom validation for asset status"""
+        super().clean()
+        # If status is being changed to 'assigned', ensure current_holder is set
+        if self.status == 'assigned' and not self.current_holder:
+            raise ValidationError('Asset marked as assigned must have a current holder.')
+        # If status is not 'assigned', ensure current_holder is not set
+        elif self.status != 'assigned' and self.current_holder:
+            raise ValidationError('Asset not marked as assigned cannot have a current holder.')
+
+    def delete(self, *args, **kwargs):
+        """Prevent deletion if asset is currently assigned to an employee"""
+        if self.status == 'assigned' and self.current_holder:
+            raise ValidationError(
+                f'Cannot delete asset "{self.name}" - it is currently assigned to {self.current_holder.name}. '
+                f'Please return the asset first before deleting.'
+            )
+        super().delete(*args, **kwargs)
+
+    def can_be_deleted(self):
+        """Check if asset can be deleted"""
+        return not (self.status == 'assigned' and self.current_holder)
+
+    @property
+    def is_assigned(self):
+        """Check if asset is currently assigned"""
+        return self.status == 'assigned' and self.current_holder is not None
+
     class Meta:
         ordering = ['name', 'serial_number']
 
@@ -112,7 +140,6 @@ class AssetTransaction(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
 
     def __str__(self):
         return f"{self.transaction_type.title()} - {self.asset.name} - {self.employee.name}"

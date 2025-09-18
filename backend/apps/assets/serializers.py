@@ -1,6 +1,7 @@
 # backend/apps/assets/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from .models import Department, Employee, Asset, AssetTransaction
 import json
 from .face_recognition_service import verify_employee_face
@@ -134,6 +135,7 @@ class AssetSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
     current_holder_name = serializers.CharField(source='current_holder.name', read_only=True)
     current_holder_employee_id = serializers.CharField(source='current_holder.employee_id', read_only=True)
+    can_be_deleted = serializers.SerializerMethodField()
 
     class Meta:
         model = Asset
@@ -141,9 +143,32 @@ class AssetSerializer(serializers.ModelSerializer):
             'id', 'name', 'serial_number', 'department', 'department_name',
             'status', 'description', 'purchase_date', 'purchase_cost',
             'current_holder', 'current_holder_name', 'current_holder_employee_id',
-            'created_at', 'updated_at'
+            'can_be_deleted', 'created_at', 'updated_at'
         )
-        read_only_fields = ('current_holder', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'can_be_deleted')
+
+    def get_can_be_deleted(self, obj):
+        """Check if asset can be deleted"""
+        return obj.can_be_deleted()
+
+    def validate(self, data):
+        """Custom validation for asset data"""
+        status = data.get('status')
+        current_holder = data.get('current_holder')
+        
+        # If we're updating an existing instance, get current values
+        if self.instance:
+            status = status if status is not None else self.instance.status
+            current_holder = current_holder if current_holder is not None else self.instance.current_holder
+
+        # Validate status and current_holder relationship
+        if status == 'assigned' and not current_holder:
+            raise serializers.ValidationError('Asset marked as assigned must have a current holder.')
+        elif status != 'assigned' and current_holder:
+            # If status is not assigned but holder is provided, clear the holder
+            data['current_holder'] = None
+
+        return data
 
 class AssetTransactionCreateSerializer(serializers.ModelSerializer):
     face_verification_data = serializers.CharField(write_only=True, required=False)

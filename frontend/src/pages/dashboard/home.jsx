@@ -71,7 +71,7 @@ export function Home() {
         value: "+3%",
         label: "than last month",
       },
-      to: "/departments",
+      to: "/dashboard/departments",
     },
     {
       color: "green",
@@ -83,7 +83,7 @@ export function Home() {
         value: "+5%",
         label: "than last month",
       },
-      to: "/assets",
+      to: "/dashboard/assets",
     },
     {
       color: "pink",
@@ -95,7 +95,7 @@ export function Home() {
         value: "+2%",
         label: "than last month",
       },
-      to: "/employees",
+      to: "/dashboard/employees",
     },
     {
       color: "orange",
@@ -107,7 +107,7 @@ export function Home() {
         value: "+12%",
         label: "than last week",
       },
-      to: "/transactions",
+      to: "/dashboard/transactions",
     },
   ];
 

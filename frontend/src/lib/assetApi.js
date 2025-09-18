@@ -1,9 +1,12 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from './api';
 import cameraManager from './cameraManager';
 
-// Department API
+// Department API 
 export const departmentAPI = {
-    getAll: () => apiGet('/api/departments/'),
+    getAll: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiGet(`/api/departments/${queryString ? `?${queryString}` : ""}`);
+    },
     getById: (id) => apiGet(`/api/departments/${id}/`),
     create: (data) => apiPost('/api/departments/', data),
     update: (id, data) => apiPatch(`/api/departments/${id}/`, data),

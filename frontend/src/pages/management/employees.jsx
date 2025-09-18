@@ -162,7 +162,12 @@ export function Employees() {
     const handleView = async (employee) => {
         try {
             const response = await employeeAPI.getProfile(employee.id);
-            setSelectedEmployee(response.employee);
+            setSelectedEmployee({
+                ...response.employee,
+                stats: response.stats,
+                transaction_history: response.transaction_history,
+                current_assets: response.current_assets,
+            });
             setShowViewModal(true);
         } catch (err) {
             setError("Failed to fetch employee details");
@@ -786,11 +791,7 @@ export function Employees() {
                             {/* Statistics (unchanged) */}
                             {selectedEmployee.stats && (
                                 <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
-                                    <CardHeader
-                                        floated={false}
-                                        shadow={false}
-                                        className="bg-orange-500 px-5 py-3"
-                                    >
+                                    <CardHeader floated={false} shadow={false} className="bg-orange-500 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
                                             Activity Statistics
                                         </Typography>
@@ -803,31 +804,38 @@ export function Employees() {
                                                 </Typography>
                                                 <Typography variant="small" color="gray">Current Assets</Typography>
                                             </div>
+
                                             <div className="text-center">
                                                 <Typography variant="h4" color="green">
                                                     {selectedEmployee.stats.total_transactions}
                                                 </Typography>
                                                 <Typography variant="small" color="gray">Total Transactions</Typography>
                                             </div>
+
+                                            {/* ✅ Assigns */}
                                             <div className="text-center">
-                                                <Typography variant="h4" color="orange">
-                                                    {selectedEmployee.stats.face_verified_transactions}
+                                                <Typography variant="h4" color="blue">
+                                                    {selectedEmployee.stats.transactions_by_type?.assign
+                                                        ?? selectedEmployee.stats.total_issues
+                                                        ?? 0}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">Verified Transactions</Typography>
+                                                <Typography variant="small" color="gray">Assigns</Typography>
                                             </div>
+
+                                            {/* ✅ Returns */}
                                             <div className="text-center">
-                                                <Typography variant="h4" color="purple">
-                                                    {Math.round(
-                                                        (selectedEmployee.stats.face_verified_transactions /
-                                                            selectedEmployee.stats.total_transactions) * 100
-                                                    ) || 0}%
+                                                <Typography variant="h4" color="blue">
+                                                    {selectedEmployee.stats.transactions_by_type?.return
+                                                        ?? selectedEmployee.stats.total_returns
+                                                        ?? 0}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">Verification Rate</Typography>
+                                                <Typography variant="small" color="gray">Returns</Typography>
                                             </div>
                                         </div>
                                     </CardBody>
                                 </Card>
                             )}
+
                         </DialogBody>
 
                         <DialogFooter>
