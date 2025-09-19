@@ -249,45 +249,43 @@ export function Home() {
       }]
     },
   };
+  // Build display series (optional: normalize names like you did elsewhere)
+  const rawMonthlySeries = chartData?.monthlyChart?.series || [{ name: "No data", data: [0] }];
+  const monthlySeriesDisplay = rawMonthlySeries.map(s => ({ ...s, name: s.name }));
+
+  // Find the largest y value across all series
+  const monthlyMax = Math.max(0, ...monthlySeriesDisplay.flatMap(s => s.data ?? []));
+
+  // Make sure the axis max is an integer >= 1
+  const yMaxMonthly = Math.max(1, Math.ceil(monthlyMax));
 
   const yearlyTrendsChart = {
     type: "line",
     height: 280,
-    series: chartData?.monthlyChart?.series || [{ name: "No data", data: [0] }],
+    series: monthlySeriesDisplay,
     options: {
       chart: { toolbar: { show: false } },
       title: { show: false },
       dataLabels: { enabled: false },
       colors: ["#1e40af", "#f59e0b"],
-      stroke: {
-        lineCap: "round",
-        curve: "smooth",
-        width: 3,
-      },
-      markers: {
-        size: 4,
-      },
+      stroke: { lineCap: "round", curve: "smooth", width: 3 },
+      markers: { size: 4 },
       xaxis: {
         categories: chartData?.monthlyChart?.categories || ["No data"],
         axisTicks: { show: false },
         axisBorder: { show: false },
         labels: {
-          style: {
-            colors: "#616161",
-            fontSize: "12px",
-            fontFamily: "inherit",
-            fontWeight: 400,
-          },
+          style: { colors: "#616161", fontSize: "12px", fontFamily: "inherit", fontWeight: 400 },
         },
       },
+      // ✅ Integer-only y-axis (like your weekly chart)
       yaxis: {
+        min: 0,
+        max: yMaxMonthly,            // top at an integer
+        tickAmount: yMaxMonthly,     // one tick per integer: 0..max
         labels: {
-          style: {
-            colors: "#616161",
-            fontSize: "12px",
-            fontFamily: "inherit",
-            fontWeight: 400,
-          },
+          formatter: (val) => `${Math.round(val)}`, // display integers only
+          style: { colors: "#616161", fontSize: "12px", fontFamily: "inherit", fontWeight: 400 },
         },
       },
       grid: {
@@ -298,9 +296,13 @@ export function Home() {
         padding: { top: 5, right: 20 },
       },
       fill: { opacity: 0.8 },
-      tooltip: { theme: "dark" },
+      tooltip: {
+        theme: "dark",
+        y: { formatter: (val) => `${Math.round(val)}` }, // tooltips as integers too
+      },
     },
   };
+
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);

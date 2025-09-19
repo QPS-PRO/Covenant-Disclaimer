@@ -1,24 +1,41 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from './api';
 import cameraManager from './cameraManager';
 
-// Department API 
+// Department API with pagination
 export const departmentAPI = {
+    // Paginated list with search and filters
     getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/departments/${queryString ? `?${queryString}` : ""}`);
     },
+    
+    // Get all departments for dropdowns (no pagination)
+    getAllForDropdown: (search = '') => {
+        const params = search ? { search } : {};
+        const queryString = new URLSearchParams(params).toString();
+        return apiGet(`/api/departments/all/${queryString ? `?${queryString}` : ""}`);
+    },
+    
     getById: (id) => apiGet(`/api/departments/${id}/`),
     create: (data) => apiPost('/api/departments/', data),
     update: (id, data) => apiPatch(`/api/departments/${id}/`, data),
     delete: (id) => apiDelete(`/api/departments/${id}/`),
 };
 
-// Employee API
+// Employee API with pagination
 export const employeeAPI = {
+    // Paginated list with search and filters
     getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/employees/${queryString ? `?${queryString}` : ''}`);
     },
+    
+    // Get all employees for dropdowns (no pagination)
+    getAllForDropdown: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiGet(`/api/employees/all/${queryString ? `?${queryString}` : ''}`);
+    },
+    
     getById: (id) => apiGet(`/api/employees/${id}/`),
     getProfile: (id) => apiGet(`/api/employees/${id}/profile/`),
     create: (data) => apiPost('/api/employees/', data),
@@ -38,32 +55,44 @@ export const employeeAPI = {
     }),
 };
 
-// Asset API
+// Asset API with pagination
 export const assetAPI = {
+    // Paginated list with search and filters
     getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/assets/${queryString ? `?${queryString}` : ''}`);
     },
+    
+    // Get all assets for dropdowns (no pagination)
+    getAllForDropdown: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiGet(`/api/assets/all/${queryString ? `?${queryString}` : ''}`);
+    },
+    
     getById: (id) => apiGet(`/api/assets/${id}/`),
     create: (data) => apiPost('/api/assets/', data),
     update: (id, data) => apiPatch(`/api/assets/${id}/`, data),
     delete: (id) => apiDelete(`/api/assets/${id}/`),
 };
 
-// Transaction API
+// Transaction API with pagination
 export const transactionAPI = {
+    // Paginated list with search and filters
     getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/transactions/${queryString ? `?${queryString}` : ''}`);
     },
+    
     getById: (id) => apiGet(`/api/transactions/${id}/`),
     create: (data) => apiPost('/api/transactions/', data),
+    
     // Face verification for transactions
     createWithFaceVerification: (data, faceData) => apiPost('/api/transactions/', {
         ...data,
         face_verification_data: faceData
     }),
-    // Get recent transactions for dashboard
+    
+    // Get recent transactions for dashboard (limited, no pagination)
     getRecent: (limit = 10) => apiGet(`/api/transactions/?ordering=-transaction_date&limit=${limit}`),
 };
 
@@ -242,6 +271,66 @@ export const cameraUtils = {
     // Check if a stream is active
     isStreamActive: () => {
         return cameraManager.isStreamActive();
+    }
+};
+
+// Pagination utilities
+export const paginationUtils = {
+    // Build pagination parameters
+    buildPaginationParams: (page = 1, pageSize = 20, search = '', filters = {}) => {
+        const params = {
+            page,
+            page_size: pageSize,
+            ...filters
+        };
+        
+        if (search) {
+            params.search = search;
+        }
+        
+        return params;
+    },
+    
+    // Extract pagination info from response
+    extractPaginationInfo: (response) => ({
+        count: response.count || 0,
+        next: response.next,
+        previous: response.previous,
+        totalPages: response.total_pages || 0,
+        currentPage: response.current_page || 1,
+        pageSize: response.page_size || 20,
+        hasNext: !!response.next,
+        hasPrevious: !!response.previous,
+        results: response.results || []
+    }),
+    
+    // Calculate page range for pagination display
+    calculatePageRange: (currentPage, totalPages, maxVisible = 5) => {
+        const half = Math.floor(maxVisible / 2);
+        let start = Math.max(1, currentPage - half);
+        let end = Math.min(totalPages, start + maxVisible - 1);
+        
+        // Adjust start if we're near the end
+        if (end - start + 1 < maxVisible) {
+            start = Math.max(1, end - maxVisible + 1);
+        }
+        
+        const pages = [];
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+        
+        return pages;
+    },
+    
+    // Get next page number
+    getNextPage: (currentPage, totalPages) => {
+        return currentPage < totalPages ? currentPage + 1 : null;
+    },
+    
+    // Get previous page number
+    getPreviousPage: (currentPage) => {
+        return currentPage > 1 ? currentPage - 1 : null;
     }
 };
 

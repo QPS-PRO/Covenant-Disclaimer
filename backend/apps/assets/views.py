@@ -1,8 +1,9 @@
-# backend/apps/assets/views.py
+# backend/apps/assets/views.py - Updated with Pagination
 from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
@@ -29,10 +30,31 @@ from .face_recognition_service import (
 )
 
 
+# Custom pagination class
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        return Response(
+            {
+                "count": self.page.paginator.count,
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+                "total_pages": self.page.paginator.num_pages,
+                "current_page": self.page.number,
+                "page_size": self.page_size,
+                "results": data,
+            }
+        )
+
+
 class DepartmentListCreateView(generics.ListCreateAPIView):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "manager__first_name", "manager__last_name"]
     ordering_fields = ["name", "created_at"]
@@ -50,6 +72,7 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
         is_active=True
     )
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -92,6 +115,7 @@ class AssetListCreateView(generics.ListCreateAPIView):
     queryset = Asset.objects.select_related("department", "current_holder__user")
     serializer_class = AssetSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -197,6 +221,7 @@ class AssetTransactionListCreateView(generics.ListCreateAPIView):
         "asset__department", "employee__user", "processed_by"
     )
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -227,6 +252,102 @@ class AssetTransactionDetailView(generics.RetrieveAPIView):
     )
     serializer_class = AssetTransactionSerializer
     permission_classes = [IsAuthenticated]
+
+
+# Add new API endpoints for unpaginated data when needed
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def employees_list_all_view(request):
+    """Get all employees without pagination - for dropdowns"""
+    try:
+        employees = Employee.objects.select_related("user", "department").filter(
+            is_active=True
+        )
+
+        # Apply filters if provided
+        department = request.GET.get("department")
+        search = request.GET.get("search")
+
+        if department:
+            employees = employees.filter(department_id=department)
+
+        if search:
+            employees = employees.filter(
+                Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+                | Q(employee_id__icontains=search)
+                | Q(user__email__icontains=search)
+            )
+
+        serializer = EmployeeSerializer(
+            employees[:100], many=True
+        )  # Limit to 100 for performance
+        return Response(serializer.data)
+    except Exception as e:
+        return Response(
+            {"error": "Failed to fetch employees", "detail": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def assets_list_all_view(request):
+    """Get all assets without pagination - for dropdowns"""
+    try:
+        assets = Asset.objects.select_related("department", "current_holder__user")
+
+        # Apply filters if provided
+        department = request.GET.get("department")
+        status_filter = request.GET.get("status")
+        search = request.GET.get("search")
+
+        if department:
+            assets = assets.filter(department_id=department)
+
+        if status_filter:
+            assets = assets.filter(status=status_filter)
+
+        if search:
+            assets = assets.filter(
+                Q(name__icontains=search)
+                | Q(serial_number__icontains=search)
+                | Q(description__icontains=search)
+            )
+
+        serializer = AssetSerializer(
+            assets[:100], many=True
+        )  # Limit to 100 for performance
+        return Response(serializer.data)
+    except Exception as e:
+        return Response(
+            {"error": "Failed to fetch assets", "detail": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def departments_list_all_view(request):
+    """Get all departments without pagination - for dropdowns"""
+    try:
+        departments = Department.objects.all()
+
+        search = request.GET.get("search")
+        if search:
+            departments = departments.filter(
+                Q(name__icontains=search)
+                | Q(manager__first_name__icontains=search)
+                | Q(manager__last_name__icontains=search)
+            )
+
+        serializer = DepartmentSerializer(departments, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response(
+            {"error": "Failed to fetch departments", "detail": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(["GET"])
@@ -458,10 +579,12 @@ def dashboard_charts_data_view(request):
             weekly_data.append(daily_data)
 
         # FIXED: Department assets chart with proper asset counts
-        dept_data = Department.objects.annotate(
-            asset_count=Count('assets', distinct=True)
-        ).values('name', 'asset_count').filter(asset_count__gt=0).order_by('name')
-
+        dept_data = (
+            Department.objects.annotate(asset_count=Count("assets", distinct=True))
+            .values("name", "asset_count")
+            .filter(asset_count__gt=0)
+            .order_by("name")
+        )
 
         department_chart_data = {
             "labels": [dept["name"] for dept in dept_data],
@@ -500,13 +623,14 @@ def employee_profile_view(request, employee_id):
         )
         transaction_data = AssetTransactionSerializer(transactions, many=True).data
 
-        current_assets = Asset.objects.filter(current_holder=employee).select_related("department")
+        current_assets = Asset.objects.filter(current_holder=employee).select_related(
+            "department"
+        )
         current_assets_data = AssetSerializer(current_assets, many=True).data
 
         # ✅ عدّ مجمّع حسب النوع مرة واحدة
         grouped = (
-            AssetTransaction.objects
-            .filter(employee=employee)
+            AssetTransaction.objects.filter(employee=employee)
             .values("transaction_type")
             .annotate(total=Count("id"))
         )
@@ -520,30 +644,37 @@ def employee_profile_view(request, employee_id):
             employee=employee, face_verification_success=True
         ).count()
 
-        return Response({
-            "employee": employee_data,
-            "current_assets": current_assets_data,
-            "transaction_history": transaction_data,
-            "stats": {
-                "total_transactions": by_type["issue"] + by_type["return"],
-                "current_assets_count": current_assets.count(),
-                "face_verified_transactions": face_verified_transactions,
-                # ✅ الأرقام اللي انت عايزها
-                "transactions_by_type": {
-                    "assign": by_type["issue"],   # assign = issue
-                    "return": by_type["return"],
+        return Response(
+            {
+                "employee": employee_data,
+                "current_assets": current_assets_data,
+                "transaction_history": transaction_data,
+                "stats": {
+                    "total_transactions": by_type["issue"] + by_type["return"],
+                    "current_assets_count": current_assets.count(),
+                    "face_verified_transactions": face_verified_transactions,
+                    # ✅ الأرقام اللي انت عايزها
+                    "transactions_by_type": {
+                        "assign": by_type["issue"],  # assign = issue
+                        "return": by_type["return"],
+                    },
+                    # (اختياري) عشان التوافق الخلفي لو في كود قديم بيعتمد عليهم
+                    "total_issues": by_type["issue"],
+                    "total_returns": by_type["return"],
+                    "has_face_data": bool(employee.face_recognition_data),
                 },
-                # (اختياري) عشان التوافق الخلفي لو في كود قديم بيعتمد عليهم
-                "total_issues": by_type["issue"],
-                "total_returns": by_type["return"],
-                "has_face_data": bool(employee.face_recognition_data),
-            },
-        })
+            }
+        )
     except Employee.DoesNotExist:
-        return Response({"error": "Employee not found or inactive"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Employee not found or inactive"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
     except Exception as e:
-        return Response({"error": f"Internal server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        return Response(
+            {"error": f"Internal server error: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 @api_view(["POST"])
