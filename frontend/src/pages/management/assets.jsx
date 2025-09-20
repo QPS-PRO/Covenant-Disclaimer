@@ -37,6 +37,12 @@ export function Assets() {
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("");
 
+    // pagination state
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [pageSize, setPageSize] = useState(Number(import.meta.env.VITE_PAGE_SIZE || 15));
+    const [totalCount, setTotalCount] = useState(0);
+
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -86,19 +92,48 @@ export function Assets() {
 
     const fetchAssets = async () => {
         try {
-            const params = {};
+            const params = { page, page_size: pageSize };
             if (selectedDepartment) params.department = selectedDepartment;
             if (selectedStatus) params.status = selectedStatus;
             if (searchTerm) params.search = searchTerm;
 
             const response = await assetAPI.getAll(params);
-            setAssets(response.results || response);
+            const dataArray = Array.isArray(response) ? response : (response.results || []);
+            setAssets(dataArray);
+
+            setTotalPages(Number(response?.total_pages || 1));
+            setTotalCount(Number(response?.count || dataArray.length));
+            setPage(Number(response?.current_page || 1));
+            setError("");
         } catch (err) {
             if (!mounted) return;
+            const status = err?.response?.status ?? err?.status;
+
+            if (status === 404 && page > 1) {
+                try {
+                    const fallback = await assetAPI.getAll({
+                        page: 1,
+                        page_size: pageSize,
+                        ...(selectedDepartment ? { department: selectedDepartment } : {}),
+                        ...(selectedStatus ? { status: selectedStatus } : {}),
+                        ...(searchTerm ? { search: searchTerm } : {}),
+                    });
+                    const dataArray = Array.isArray(fallback) ? fallback : (fallback.results || []);
+                    setAssets(dataArray);
+                    setTotalPages(Number(fallback?.total_pages || 1));
+                    setTotalCount(Number(fallback?.count || dataArray.length));
+                    setPage(Number(fallback?.current_page || 1));
+                    setError(""); 
+                    return;
+                } catch (e2) {
+                }
+            }
+
             setError("Failed to fetch assets");
             console.error(err);
         }
     };
+
 
     const fetchDepartments = async () => {
         try {
@@ -118,15 +153,26 @@ export function Assets() {
         }
     };
 
-    // Debounced search effect
     useEffect(() => {
         if (!mounted) return;
 
         const timer = setTimeout(() => {
-            fetchAssets();
+            if (page !== 1) {
+                setPage(1);      
+            } else {
+                fetchAssets();   
+            }
         }, 300);
+
         return () => clearTimeout(timer);
     }, [searchTerm, selectedDepartment, selectedStatus, mounted]);
+
+
+    useEffect(() => {
+        if (!mounted) return;
+        fetchAssets();
+    }, [page]);
+
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -137,8 +183,7 @@ export function Assets() {
         setFormData((prev) => ({
             ...prev,
             status: value,
-            // Clear current_holder if status is not 'assigned'
-            current_holder: value === 'assigned' ? prev.current_holder : ""
+            current_holder: value === "assigned" ? prev.current_holder : "",
         }));
     };
 
@@ -164,21 +209,21 @@ export function Assets() {
             }
 
             resetForm();
+            setPage(1);
             await fetchAssets();
         } catch (err) {
             console.error("Submit error:", err);
             if (err.response?.data) {
-                if (typeof err.response.data === 'string') {
+                if (typeof err.response.data === "string") {
                     setError(err.response.data);
                 } else if (err.response.data.error) {
                     setError(err.response.data.error);
                 } else if (err.response.data.non_field_errors) {
                     setError(err.response.data.non_field_errors[0]);
                 } else {
-                    // Handle field-specific errors
                     const errorMessages = Object.entries(err.response.data)
-                        .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-                        .join('; ');
+                        .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`)
+                        .join("; ");
                     setError(errorMessages);
                 }
             } else {
@@ -206,7 +251,6 @@ export function Assets() {
 
     const handleDelete = async () => {
         if (!selectedAsset) return;
-
         setFormLoading(true);
         setError("");
 
@@ -214,20 +258,14 @@ export function Assets() {
             await assetAPI.delete(selectedAsset.id);
             setShowDeleteModal(false);
             setSelectedAsset(null);
-            setError("");
             await fetchAssets();
+            if (assets.length === 1 && page > 1) setPage((p) => Math.max(1, p - 1));
         } catch (err) {
             console.error("Delete error:", err);
-
-            // Handle specific error responses from backend
             if (err.response?.data) {
-                if (err.response.data.error) {
-                    setError(err.response.data.error);
-                } else if (typeof err.response.data === 'string') {
-                    setError(err.response.data);
-                } else {
-                    setError(JSON.stringify(err.response.data));
-                }
+                if (err.response.data.error) setError(err.response.data.error);
+                else if (typeof err.response.data === "string") setError(err.response.data);
+                else setError(JSON.stringify(err.response.data));
             } else {
                 setError(err.message || "Failed to delete asset");
             }
@@ -265,23 +303,27 @@ export function Assets() {
     };
 
     const getStatusColor = (status) => {
-        const statusOption = statusOptions.find(opt => opt.value === status);
+        const statusOption = statusOptions.find((opt) => opt.value === status);
         return statusOption ? statusOption.color : "gray";
     };
 
-    const formatCurrency = (amount) => {
-        return amount ? `$${parseFloat(amount).toLocaleString()}` : "N/A";
-    };
+    const formatCurrency = (amount) => (amount ? `$${parseFloat(amount).toLocaleString()}` : "N/A");
+    const formatDate = (dateString) => (dateString ? new Date(dateString).toLocaleDateString() : "N/A");
 
-    const formatDate = (dateString) => {
-        return dateString ? new Date(dateString).toLocaleDateString() : "N/A";
-    };
-
-    // Get employees for the selected department
     const getDepartmentEmployees = () => {
         if (!formData.department) return employees;
-        return employees.filter(emp => emp.department.toString() === formData.department);
+        return employees.filter((emp) => emp.department.toString() === formData.department);
     };
+
+    // pagination helpers
+    const canPrev = page > 1;
+    const canNext = page < totalPages;
+    const goFirst = () => canPrev && setPage(1);
+    const goPrev = () => canPrev && setPage((p) => p - 1);
+    const goNext = () => canNext && setPage((p) => p + 1);
+    const goLast = () => canNext && setPage(totalPages);
+    const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+    const rangeEnd = Math.min(page * pageSize, totalCount);
 
     if (loading) {
         return (
@@ -484,6 +526,21 @@ export function Assets() {
                             </Typography>
                         </div>
                     )}
+                    {/* pager */}
+                    <div className="flex items-center justify-between px-6 py-4 text-sm text-blue-gray-600">
+                        <span>
+                            Showing <b>{rangeStart}</b>–<b>{rangeEnd}</b> of <b>{totalCount}</b>
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button variant="text" size="sm" onClick={() => setPage(1)} disabled={!canPrev}>First</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!canPrev}>Prev</Button>
+                            <span className="px-2">
+                                Page <b>{page}</b> of <b>{totalPages}</b>
+                            </span>
+                            <Button variant="text" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={!canNext}>Next</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage(totalPages)} disabled={!canNext}>Last</Button>
+                        </div>
+                    </div>
                 </CardBody>
             </Card>
 

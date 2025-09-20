@@ -1,4 +1,4 @@
-# backend/apps/assets/views.py - Updated with Pagination
+# backend/apps/assets/views.py
 from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -28,33 +28,12 @@ from .face_recognition_service import (
     process_employee_face_registration,
     verify_employee_face,
 )
-
-
-# Custom pagination class
-class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = "page_size"
-    max_page_size = 100
-
-    def get_paginated_response(self, data):
-        return Response(
-            {
-                "count": self.page.paginator.count,
-                "next": self.get_next_link(),
-                "previous": self.get_previous_link(),
-                "total_pages": self.page.paginator.num_pages,
-                "current_page": self.page.number,
-                "page_size": self.page_size,
-                "results": data,
-            }
-        )
-
-
+from apps.utils.pagination import CustomPageNumberPagination
 class DepartmentListCreateView(generics.ListCreateAPIView):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
-    pagination_class = StandardResultsSetPagination
+    pagination_class = CustomPageNumberPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "manager__first_name", "manager__last_name"]
     ordering_fields = ["name", "created_at"]
@@ -72,7 +51,7 @@ class EmployeeListCreateView(generics.ListCreateAPIView):
         is_active=True
     )
     permission_classes = [IsAuthenticated]
-    pagination_class = StandardResultsSetPagination
+    pagination_class = CustomPageNumberPagination
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -114,8 +93,8 @@ class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
 class AssetListCreateView(generics.ListCreateAPIView):
     queryset = Asset.objects.select_related("department", "current_holder__user")
     serializer_class = AssetSerializer
+    pagination_class = CustomPageNumberPagination
     permission_classes = [IsAuthenticated]
-    pagination_class = StandardResultsSetPagination
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -221,7 +200,7 @@ class AssetTransactionListCreateView(generics.ListCreateAPIView):
         "asset__department", "employee__user", "processed_by"
     )
     permission_classes = [IsAuthenticated]
-    pagination_class = StandardResultsSetPagination
+    pagination_class = CustomPageNumberPagination
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,

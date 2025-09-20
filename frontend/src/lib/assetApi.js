@@ -3,13 +3,11 @@ import cameraManager from './cameraManager';
 
 // Department API with pagination
 export const departmentAPI = {
-    // Paginated list with search and filters
     getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/departments/${queryString ? `?${queryString}` : ""}`);
     },
     
-    // Get all departments for dropdowns (no pagination)
     getAllForDropdown: (search = '') => {
         const params = search ? { search } : {};
         const queryString = new URLSearchParams(params).toString();
@@ -24,13 +22,11 @@ export const departmentAPI = {
 
 // Employee API with pagination
 export const employeeAPI = {
-    // Paginated list with search and filters
     getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/employees/${queryString ? `?${queryString}` : ''}`);
     },
     
-    // Get all employees for dropdowns (no pagination)
     getAllForDropdown: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/employees/all/${queryString ? `?${queryString}` : ''}`);
@@ -57,13 +53,11 @@ export const employeeAPI = {
 
 // Asset API with pagination
 export const assetAPI = {
-    // Paginated list with search and filters
     getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/assets/${queryString ? `?${queryString}` : ''}`);
     },
     
-    // Get all assets for dropdowns (no pagination)
     getAllForDropdown: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/assets/all/${queryString ? `?${queryString}` : ''}`);
@@ -77,7 +71,6 @@ export const assetAPI = {
 
 // Transaction API with pagination
 export const transactionAPI = {
-    // Paginated list with search and filters
     getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/transactions/${queryString ? `?${queryString}` : ''}`);
@@ -100,7 +93,6 @@ export const transactionAPI = {
 export const dashboardAPI = {
     getStats: () => apiGet('/api/dashboard/stats/'),
 
-    // Additional dashboard specific methods
     getAssetStatusDistribution: () => apiGet('/api/dashboard/stats/').then(data => ({
         assigned: data.assets_assigned,
         available: data.assets_available,
@@ -133,7 +125,6 @@ export const dashboardAPI = {
 
 // Enhanced Face Recognition API using camera manager
 export const faceRecognitionAPI = {
-    // Capture image from video element
     captureImageFromVideo: (videoElement, quality = 0.8) => {
         return new Promise((resolve, reject) => {
             try {
@@ -274,65 +265,6 @@ export const cameraUtils = {
     }
 };
 
-// Pagination utilities
-export const paginationUtils = {
-    // Build pagination parameters
-    buildPaginationParams: (page = 1, pageSize = 20, search = '', filters = {}) => {
-        const params = {
-            page,
-            page_size: pageSize,
-            ...filters
-        };
-        
-        if (search) {
-            params.search = search;
-        }
-        
-        return params;
-    },
-    
-    // Extract pagination info from response
-    extractPaginationInfo: (response) => ({
-        count: response.count || 0,
-        next: response.next,
-        previous: response.previous,
-        totalPages: response.total_pages || 0,
-        currentPage: response.current_page || 1,
-        pageSize: response.page_size || 20,
-        hasNext: !!response.next,
-        hasPrevious: !!response.previous,
-        results: response.results || []
-    }),
-    
-    // Calculate page range for pagination display
-    calculatePageRange: (currentPage, totalPages, maxVisible = 5) => {
-        const half = Math.floor(maxVisible / 2);
-        let start = Math.max(1, currentPage - half);
-        let end = Math.min(totalPages, start + maxVisible - 1);
-        
-        // Adjust start if we're near the end
-        if (end - start + 1 < maxVisible) {
-            start = Math.max(1, end - maxVisible + 1);
-        }
-        
-        const pages = [];
-        for (let i = start; i <= end; i++) {
-            pages.push(i);
-        }
-        
-        return pages;
-    },
-    
-    // Get next page number
-    getNextPage: (currentPage, totalPages) => {
-        return currentPage < totalPages ? currentPage + 1 : null;
-    },
-    
-    // Get previous page number
-    getPreviousPage: (currentPage) => {
-        return currentPage > 1 ? currentPage - 1 : null;
-    }
-};
 
 // Export utility functions for data formatting
 export const formatters = {

@@ -1,4 +1,3 @@
-// frontend/src/pages/management/employees.jsx (Fixed version)
 import React, { useState, useEffect, useCallback } from "react";
 import {
     Card,
@@ -45,7 +44,15 @@ export function Employees() {
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [mounted, setMounted] = useState(false);
 
-    // Modal states - explicitly managing each modal
+    // pagination state
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [pageSize, setPageSize] = useState(
+        Number(import.meta.env.VITE_PAGE_SIZE || 15)
+    );
+    const [totalCount, setTotalCount] = useState(0);
+
+    // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
@@ -65,7 +72,6 @@ export function Employees() {
     const [formLoading, setFormLoading] = useState(false);
     const [faceRegistrationMode, setFaceRegistrationMode] = useState("register");
 
-    // Initialize data
     useEffect(() => {
         if (!mounted) {
             setMounted(true);
@@ -84,17 +90,47 @@ export function Employees() {
 
     const fetchEmployees = async () => {
         try {
-            const params = {};
+            const params = { page, page_size: pageSize };
             if (selectedDepartment) params.department = selectedDepartment;
             if (searchTerm) params.search = searchTerm;
 
             const response = await employeeAPI.getAll(params);
-            setEmployees(response.results || response);
+
+            const dataArray = Array.isArray(response) ? response : (response.results || []);
+            setEmployees(dataArray);
+
+            setTotalPages(Number(response?.total_pages || 1));
+            setTotalCount(Number(response?.count || dataArray.length));
+            setPage(Number(response?.current_page || 1));
+            setError(""); 
         } catch (err) {
+            const status = err?.response?.status ?? err?.status;
+
+            if (status === 404 && page > 1) {
+                try {
+                    const fallback = await employeeAPI.getAll({
+                        page: 1,
+                        page_size: pageSize,
+                        ...(selectedDepartment ? { department: selectedDepartment } : {}),
+                        ...(searchTerm ? { search: searchTerm } : {}),
+                    });
+
+                    const dataArray = Array.isArray(fallback) ? fallback : (fallback.results || []);
+                    setEmployees(dataArray);
+                    setTotalPages(Number(fallback?.total_pages || 1));
+                    setTotalCount(Number(fallback?.count || dataArray.length));
+                    setPage(Number(fallback?.current_page || 1));
+                    setError(""); 
+                    return;
+                } catch (e2) {
+                }
+            }
+
             setError("Failed to fetch employees");
             console.error(err);
         }
     };
+
 
     const fetchDepartments = async () => {
         try {
@@ -105,40 +141,46 @@ export function Employees() {
         }
     };
 
-    // Debounced search/filter effect
+
     useEffect(() => {
         if (!mounted) return;
-        const timer = setTimeout(() => {
-            fetchEmployees();
+
+        const t = setTimeout(() => {
+            if (page !== 1) {
+                setPage(1);        
+            } else {
+                fetchEmployees(); 
+            }
         }, 300);
-        return () => clearTimeout(timer);
+
+        return () => clearTimeout(t);
     }, [searchTerm, selectedDepartment, mounted]);
+
+
+    useEffect(() => {
+        if (!mounted) return;
+        fetchEmployees();
+    }, [page]);
+
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         setFormLoading(true);
         setError("");
-
         try {
             if (showEditModal) {
                 await employeeAPI.update(selectedEmployee.id, formData);
             } else {
                 await employeeAPI.create(formData);
             }
-
-            // Reset and refresh
             handleModalClose();
+            setPage(1);                  
             await fetchEmployees();
-
         } catch (err) {
             setError(err.response?.data?.detail || err.message || "Failed to save employee");
         } finally {
@@ -179,22 +221,20 @@ export function Employees() {
             try {
                 await employeeAPI.delete(employee.id);
                 await fetchEmployees();
+                if (employees.length === 1 && page > 1) {
+                    setPage(p => Math.max(1, p - 1));
+                }
             } catch (err) {
                 setError("Failed to delete employee");
             }
         }
     };
 
-    // Face registration handlers with proper modal management
+    // Face registration handlers
     const handleFaceRegistration = useCallback((employee, mode = "register") => {
-        console.log('Opening face registration for:', employee.name, 'Mode:', mode);
-
-        // Close any open modals first
         setShowEditModal(false);
         setShowViewModal(false);
         setShowAddModal(false);
-
-        // Small delay to ensure modals are closed
         setTimeout(() => {
             setSelectedEmployee(employee);
             setFaceRegistrationMode(mode);
@@ -202,36 +242,20 @@ export function Employees() {
         }, 100);
     }, []);
 
-    const handleFaceRegistrationSuccess = useCallback(async (result) => {
-        console.log('Face registration success:', result);
-
+    const handleFaceRegistrationSuccess = useCallback(async () => {
         setShowFaceModal(false);
         setSelectedEmployee(null);
-
-        // Refresh employees data
         await fetchEmployees();
-
-        // Clear any errors
         setError("");
-
-        // Show success message
-        const action = faceRegistrationMode === "register" ? "registered" : "updated";
-        // setTimeout(() => {
-        //     alert(`Face ${action} successfully!`);
-        // }, 100);
     }, [faceRegistrationMode]);
 
     const handleFaceRegistrationError = useCallback((error) => {
-        console.log('Face registration error:', error);
-
         setShowFaceModal(false);
         setSelectedEmployee(null);
-
         setError(error.error || "Face registration failed");
     }, []);
 
     const handleFaceModalClose = useCallback(() => {
-        console.log('Face modal close called');
         setShowFaceModal(false);
         setSelectedEmployee(null);
     }, []);
@@ -252,6 +276,17 @@ export function Employees() {
         setError("");
         setActiveTab("basic");
     };
+
+    // pagination helpers
+    const canPrev = page > 1;
+    const canNext = page < totalPages;
+    const goFirst = () => canPrev && setPage(1);
+    const goPrev = () => canPrev && setPage((p) => p - 1);
+    const goNext = () => canNext && setPage((p) => p + 1);
+    const goLast = () => canNext && setPage(totalPages);
+
+    const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+    const rangeEnd = Math.min(page * pageSize, totalCount);
 
     if (loading) {
         return (
@@ -327,7 +362,6 @@ export function Employees() {
 
                         </div>
                     </div>
-
                     {/* Table */}
                     <div className="overflow-x-scroll">
                         <table className="w-full min-w-[640px] table-auto">
@@ -438,6 +472,21 @@ export function Employees() {
                                 })}
                             </tbody>
                         </table>
+                    </div>
+                    {/* paginator */}
+                    <div className="flex items-center justify-between px-6 py-4 text-sm text-blue-gray-600">
+                        <span>
+                            Showing <b>{rangeStart}</b>–<b>{rangeEnd}</b> of <b>{totalCount}</b>
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button variant="text" size="sm" onClick={goFirst} disabled={!canPrev}>First</Button>
+                            <Button variant="text" size="sm" onClick={goPrev} disabled={!canPrev}>Prev</Button>
+                            <span className="px-2">
+                                Page <b>{page}</b> of <b>{totalPages}</b>
+                            </span>
+                            <Button variant="text" size="sm" onClick={goNext} disabled={!canNext}>Next</Button>
+                            <Button variant="text" size="sm" onClick={goLast} disabled={!canNext}>Last</Button>
+                        </div>
                     </div>
                 </CardBody>
             </Card>

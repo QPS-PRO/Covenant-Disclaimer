@@ -1,4 +1,3 @@
-// frontend/src/pages/management/transactions.jsx (Fixed Updated Version)
 import React, { useState, useEffect, useCallback } from "react";
 import {
     Card,
@@ -42,6 +41,12 @@ export function Transactions() {
     const [selectedDepartment, setSelectedDepartment] = useState("");
     const [selectedType, setSelectedType] = useState("");
     const [mounted, setMounted] = useState(false);
+
+    // Pagination state
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(Number(import.meta.env.VITE_PAGE_SIZE || 15));
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
 
     // Modal states - explicitly managing each modal
     const [showAddModal, setShowAddModal] = useState(false);
@@ -109,18 +114,48 @@ export function Transactions() {
 
     const fetchTransactions = async () => {
         try {
-            const params = {};
+            const params = { page, page_size: pageSize };
             if (selectedDepartment) params.asset__department = selectedDepartment;
             if (selectedType) params.transaction_type = selectedType;
             if (searchTerm) params.search = searchTerm;
 
             const response = await transactionAPI.getAll(params);
-            setTransactions(response.results || response);
+            const dataArray = Array.isArray(response) ? response : (response.results || []);
+            setTransactions(dataArray);
+
+            setTotalPages(Number(response?.total_pages || 1));
+            setTotalCount(Number(response?.count || dataArray.length));
+            setPage(Number(response?.current_page || 1));
+            setError(""); 
         } catch (err) {
+            const status = err?.response?.status ?? err?.status;
+
+            if (status === 404 && page > 1) {
+                try {
+                    const fallback = await transactionAPI.getAll({
+                        page: 1,
+                        page_size: pageSize,
+                        ...(selectedDepartment ? { asset__department: selectedDepartment } : {}),
+                        ...(selectedType ? { transaction_type: selectedType } : {}),
+                        ...(searchTerm ? { search: searchTerm } : {}),
+                    });
+
+                    const dataArray = Array.isArray(fallback) ? fallback : (fallback.results || []);
+                    setTransactions(dataArray);
+                    setTotalPages(Number(fallback?.total_pages || 1));
+                    setTotalCount(Number(fallback?.count || dataArray.length));
+                    setPage(Number(fallback?.current_page || 1));
+                    setError(""); 
+                    return;
+                } catch (e2) {
+                }
+            }
+
             setError("Failed to fetch transactions");
             console.error(err);
         }
     };
+
 
     const fetchAssets = async () => {
         try {
@@ -149,14 +184,31 @@ export function Transactions() {
         }
     };
 
-    // Debounced search/filter effect
     useEffect(() => {
         if (!mounted) return;
+
         const timer = setTimeout(() => {
-            fetchTransactions();
+            if (page !== 1) {
+                setPage(1);
+            } else {
+                fetchTransactions();
+            }
         }, 300);
+
         return () => clearTimeout(timer);
     }, [searchTerm, selectedDepartment, selectedType, mounted]);
+
+    useEffect(() => {
+        if (!mounted) return;
+        fetchTransactions();
+    }, [page]);
+
+
+    //Pager helpers
+    const canPrev = page > 1;
+    const canNext = page < totalPages;
+    const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+    const rangeEnd = Math.min(page * pageSize, totalCount);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -267,14 +319,13 @@ export function Transactions() {
 
             console.log('Creating transaction with data:', {
                 ...transactionData,
-                face_verification_data: capturedFaceData ? 'IMAGE_DATA_PRESENT' : null // Don't log the actual image data
+                face_verification_data: capturedFaceData ? 'IMAGE_DATA_PRESENT' : null
             });
 
             await transactionAPI.create(transactionData);
 
-            // FIXED: Reset form, close modals, and refresh data
             resetForm();
-            handleModalClose(); // This will close the add modal properly
+            handleModalClose();
             await fetchTransactions();
 
             // Show success message
@@ -285,7 +336,6 @@ export function Transactions() {
         } catch (err) {
             console.error('Transaction creation error:', err);
 
-            // Try to get more detailed error information
             let errorMessage = "Failed to create transaction";
             if (err.response?.data) {
                 if (typeof err.response.data === 'string') {
@@ -352,19 +402,15 @@ export function Transactions() {
         resetForm();
     };
 
-    // Filter and search assets based on transaction type with improved filtering
     const getFilteredAssets = () => {
         let filteredAssets;
 
         if (formData.transaction_type === "issue") {
-            // For issue transactions, only show available assets (not assigned)
             filteredAssets = assets.filter(asset => asset.status === "available");
         } else {
-            // For return transactions, only show assigned assets
             filteredAssets = assets.filter(asset => asset.status === "assigned");
         }
 
-        // Apply search filter
         if (assetSearchTerm) {
             const searchLower = assetSearchTerm.toLowerCase();
             filteredAssets = filteredAssets.filter(asset =>
@@ -377,7 +423,6 @@ export function Transactions() {
         return filteredAssets;
     };
 
-    // Filter and search employees based on selected asset for returns with improved filtering
     const getFilteredEmployees = () => {
         let filteredEmployees;
 
@@ -390,7 +435,6 @@ export function Transactions() {
             filteredEmployees = employees.filter(emp => emp.is_active);
         }
 
-        // Apply search filter
         if (employeeSearchTerm) {
             const searchLower = employeeSearchTerm.toLowerCase();
             filteredEmployees = filteredEmployees.filter(employee =>
@@ -587,6 +631,19 @@ export function Transactions() {
                                 })}
                             </tbody>
                         </table>
+                    </div>
+                    {/* Pager */}
+                    <div className="flex items-center justify-between px-6 pb-2 text-sm text-blue-gray-600">
+                        <span>
+                            Showing <b>{rangeStart}</b>–<b>{rangeEnd}</b> of <b>{totalCount}</b>
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button variant="text" size="sm" onClick={() => setPage(1)} disabled={!canPrev}>First</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev}>Prev</Button>
+                            <span className="px-2">Page <b>{page}</b> of <b>{totalPages}</b></span>
+                            <Button variant="text" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext}>Next</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage(totalPages)} disabled={!canNext}>Last</Button>
+                        </div>
                     </div>
                 </CardBody>
             </Card>

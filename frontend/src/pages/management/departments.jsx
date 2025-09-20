@@ -1,4 +1,3 @@
-// departments.jsx (fixed)
 import React, { useState, useEffect } from "react";
 import {
     Card,
@@ -37,6 +36,12 @@ export function Departments() {
     // NEW: prevent double-loading like assets.jsx
     const [mounted, setMounted] = useState(false);
 
+    // Pagination state
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(Number(import.meta.env.VITE_PAGE_SIZE || 15));
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -51,7 +56,6 @@ export function Departments() {
     });
     const [formLoading, setFormLoading] = useState(false);
 
-    // NEW: run once only
     useEffect(() => {
         if (!mounted) {
             setMounted(true);
@@ -59,7 +63,6 @@ export function Departments() {
         }
     }, [mounted]);
 
-    // NEW: one-shot initializer (matches assets.jsx pattern)
     const initializeData = async () => {
         try {
             setLoading(true);
@@ -71,16 +74,42 @@ export function Departments() {
 
     const fetchDepartments = async () => {
         try {
-            const params = {};
+            const params = { page, page_size: pageSize };
             if (searchTerm) params.search = searchTerm;
 
             const response = await departmentAPI.getAll(params);
-            setDepartments(response.results || response);
+            const dataArray = Array.isArray(response) ? response : (response.results || []);
+            setDepartments(dataArray);
+
+            setTotalPages(Number(response?.total_pages || 1));
+            setTotalCount(Number(response?.count || dataArray.length));
+            setPage(Number(response?.current_page || 1));
+            setError(""); 
         } catch (err) {
+            const status = err?.response?.status ?? err?.status;
+            if (status === 404 && page > 1) {
+                try {
+                    const fallback = await departmentAPI.getAll({
+                        page: 1,
+                        page_size: pageSize,
+                        ...(searchTerm ? { search: searchTerm } : {}),
+                    });
+                    const dataArray = Array.isArray(fallback) ? fallback : (fallback.results || []);
+                    setDepartments(dataArray);
+                    setTotalPages(Number(fallback?.total_pages || 1));
+                    setTotalCount(Number(fallback?.count || dataArray.length));
+                    setPage(Number(fallback?.current_page || 1));
+                    setError(""); 
+                    return;
+                } catch (e2) {
+                }
+            }
             setError("Failed to fetch departments");
             console.error(err);
         }
     };
+
+
 
     const fetchUsers = async () => {
         try {
@@ -97,16 +126,32 @@ export function Departments() {
         }
     };
 
-    // Debounced search, but skip until mounted (prevents second call on first render)
     useEffect(() => {
         if (!mounted) return;
 
         const timer = setTimeout(() => {
-            fetchDepartments();
+            if (page !== 1) {
+                setPage(1);
+            } else {
+                fetchDepartments();
+            }
         }, 300);
 
         return () => clearTimeout(timer);
     }, [searchTerm, mounted]);
+
+
+    useEffect(() => {
+        if (!mounted) return;
+        fetchDepartments();
+    }, [page]);
+
+
+    // Pager helpers
+    const canPrev = page > 1;
+    const canNext = page < totalPages;
+    const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+    const rangeEnd = Math.min(page * pageSize, totalCount);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -197,7 +242,6 @@ export function Departments() {
         setShowAddModal(false);
         setShowEditModal(false);
         setShowViewModal(false);
-        // (optional) don't force-close delete modal here; match current UX
         resetForm();
         setError("");
     };
@@ -252,7 +296,6 @@ export function Departments() {
                             />
                         </div>
                     </div>
-
                     {/* Table */}
                     <div className="overflow-x-scroll">
                         <table className="w-full min-w-[640px] table-auto">
@@ -372,6 +415,20 @@ export function Departments() {
                             </Typography>
                         </div>
                     )}
+                    {/* Pager */}
+                    <div className="flex items-center justify-between px-6 pb-2 text-sm text-blue-gray-600">
+                        <span>
+                            Showing <b>{rangeStart}</b>–<b>{rangeEnd}</b> of <b>{totalCount}</b>
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button variant="text" size="sm" onClick={() => setPage(1)} disabled={!canPrev}>First</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev}>Prev</Button>
+                            <span className="px-2">Page <b>{page}</b> of <b>{totalPages}</b></span>
+                            <Button variant="text" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext}>Next</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage(totalPages)} disabled={!canNext}>Last</Button>
+                        </div>
+                    </div>
+
                 </CardBody>
             </Card>
 
