@@ -1,838 +1,799 @@
-import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+// frontend/src/pages/management/employee-profile.jsx
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
     Card,
-    CardBody,
     CardHeader,
-    Avatar,
+    CardBody,
     Typography,
-    Tabs,
-    TabsHeader,
-    Tab,
-    TabsBody,
-    TabPanel,
     Button,
-    Alert,
     Chip,
     IconButton,
-    Dialog,
-    DialogHeader,
-    DialogBody,
-    DialogFooter,
-    Input,
-    Textarea,
-    Select,
-    Option,
+    Alert,
+    Tabs,
+    TabsHeader,
+    TabsBody,
+    Tab,
+    TabPanel,
+    // Avatar,
 } from "@material-tailwind/react";
 import {
-    HomeIcon,
-    ChatBubbleLeftEllipsisIcon,
-    Cog6ToothIcon,
     ArrowLeftIcon,
     CameraIcon,
     CheckCircleIcon,
     XCircleIcon,
     UserCircleIcon,
-    ClipboardDocumentListIcon,
     CubeIcon,
+    ClockIcon,
     ArrowPathIcon,
-} from "@heroicons/react/24/solid";
-import { employeeAPI, transactionAPI, formatters } from "@/lib/assetApi";
+} from "@heroicons/react/24/outline";
+import {
+    employeeAPI,
+    formatters,
+    profileFormatters,
+    PROFILE_CONSTANTS,
+} from "@/lib/assetApi";
 import FaceRecognitionComponent from "../../components/FaceRecognitionComponent";
+import AssetReturnComponent from "../../components/AssetReturnComponent";
 
 export function EmployeeProfile() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState("overview");
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [message, setMessage] = useState({ type: '', text: '' });
 
-    // Employee data state
     const [employee, setEmployee] = useState(null);
-    const [transactions, setTransactions] = useState([]);
-    const [currentAssets, setCurrentAssets] = useState([]);
     const [stats, setStats] = useState(null);
 
-    // Return asset modal states
-    const [showReturnModal, setShowReturnModal] = useState(false);
-    const [showFaceModal, setShowFaceModal] = useState(false);
-    const [selectedAsset, setSelectedAsset] = useState(null);
-    const [returnFormData, setReturnFormData] = useState({
-        return_condition: '',
-        damage_notes: '',
-        notes: ''
-    });
-    const [returnLoading, setReturnLoading] = useState(false);
-    const [faceVerificationData, setFaceVerificationData] = useState(null);
+    const [currentAssets, setCurrentAssets] = useState([]);
+    const [assetsLoading, setAssetsLoading] = useState(false);
 
+    const [transactionHistory, setTransactionHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyTotalPages, setHistoryTotalPages] = useState(1);
+
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    const [activeTab, setActiveTab] = useState(PROFILE_CONSTANTS.TABS.OVERVIEW);
+
+    // Modals
+    const [showFaceModal, setShowFaceModal] = useState(false);
+    const [showReturnModal, setShowReturnModal] = useState(false);
+    const [selectedAsset, setSelectedAsset] = useState(null);
+
+    // Initial profile load (prefill assets/history if backend returns them)
     useEffect(() => {
-        if (id) {
-            fetchEmployeeProfile();
+        if (!id) return;
+        (async () => {
+            try {
+                setLoading(true);
+                const response = await employeeAPI.getProfile(id);
+
+                setEmployee(response.employee);
+                setStats(response.stats);
+
+                // Prefill data (so tabs show immediately on first click)
+                if (Array.isArray(response.current_assets)) {
+                    setCurrentAssets(response.current_assets);
+                }
+                if (Array.isArray(response.transaction_history)) {
+                    setTransactionHistory(response.transaction_history);
+                    setHistoryPage(1);
+                    // If the profile endpoint doesn’t return pagination, we’ll fetch it when switching tab
+                }
+
+                setError("");
+            } catch (err) {
+                console.error(err);
+                setError("Failed to fetch employee profile");
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [id]);
+
+    // Fetch current assets
+    const fetchCurrentAssets = useCallback(async () => {
+        try {
+            setAssetsLoading(true);
+            const response = await employeeAPI.getCurrentAssets(id);
+            setCurrentAssets(response.current_assets ?? []);
+            setError("");
+        } catch (err) {
+            console.error("Error fetching current assets:", err);
+            setError("Failed to fetch current assets");
+        } finally {
+            setAssetsLoading(false);
         }
     }, [id]);
 
-    const fetchEmployeeProfile = async () => {
-        try {
-            setLoading(true);
-            const response = await employeeAPI.getProfile(id);
+    // Fetch transaction history (paginated)
+    const fetchTransactionHistory = useCallback(
+        async (page = 1) => {
+            try {
+                setHistoryLoading(true);
+                const response = await employeeAPI.getTransactionHistory(id, {
+                    page,
+                    page_size: PROFILE_CONSTANTS.PAGINATION.DEFAULT_PAGE_SIZE,
+                });
 
+                if (page === 1) {
+                    setTransactionHistory(response.transactions ?? []);
+                } else {
+                    setTransactionHistory((prev) => [
+                        ...prev,
+                        ...(response.transactions ?? []),
+                    ]);
+                }
+
+                setHistoryTotalPages(response.pagination?.total_pages ?? 1);
+                setHistoryPage(page);
+                setError("");
+            } catch (err) {
+                console.error("Failed to fetch transaction history:", err);
+                setError("Failed to fetch transaction history");
+            } finally {
+                setHistoryLoading(false);
+            }
+        },
+        [id]
+    );
+
+    // 👉 Load data when active tab changes
+    useEffect(() => {
+        if (!id) return;
+
+        if (
+            activeTab === PROFILE_CONSTANTS.TABS.ASSETS &&
+            currentAssets.length === 0
+        ) {
+            fetchCurrentAssets();
+        }
+
+        if (
+            activeTab === PROFILE_CONSTANTS.TABS.HISTORY &&
+            transactionHistory.length === 0
+        ) {
+            fetchTransactionHistory(1);
+        }
+    }, [
+        activeTab,
+        id,
+        currentAssets.length,
+        transactionHistory.length,
+        fetchCurrentAssets,
+        fetchTransactionHistory,
+    ]);
+
+    // Face registration handlers
+    const handleFaceRegistration = useCallback(() => {
+        setShowFaceModal(true);
+    }, []);
+
+    const handleFaceRegistrationSuccess = useCallback(async () => {
+        setShowFaceModal(false);
+        // refresh profile (will update stats + flags)
+        try {
+            const response = await employeeAPI.getProfile(id);
             setEmployee(response.employee);
-            setTransactions(response.transaction_history || []);
-            setCurrentAssets(response.current_assets || []);
             setStats(response.stats);
             setError("");
-        } catch (err) {
-            console.error("Error fetching employee profile:", err);
-            setError("Failed to fetch employee profile");
-        } finally {
-            setLoading(false);
+        } catch {
+            /* ignore */
         }
-    };
+    }, [id]);
 
-    const handleReturnAsset = useCallback((asset) => {
+    const handleFaceRegistrationError = useCallback((err) => {
+        setShowFaceModal(false);
+        setError(err?.error || "Face registration failed");
+    }, []);
+
+    // Asset return handlers
+    const handleAssetReturn = useCallback((asset) => {
         setSelectedAsset(asset);
-        setReturnFormData({
-            return_condition: '',
-            damage_notes: '',
-            notes: ''
-        });
         setShowReturnModal(true);
     }, []);
 
-    const handleReturnFormSubmit = useCallback(() => {
-        // Close return form and open face recognition
+    const handleReturnSuccess = useCallback(async () => {
         setShowReturnModal(false);
-        setTimeout(() => {
-            setShowFaceModal(true);
-        }, 300);
-    }, []);
-
-    const handleFaceVerificationSuccess = useCallback(async (verificationResult) => {
-        try {
-            setReturnLoading(true);
-            setFaceVerificationData(verificationResult);
-
-            // Create return transaction with face verification
-            const transactionData = {
-                asset: selectedAsset.id,
-                employee: employee.id,
-                transaction_type: 'return',
-                return_condition: returnFormData.return_condition,
-                damage_notes: returnFormData.damage_notes,
-                notes: returnFormData.notes,
-                face_verification_success: verificationResult.success,
-                face_verification_confidence: verificationResult.confidence
-            };
-
-            await transactionAPI.create(transactionData);
-
-            setMessage({
-                type: 'success',
-                text: `Asset "${selectedAsset.name}" returned successfully with face verification!`
-            });
-
-            // Refresh data
-            await fetchEmployeeProfile();
-            handleReturnModalClose();
-
-        } catch (error) {
-            console.error("Error processing return:", error);
-            setError("Failed to process asset return");
-            setShowFaceModal(false);
-        } finally {
-            setReturnLoading(false);
-        }
-    }, [selectedAsset, employee, returnFormData]);
-
-    const handleFaceVerificationError = useCallback((error) => {
-        setError(`Face verification failed: ${error.error || 'Unknown error'}`);
-        setShowFaceModal(false);
-    }, []);
-
-    const handleReturnModalClose = useCallback(() => {
-        setShowReturnModal(false);
-        setShowFaceModal(false);
         setSelectedAsset(null);
-        setReturnFormData({
-            return_condition: '',
-            damage_notes: '',
-            notes: ''
-        });
-        setFaceVerificationData(null);
+
+        // Refresh profile stats and the assets list
+        await Promise.all([employeeAPI.getProfile(id).then((res) => {
+            setEmployee(res.employee);
+            setStats(res.stats);
+        }).catch(() => { }), fetchCurrentAssets()]);
+
+        // If on history tab, refresh it too
+        if (activeTab === PROFILE_CONSTANTS.TABS.HISTORY) {
+            fetchTransactionHistory(1);
+        }
+        setError("");
+    }, [id, activeTab, fetchCurrentAssets, fetchTransactionHistory]);
+
+    const handleReturnError = useCallback((err) => {
+        setShowReturnModal(false);
+        setSelectedAsset(null);
+        setError(err?.error || "Asset return failed");
     }, []);
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setReturnFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+    const handleLoadMoreHistory = () => {
+        if (historyPage < historyTotalPages && !historyLoading) {
+            fetchTransactionHistory(historyPage + 1);
+        }
     };
 
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-screen">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900" />
             </div>
         );
     }
 
-    if (error && !employee) {
+    if (!employee) {
         return (
-            <div className="mt-8">
-                <Alert color="red" className="mb-4">
-                    {error}
-                </Alert>
-                <Button onClick={() => navigate('/management/employees')} className="flex items-center gap-2">
-                    <ArrowLeftIcon className="h-4 w-4" />
-                    Back to Employees
-                </Button>
+            <div className="mt-12 mb-8">
+                <Alert color="red">Employee not found</Alert>
             </div>
         );
     }
+
+    const formattedEmployee = profileFormatters.formatEmployeeData
+        ? profileFormatters.formatEmployeeData(employee)
+        : employee;
 
     return (
-        <>
-            {/* Header with background */}
-            <div className="relative mt-8 h-72 w-full overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-blue-800 bg-cover bg-center">
-                <div className="absolute inset-0 h-full w-full bg-gray-900/20" />
-                <div className="absolute top-4 left-4">
-                    <Button
-                        variant="text"
-                        color="white"
-                        onClick={() => navigate('/dashboard/employees')}
-                        className="flex items-center gap-2"
-                    >
-                        <ArrowLeftIcon className="h-4 w-4" />
-                        Back to Employees
-                    </Button>
-                </div>
-            </div>
+        <div className="mt-12 mb-8 flex flex-col gap-6">
+            {/* Header */}
+            <Card>
+                <CardHeader variant="gradient" color="gray" className="mb-8 p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <IconButton
+                                variant="text"
+                                color="white"
+                                onClick={() => navigate("/dashboard/employees")}
+                            >
+                                <ArrowLeftIcon className="h-5 w-5" />
+                            </IconButton>
+                            <Typography variant="h6" color="white">
+                                Employee Profile
+                            </Typography>
+                        </div>
+                    </div>
+                </CardHeader>
 
-            <Card className="mx-3 -mt-16 mb-6 lg:mx-4 border border-blue-gray-100">
-                <CardBody className="p-4">
-                    {message.text && (
-                        <Alert
-                            color={message.type === 'success' ? 'green' : 'red'}
-                            className="mb-6"
-                            onClose={() => setMessage({ type: '', text: '' })}
-                        >
-                            {message.text}
-                        </Alert>
-                    )}
-
+                <CardBody>
                     {error && (
-                        <Alert
-                            color="red"
-                            className="mb-6"
-                            onClose={() => setError('')}
-                        >
+                        <Alert color="red" className="mb-6">
                             {error}
                         </Alert>
                     )}
 
-                    {employee && (
-                        <>
-                            {/* Employee Header */}
-                            <div className="mb-10 flex items-center justify-between flex-wrap gap-6">
-                                <div className="flex items-center gap-6">
-                                    <Avatar
-                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name)}&background=0d47a1&color=fff&size=128`}
-                                        alt={employee.name}
-                                        size="xl"
-                                        variant="rounded"
-                                        className="rounded-lg shadow-lg shadow-blue-gray-500/40"
-                                    />
-                                    <div>
-                                        <Typography variant="h5" color="blue-gray" className="mb-1">
-                                            {employee.name}
-                                        </Typography>
-                                        <Typography variant="small" className="font-normal text-blue-gray-600 mb-1">
-                                            {employee.email}
-                                        </Typography>
-                                        <Typography variant="small" className="font-normal text-blue-gray-600">
-                                            Employee ID: {employee.employee_id}
-                                        </Typography>
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <Chip
-                                                variant="gradient"
-                                                color={employee.is_active ? "green" : "red"}
-                                                value={employee.is_active ? "ACTIVE" : "INACTIVE"}
-                                                className="py-0.5 px-2 text-[11px] font-medium w-fit"
-                                            />
-                                            {employee.has_face_data ? (
-                                                <div className="flex items-center gap-1">
-                                                    <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                                                    <Chip color="green" value="FACE REGISTERED" className="text-xs" />
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-1">
-                                                    <XCircleIcon className="h-4 w-4 text-red-500" />
-                                                    <Chip color="red" value="NO FACE DATA" className="text-xs" />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="w-96">
-                                    <Tabs value={activeTab} onChange={setActiveTab}>
-                                        <TabsHeader>
-                                            <Tab value="overview" onClick={() => setActiveTab("overview")}>
-                                                <HomeIcon className="-mt-1 mr-2 inline-block h-5 w-5" />
-                                                Overview
-                                            </Tab>
-                                            <Tab value="assets" onClick={() => setActiveTab("assets")}>
-                                                <CubeIcon className="-mt-0.5 mr-2 inline-block h-5 w-5" />
-                                                Assets
-                                            </Tab>
-                                            <Tab value="history" onClick={() => setActiveTab("history")}>
-                                                <ClipboardDocumentListIcon className="-mt-1 mr-2 inline-block h-5 w-5" />
-                                                History
-                                            </Tab>
-                                        </TabsHeader>
-                                    </Tabs>
-                                </div>
+                    {/* Employee Header Info */}
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
+                        <div className="flex items-center gap-4">
+                            {/* <Avatar
+                src={formattedEmployee.avatar}
+                alt={formattedEmployee.displayName || employee.name}
+                size="xl"
+                className="ring-2 ring-blue-500"
+              /> */}
+                            <div>
+                                <Typography variant="h4" color="blue-gray">
+                                    {formattedEmployee.displayName || employee.name}
+                                </Typography>
+                                <Typography variant="small" color="gray">
+                                    ID: {employee.employee_id} • {employee.department_name}
+                                </Typography>
+                                <Typography variant="small" color="gray">
+                                    {employee.email}
+                                </Typography>
                             </div>
+                        </div>
 
-                            {/* Tab Content */}
-                            <Tabs value={activeTab}>
-                                <TabsBody>
-                                    {/* Overview Tab */}
-                                    <TabPanel value="overview" className="p-0">
-                                        <div className="grid grid-cols-1 mb-12 gap-12 px-4 lg:grid-cols-2 xl:grid-cols-3">
-                                            {/* Profile Information */}
-                                            <div>
-                                                <Card color="transparent" shadow={false}>
-                                                    <CardHeader
-                                                        color="transparent"
-                                                        shadow={false}
-                                                        floated={false}
-                                                        className="mx-0 mt-0 mb-4 flex items-center justify-between gap-4"
-                                                    >
-                                                        <Typography variant="h6" color="blue-gray">
-                                                            Profile Information
-                                                        </Typography>
-                                                    </CardHeader>
-                                                    <CardBody className="p-0">
-                                                        <Typography
-                                                            variant="small"
-                                                            className="font-normal text-blue-gray-500 mb-4"
-                                                        >
-                                                            Employee details and contact information.
-                                                        </Typography>
+                        <div className="flex flex-col md:flex-row gap-2 md:ml-auto">
+                            <div className="flex items-center gap-2">
+                                <Chip
+                                    color={employee.is_active ? "green" : "red"}
+                                    value={employee.is_active ? "ACTIVE" : "INACTIVE"}
+                                    className="text-xs"
+                                />
+                                {employee.has_face_data ? (
+                                    <Chip color="green" value="FACE REGISTERED" className="text-xs" />
+                                ) : (
+                                    <Chip color="red" value="NO FACE DATA" className="text-xs" />
+                                )}
+                            </div>
+                            <Button
+                                size="sm"
+                                color="blue"
+                                onClick={handleFaceRegistration}
+                                className="flex items-center gap-2"
+                            >
+                                <CameraIcon className="h-4 w-4" />
+                                {employee.has_face_data ? "Update Face" : "Register Face"}
+                            </Button>
+                        </div>
+                    </div>
 
-                                                        <hr className="my-8 border-blue-gray-50" />
+                    <Tabs value={activeTab} onChange={(val) => setActiveTab(val)}>
+                        <TabsHeader>
+                            <Tab value={PROFILE_CONSTANTS.TABS.OVERVIEW}>
+                                <UserCircleIcon className="w-5 h-5 mr-2" />
+                                Overview
+                            </Tab>
+                            <Tab value={PROFILE_CONSTANTS.TABS.ASSETS}>
+                                <CubeIcon className="w-5 h-5 mr-2" />
+                                Current Assets ({stats?.current_assets_count || 0})
+                            </Tab>
+                            <Tab value={PROFILE_CONSTANTS.TABS.HISTORY}>
+                                <ClockIcon className="w-5 h-5 mr-2" />
+                                Transaction History
+                            </Tab>
+                        </TabsHeader>
 
-                                                        <ul className="flex flex-col gap-4 p-0">
-                                                            <li className="flex items-center gap-4">
-                                                                <Typography
-                                                                    variant="small"
-                                                                    color="blue-gray"
-                                                                    className="font-semibold capitalize min-w-[100px]"
-                                                                >
-                                                                    Name:
-                                                                </Typography>
-                                                                <Typography
-                                                                    variant="small"
-                                                                    className="font-normal text-blue-gray-500"
-                                                                >
-                                                                    {employee.name}
-                                                                </Typography>
-                                                            </li>
+                        {/* Debug box – keep OUTSIDE TabsBody */}
+                        {process.env.NODE_ENV === "development" && (
+                            <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                                <strong>Debug:</strong> Active Tab: {activeTab}, Current Assets:{" "}
+                                {currentAssets.length}, Transaction History:{" "}
+                                {transactionHistory.length}, Employee ID: {id}
+                            </div>
+                        )}
 
-                                                            <li className="flex items-center gap-4">
-                                                                <Typography
-                                                                    variant="small"
-                                                                    color="blue-gray"
-                                                                    className="font-semibold capitalize min-w-[100px]"
-                                                                >
-                                                                    Employee ID:
-                                                                </Typography>
-                                                                <Typography
-                                                                    variant="small"
-                                                                    className="font-normal text-blue-gray-500"
-                                                                >
-                                                                    {employee.employee_id}
-                                                                </Typography>
-                                                            </li>
-
-                                                            <li className="flex items-center gap-4">
-                                                                <Typography
-                                                                    variant="small"
-                                                                    color="blue-gray"
-                                                                    className="font-semibold capitalize min-w-[100px]"
-                                                                >
-                                                                    Email:
-                                                                </Typography>
-                                                                <Typography
-                                                                    variant="small"
-                                                                    className="font-normal text-blue-gray-500"
-                                                                >
-                                                                    {employee.email}
-                                                                </Typography>
-                                                            </li>
-
-                                                            <li className="flex items-center gap-4">
-                                                                <Typography
-                                                                    variant="small"
-                                                                    color="blue-gray"
-                                                                    className="font-semibold capitalize min-w-[100px]"
-                                                                >
-                                                                    Phone:
-                                                                </Typography>
-                                                                <Typography
-                                                                    variant="small"
-                                                                    className="font-normal text-blue-gray-500"
-                                                                >
-                                                                    {employee.phone_number}
-                                                                </Typography>
-                                                            </li>
-
-                                                            <li className="flex items-center gap-4">
-                                                                <Typography
-                                                                    variant="small"
-                                                                    color="blue-gray"
-                                                                    className="font-semibold capitalize min-w-[100px]"
-                                                                >
-                                                                    Department:
-                                                                </Typography>
-                                                                <Typography
-                                                                    variant="small"
-                                                                    className="font-normal text-blue-gray-500"
-                                                                >
-                                                                    {employee.department_name}
-                                                                </Typography>
-                                                            </li>
-
-                                                            <li className="flex items-center gap-4">
-                                                                <Typography
-                                                                    variant="small"
-                                                                    color="blue-gray"
-                                                                    className="font-semibold capitalize min-w-[100px]"
-                                                                >
-                                                                    Joined:
-                                                                </Typography>
-                                                                <Typography
-                                                                    variant="small"
-                                                                    className="font-normal text-blue-gray-500"
-                                                                >
-                                                                    {formatters.formatDate(employee.created_at)}
-                                                                </Typography>
-                                                            </li>
-                                                        </ul>
-                                                    </CardBody>
-                                                </Card>
-                                            </div>
-
-                                            {/* Statistics */}
-                                            {stats && (
-                                                <div>
-                                                    <Typography variant="h6" color="blue-gray" className="mb-3">
-                                                        Activity Statistics
-                                                    </Typography>
-                                                    <div className="flex flex-col gap-6">
-                                                        <Card className="shadow-sm border border-blue-gray-100">
-                                                            <CardBody className="p-6">
-                                                                <div className="grid grid-cols-2 gap-4">
-                                                                    <div className="text-center">
-                                                                        <Typography variant="h4" color="blue">
-                                                                            {stats.current_assets_count || 0}
-                                                                        </Typography>
-                                                                        <Typography variant="small" color="gray">
-                                                                            Current Assets
-                                                                        </Typography>
-                                                                    </div>
-
-                                                                    <div className="text-center">
-                                                                        <Typography variant="h4" color="green">
-                                                                            {stats.total_transactions || 0}
-                                                                        </Typography>
-                                                                        <Typography variant="small" color="gray">
-                                                                            Total Transactions
-                                                                        </Typography>
-                                                                    </div>
-
-                                                                    <div className="text-center">
-                                                                        <Typography variant="h4" color="blue">
-                                                                            {stats.transactions_by_type?.issue || stats.total_issues || 0}
-                                                                        </Typography>
-                                                                        <Typography variant="small" color="gray">
-                                                                            Assets Issued
-                                                                        </Typography>
-                                                                    </div>
-
-                                                                    <div className="text-center">
-                                                                        <Typography variant="h4" color="orange">
-                                                                            {stats.transactions_by_type?.return || stats.total_returns || 0}
-                                                                        </Typography>
-                                                                        <Typography variant="small" color="gray">
-                                                                            Assets Returned
-                                                                        </Typography>
-                                                                    </div>
-                                                                </div>
-                                                            </CardBody>
-                                                        </Card>
-                                                    </div>
+                        <TabsBody>
+                            {/* Overview */}
+                            <TabPanel value={PROFILE_CONSTANTS.TABS.OVERVIEW}>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    {/* Employee Details */}
+                                    <Card className="lg:col-span-2">
+                                        <CardHeader
+                                            floated={false}
+                                            shadow={false}
+                                            className="bg-blue-50 p-4"
+                                        >
+                                            <Typography variant="h6" color="blue-gray">
+                                                Employee Details
+                                            </Typography>
+                                        </CardHeader>
+                                        <CardBody>
+                                            <dl className="divide-y divide-gray-100">
+                                                <div className="py-3 grid grid-cols-3 gap-4">
+                                                    <dt className="text-sm font-medium text-gray-500">
+                                                        Full Name
+                                                    </dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">
+                                                        {employee.name}
+                                                    </dd>
                                                 </div>
-                                            )}
+                                                <div className="py-3 grid grid-cols-3 gap-4">
+                                                    <dt className="text-sm font-medium text-gray-500">
+                                                        Employee ID
+                                                    </dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">
+                                                        {employee.employee_id}
+                                                    </dd>
+                                                </div>
+                                                <div className="py-3 grid grid-cols-3 gap-4">
+                                                    <dt className="text-sm font-medium text-gray-500">
+                                                        Email
+                                                    </dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">
+                                                        {employee.email}
+                                                    </dd>
+                                                </div>
+                                                <div className="py-3 grid grid-cols-3 gap-4">
+                                                    <dt className="text-sm font-medium text-gray-500">
+                                                        Phone
+                                                    </dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">
+                                                        {employee.phone_number}
+                                                    </dd>
+                                                </div>
+                                                <div className="py-3 grid grid-cols-3 gap-4">
+                                                    <dt className="text-sm font-medium text-gray-500">
+                                                        Department
+                                                    </dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">
+                                                        {employee.department_name}
+                                                    </dd>
+                                                </div>
+                                                <div className="py-3 grid grid-cols-3 gap-4">
+                                                    <dt className="text-sm font-medium text-gray-500">
+                                                        Status
+                                                    </dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">
+                                                        <Chip
+                                                            size="sm"
+                                                            color={employee.is_active ? "green" : "red"}
+                                                            value={employee.is_active ? "Active" : "Inactive"}
+                                                        />
+                                                    </dd>
+                                                </div>
+                                                <div className="py-3 grid grid-cols-3 gap-4">
+                                                    <dt className="text-sm font-medium text-gray-500">
+                                                        Face Recognition
+                                                    </dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">
+                                                        <div className="flex items-center gap-2">
+                                                            {employee.has_face_data ? (
+                                                                <>
+                                                                    <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                                                                    <span className="text-green-600">
+                                                                        Registered
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <XCircleIcon className="h-4 w-4 text-red-500" />
+                                                                    <span className="text-red-600">
+                                                                        Not Registered
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </dd>
+                                                </div>
+                                            </dl>
+                                        </CardBody>
+                                    </Card>
 
-                                            {/* Face Recognition Status */}
-                                            <div>
-                                                <Typography variant="h6" color="blue-gray" className="mb-3">
-                                                    Security Settings
-                                                </Typography>
-                                                <Card className="shadow-sm border border-blue-gray-100">
-                                                    <CardBody className="p-6">
-                                                        <div className="text-center space-y-4">
-                                                            <CameraIcon className="h-12 w-12 mx-auto text-blue-500" />
-                                                            <Typography variant="h6">
-                                                                Face Recognition
+                                    {/* Statistics */}
+                                    <Card>
+                                        <CardHeader
+                                            floated={false}
+                                            shadow={false}
+                                            className="bg-green-50 p-4"
+                                        >
+                                            <Typography variant="h6" color="blue-gray">
+                                                Activity Statistics
+                                            </Typography>
+                                        </CardHeader>
+                                        <CardBody className="space-y-4">
+                                            {stats ? (
+                                                <>
+                                                    <div className="text-center">
+                                                        <Typography variant="h3" color="blue">
+                                                            {stats.current_assets_count || 0}
+                                                        </Typography>
+                                                        <Typography variant="small" color="gray">
+                                                            Current Assets
+                                                        </Typography>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <Typography variant="h3" color="green">
+                                                            {stats.total_transactions || 0}
+                                                        </Typography>
+                                                        <Typography variant="small" color="gray">
+                                                            Total Transactions
+                                                        </Typography>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4 text-center">
+                                                        <div>
+                                                            <Typography variant="h5" color="blue">
+                                                                {stats.transactions_by_type?.issue ||
+                                                                    stats.total_issues ||
+                                                                    0}
                                                             </Typography>
+                                                            <Typography variant="small" color="gray">
+                                                                Issues
+                                                            </Typography>
+                                                        </div>
+                                                        <div>
+                                                            <Typography variant="h5" color="orange">
+                                                                {stats.transactions_by_type?.return ||
+                                                                    stats.total_returns ||
+                                                                    0}
+                                                            </Typography>
+                                                            <Typography variant="small" color="gray">
+                                                                Returns
+                                                            </Typography>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <Typography
+                                                    variant="small"
+                                                    color="gray"
+                                                    className="text-center"
+                                                >
+                                                    No statistics available
+                                                </Typography>
+                                            )}
+                                        </CardBody>
+                                    </Card>
+                                </div>
+                            </TabPanel>
 
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <Typography variant="small" color="gray">
-                                                                    Status:
+                            {/* Current Assets */}
+                            <TabPanel value={PROFILE_CONSTANTS.TABS.ASSETS}>
+                                {assetsLoading ? (
+                                    <div className="flex justify-center items-center py-12">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+                                    </div>
+                                ) : currentAssets.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {currentAssets.map((asset) => (
+                                            <Card
+                                                key={asset.id}
+                                                className="hover:shadow-lg transition-shadow"
+                                            >
+                                                <CardBody>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex-1">
+                                                            <Typography
+                                                                variant="h6"
+                                                                color="blue-gray"
+                                                                className="mb-1"
+                                                            >
+                                                                {asset.name}
+                                                            </Typography>
+                                                            <Typography
+                                                                variant="small"
+                                                                color="gray"
+                                                                className="mb-2"
+                                                            >
+                                                                Serial: {asset.serial_number}
+                                                            </Typography>
+                                                            <Chip
+                                                                size="sm"
+                                                                color="blue"
+                                                                value={asset.status || "assigned"}
+                                                                className="mb-2"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2 mb-4">
+                                                        {asset.department_name && (
+                                                            <Typography variant="small" color="gray">
+                                                                <strong>Department:</strong>{" "}
+                                                                {asset.department_name}
+                                                            </Typography>
+                                                        )}
+                                                        {asset.description && (
+                                                            <Typography
+                                                                variant="small"
+                                                                color="gray"
+                                                                className="line-clamp-2"
+                                                            >
+                                                                <strong>Description:</strong>{" "}
+                                                                {asset.description}
+                                                            </Typography>
+                                                        )}
+                                                        {asset.purchase_date && (
+                                                            <Typography variant="small" color="gray">
+                                                                <strong>Purchase Date:</strong>{" "}
+                                                                {formatters.formatDate(asset.purchase_date)}
+                                                            </Typography>
+                                                        )}
+                                                        {asset.purchase_cost && (
+                                                            <Typography variant="small" color="gray">
+                                                                <strong>Purchase Cost:</strong>{" "}
+                                                                {formatters.formatCurrency(
+                                                                    asset.purchase_cost
+                                                                )}
+                                                            </Typography>
+                                                        )}
+                                                    </div>
+
+                                                    <Button
+                                                        size="sm"
+                                                        color="orange"
+                                                        onClick={() => handleAssetReturn(asset)}
+                                                        className="flex items-center gap-2 w-full"
+                                                        variant="filled"
+                                                    >
+                                                        <ArrowPathIcon className="h-4 w-4" />
+                                                        Return Asset
+                                                    </Button>
+                                                </CardBody>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <CubeIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                                        <Typography variant="h6" color="gray">
+                                            No Current Assets
+                                        </Typography>
+                                        <Typography variant="small" color="gray">
+                                            This employee doesn't have any assets assigned currently.
+                                        </Typography>
+                                    </div>
+                                )}
+                            </TabPanel>
+
+                            {/* Transaction History */}
+                            <TabPanel value={PROFILE_CONSTANTS.TABS.HISTORY}>
+                                {historyLoading ? (
+                                    <div className="flex justify-center items-center py-12">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+                                    </div>
+                                ) : transactionHistory.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {transactionHistory.map((transaction) => (
+                                            <Card
+                                                key={transaction.id}
+                                                className="hover:shadow-lg transition-shadow"
+                                            >
+                                                <CardBody>
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <Typography variant="h6" color="blue-gray">
+                                                                    {transaction.asset_name}
                                                                 </Typography>
-                                                                {employee.has_face_data ? (
-                                                                    <Chip color="green" value="REGISTERED" />
-                                                                ) : (
-                                                                    <Chip color="red" value="NOT REGISTERED" />
+                                                                <Chip
+                                                                    size="sm"
+                                                                    color={
+                                                                        transaction.transaction_type === "issue"
+                                                                            ? "green"
+                                                                            : "blue"
+                                                                    }
+                                                                    value={transaction.transaction_type?.toUpperCase()}
+                                                                />
+                                                            </div>
+
+                                                            <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                                                                <span>
+                                                                    <strong>Date:</strong>{" "}
+                                                                    {formatters.formatDate(
+                                                                        transaction.transaction_date
+                                                                    )}
+                                                                </span>
+                                                                {transaction.asset_serial_number && (
+                                                                    <span>
+                                                                        <strong>Serial:</strong>{" "}
+                                                                        {transaction.asset_serial_number}
+                                                                    </span>
                                                                 )}
                                                             </div>
 
-                                                            <Typography variant="small" color="gray" className="text-center">
-                                                                Face recognition is required for secure asset transactions
-                                                            </Typography>
-                                                        </div>
-                                                    </CardBody>
-                                                </Card>
-                                            </div>
-                                        </div>
-                                    </TabPanel>
-
-                                    {/* Current Assets Tab */}
-                                    <TabPanel value="assets" className="p-0">
-                                        <div className="px-4">
-                                            <div className="mb-6">
-                                                <Typography variant="h6" color="blue-gray" className="mb-2">
-                                                    Current Assets ({currentAssets.length})
-                                                </Typography>
-                                                <Typography variant="small" color="gray">
-                                                    Assets currently assigned to this employee
-                                                </Typography>
-                                            </div>
-
-                                            {currentAssets.length === 0 ? (
-                                                <Card className="shadow-sm border border-blue-gray-100">
-                                                    <CardBody className="text-center py-12">
-                                                        <CubeIcon className="h-12 w-12 mx-auto text-blue-gray-300 mb-4" />
-                                                        <Typography variant="h6" color="blue-gray" className="mb-2">
-                                                            No Assets Assigned
-                                                        </Typography>
-                                                        <Typography variant="small" color="gray">
-                                                            This employee currently has no assets assigned to them.
-                                                        </Typography>
-                                                    </CardBody>
-                                                </Card>
-                                            ) : (
-                                                <div className="grid gap-4">
-                                                    {currentAssets.map((asset) => (
-                                                        <Card key={asset.id} className="shadow-sm border border-blue-gray-100">
-                                                            <CardBody className="p-6">
-                                                                <div className="flex items-center justify-between">
-                                                                    <div className="flex-1">
-                                                                        <div className="flex items-center gap-3 mb-2">
-                                                                            <CubeIcon className="h-6 w-6 text-blue-500" />
-                                                                            <Typography variant="h6" color="blue-gray">
-                                                                                {asset.name}
-                                                                            </Typography>
-                                                                        </div>
-
-                                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                                                            <div>
-                                                                                <Typography variant="small" color="gray" className="font-semibold">
-                                                                                    Serial Number:
-                                                                                </Typography>
-                                                                                <Typography variant="small" color="blue-gray">
-                                                                                    {asset.serial_number}
-                                                                                </Typography>
-                                                                            </div>
-
-                                                                            <div>
-                                                                                <Typography variant="small" color="gray" className="font-semibold">
-                                                                                    Department:
-                                                                                </Typography>
-                                                                                <Typography variant="small" color="blue-gray">
-                                                                                    {asset.department_name}
-                                                                                </Typography>
-                                                                            </div>
-
-                                                                            <div>
-                                                                                <Typography variant="small" color="gray" className="font-semibold">
-                                                                                    Status:
-                                                                                </Typography>
-                                                                                <Chip
-                                                                                    color={formatters.getAssetStatusColor(asset.status)}
-                                                                                    value={asset.status?.toUpperCase()}
-                                                                                    className="text-xs w-fit"
-                                                                                />
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {asset.description && (
-                                                                            <div className="mt-3">
-                                                                                <Typography variant="small" color="gray" className="font-semibold">
-                                                                                    Description:
-                                                                                </Typography>
-                                                                                <Typography variant="small" color="blue-gray">
-                                                                                    {asset.description}
-                                                                                </Typography>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <div className="ml-4">
-                                                                        <Button
-                                                                            size="sm"
-                                                                            color="orange"
-                                                                            onClick={() => handleReturnAsset(asset)}
-                                                                            className="flex items-center gap-2"
-                                                                            disabled={!employee.has_face_data}
-                                                                        >
-                                                                            <ArrowPathIcon className="h-4 w-4" />
-                                                                            Return Asset
-                                                                        </Button>
-                                                                        {!employee.has_face_data && (
-                                                                            <Typography variant="tiny" color="red" className="text-center mt-1">
-                                                                                Face data required
-                                                                            </Typography>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </CardBody>
-                                                        </Card>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TabPanel>
-
-                                    {/* Transaction History Tab */}
-                                    <TabPanel value="history" className="p-0">
-                                        <div className="px-4">
-                                            <div className="mb-6">
-                                                <Typography variant="h6" color="blue-gray" className="mb-2">
-                                                    Transaction History ({transactions.length})
-                                                </Typography>
-                                                <Typography variant="small" color="gray">
-                                                    Complete history of asset transactions
-                                                </Typography>
-                                            </div>
-
-                                            {transactions.length === 0 ? (
-                                                <Card className="shadow-sm border border-blue-gray-100">
-                                                    <CardBody className="text-center py-12">
-                                                        <ClipboardDocumentListIcon className="h-12 w-12 mx-auto text-blue-gray-300 mb-4" />
-                                                        <Typography variant="h6" color="blue-gray" className="mb-2">
-                                                            No Transaction History
-                                                        </Typography>
-                                                        <Typography variant="small" color="gray">
-                                                            This employee has no transaction history yet.
-                                                        </Typography>
-                                                    </CardBody>
-                                                </Card>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    {transactions.map((transaction) => (
-                                                        <Card key={transaction.id} className="shadow-sm border border-blue-gray-100">
-                                                            <CardBody className="p-6">
-                                                                <div className="flex items-center justify-between mb-3">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Chip
-                                                                            color={formatters.getTransactionTypeColor(transaction.transaction_type)}
-                                                                            value={transaction.transaction_type?.toUpperCase()}
-                                                                            className="text-xs"
-                                                                        />
-                                                                        <Typography variant="h6" color="blue-gray">
-                                                                            {transaction.asset_name}
-                                                                        </Typography>
-                                                                    </div>
-
+                                                            {transaction.return_condition && (
+                                                                <div className="flex items-center gap-2 mb-2">
                                                                     <Typography variant="small" color="gray">
-                                                                        {formatters.formatDate(transaction.transaction_date)}
+                                                                        <strong>Return Condition:</strong>
+                                                                    </Typography>
+                                                                    <Chip
+                                                                        size="sm"
+                                                                        color={
+                                                                            profileFormatters.formatAssetCondition
+                                                                                ? profileFormatters
+                                                                                    .formatAssetCondition(
+                                                                                        transaction.return_condition
+                                                                                    ).color
+                                                                                : "gray"
+                                                                        }
+                                                                        value={transaction.return_condition}
+                                                                    />
+                                                                </div>
+                                                            )}
+
+                                                            {transaction.processed_by_name && (
+                                                                <Typography variant="small" color="gray">
+                                                                    <strong>Processed by:</strong>{" "}
+                                                                    {transaction.processed_by_name}
+                                                                </Typography>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="flex flex-col items-end gap-2">
+                                                            {transaction.face_verification_success ? (
+                                                                <div className="flex items-center gap-1 text-green-600">
+                                                                    <CheckCircleIcon className="h-4 w-4" />
+                                                                    <Typography variant="small">
+                                                                        Verified
+                                                                        {transaction.face_verification_confidence &&
+                                                                            ` (${(
+                                                                                transaction.face_verification_confidence *
+                                                                                100
+                                                                            ).toFixed(1)}%)`}
                                                                     </Typography>
                                                                 </div>
-
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                                                                    <div>
-                                                                        <Typography variant="small" color="gray" className="font-semibold">
-                                                                            Asset Serial:
-                                                                        </Typography>
-                                                                        <Typography variant="small" color="blue-gray">
-                                                                            {transaction.asset_serial_number}
-                                                                        </Typography>
-                                                                    </div>
-
-                                                                    <div>
-                                                                        <Typography variant="small" color="gray" className="font-semibold">
-                                                                            Processed By:
-                                                                        </Typography>
-                                                                        <Typography variant="small" color="blue-gray">
-                                                                            {transaction.processed_by_name || 'System'}
-                                                                        </Typography>
-                                                                    </div>
-
-                                                                    <div>
-                                                                        <Typography variant="small" color="gray" className="font-semibold">
-                                                                            Face Verification:
-                                                                        </Typography>
-                                                                        <div className="flex items-center gap-1">
-                                                                            {transaction.face_verification_success ? (
-                                                                                <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                                                                            ) : (
-                                                                                <XCircleIcon className="h-4 w-4 text-red-500" />
-                                                                            )}
-                                                                            <Typography variant="small" color="blue-gray">
-                                                                                {transaction.verification_status}
-                                                                            </Typography>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {transaction.transaction_type === 'return' && transaction.return_condition && (
-                                                                        <div>
-                                                                            <Typography variant="small" color="gray" className="font-semibold">
-                                                                                Return Condition:
-                                                                            </Typography>
-                                                                            <Typography variant="small" color="blue-gray">
-                                                                                {transaction.return_condition}
-                                                                            </Typography>
-                                                                        </div>
-                                                                    )}
+                                                            ) : (
+                                                                <div className="flex items-center gap-1 text-red-600">
+                                                                    <XCircleIcon className="h-4 w-4" />
+                                                                    <Typography variant="small">
+                                                                        Not Verified
+                                                                    </Typography>
                                                                 </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
 
-                                                                {transaction.notes && (
-                                                                    <div className="mt-3 pt-3 border-t border-blue-gray-50">
-                                                                        <Typography variant="small" color="gray" className="font-semibold mb-1">
-                                                                            Notes:
-                                                                        </Typography>
-                                                                        <Typography variant="small" color="blue-gray">
-                                                                            {transaction.notes}
-                                                                        </Typography>
-                                                                    </div>
-                                                                )}
+                                                    {(transaction.notes || transaction.damage_notes) && (
+                                                        <div className="mt-4 p-3 bg-gray-50 rounded border-l-4 border-blue-500">
+                                                            {transaction.damage_notes && (
+                                                                <div className="mb-2">
+                                                                    <Typography
+                                                                        variant="small"
+                                                                        color="red"
+                                                                        className="font-semibold mb-1"
+                                                                    >
+                                                                        Damage Notes:
+                                                                    </Typography>
+                                                                    <Typography variant="small" color="gray">
+                                                                        {transaction.damage_notes}
+                                                                    </Typography>
+                                                                </div>
+                                                            )}
+                                                            {transaction.notes && (
+                                                                <div>
+                                                                    <Typography
+                                                                        variant="small"
+                                                                        color="blue-gray"
+                                                                        className="font-semibold mb-1"
+                                                                    >
+                                                                        Notes:
+                                                                    </Typography>
+                                                                    <Typography variant="small" color="gray">
+                                                                        {transaction.notes}
+                                                                    </Typography>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </CardBody>
+                                            </Card>
+                                        ))}
 
-                                                                {transaction.damage_notes && (
-                                                                    <div className="mt-2">
-                                                                        <Typography variant="small" color="gray" className="font-semibold mb-1">
-                                                                            Damage Notes:
-                                                                        </Typography>
-                                                                        <Typography variant="small" color="red">
-                                                                            {transaction.damage_notes}
-                                                                        </Typography>
-                                                                    </div>
-                                                                )}
-                                                            </CardBody>
-                                                        </Card>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </TabPanel>
-                                </TabsBody>
-                            </Tabs>
-                        </>
-                    )}
+                                        {historyPage < historyTotalPages && (
+                                            <div className="text-center">
+                                                <Button
+                                                    variant="outlined"
+                                                    onClick={handleLoadMoreHistory}
+                                                    loading={historyLoading}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    <ClockIcon className="h-4 w-4" />
+                                                    Load More History
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <ClockIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                                        <Typography variant="h6" color="gray">
+                                            No Transaction History
+                                        </Typography>
+                                        <Typography variant="small" color="gray">
+                                            This employee hasn't completed any transactions yet.
+                                        </Typography>
+                                    </div>
+                                )}
+                            </TabPanel>
+                        </TabsBody>
+                    </Tabs>
                 </CardBody>
             </Card>
 
-            {/* Asset Return Form Modal */}
-            <Dialog
-                open={showReturnModal}
-                handler={handleReturnModalClose}
-                size="md"
-            >
-                <DialogHeader className="flex items-center gap-2">
-                    <ArrowPathIcon className="h-6 w-6 text-orange-500" />
-                    Return Asset: {selectedAsset?.name}
-                </DialogHeader>
-                <DialogBody className="space-y-4">
-                    <Alert color="blue" className="mb-4">
-                        <Typography variant="small">
-                            Please provide the return condition and any additional notes. Face verification will be required to complete the return process.
-                        </Typography>
-                    </Alert>
-
-                    <div className="space-y-4">
-                        <Select
-                            label="Asset Condition"
-                            value={returnFormData.return_condition}
-                            onChange={(value) => setReturnFormData(prev => ({ ...prev, return_condition: value }))}
-                            required
-                        >
-                            <Option value="">Select Condition</Option>
-                            <Option value="Good">Good - No issues</Option>
-                            <Option value="Fair">Fair - Minor wear</Option>
-                            <Option value="Damaged">Damaged - Needs repair</Option>
-                            <Option value="Broken">Broken - Not functional</Option>
-                        </Select>
-
-                        {(returnFormData.return_condition === 'Damaged' || returnFormData.return_condition === 'Broken') && (
-                            <Textarea
-                                label="Damage Description"
-                                name="damage_notes"
-                                value={returnFormData.damage_notes}
-                                onChange={handleInputChange}
-                                placeholder="Describe the damage or issues with the asset..."
-                                rows={3}
-                            />
-                        )}
-
-                        <Textarea
-                            label="Additional Notes (Optional)"
-                            name="notes"
-                            value={returnFormData.notes}
-                            onChange={handleInputChange}
-                            placeholder="Any additional information about the return..."
-                            rows={3}
-                        />
-                    </div>
-                </DialogBody>
-                <DialogFooter>
-                    <Button
-                        variant="text"
-                        color="red"
-                        onClick={handleReturnModalClose}
-                        className="mr-1"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleReturnFormSubmit}
-                        disabled={!returnFormData.return_condition}
-                        className="flex items-center gap-2"
-                    >
-                        <CameraIcon className="h-4 w-4" />
-                        Proceed to Face Verification
-                    </Button>
-                </DialogFooter>
-            </Dialog>
-
-            {/* Face Recognition Modal for Asset Return */}
+            {/* Face Registration Modal */}
             <FaceRecognitionComponent
                 open={showFaceModal}
-                mode="verify"
+                mode="register"
                 employeeId={employee?.id}
                 employeeName={employee?.name}
-                onClose={handleReturnModalClose}
-                onSuccess={handleFaceVerificationSuccess}
-                onError={handleFaceVerificationError}
-                title={`Verify Identity - Returning ${selectedAsset?.name}`}
-                loading={returnLoading}
+                onClose={() => setShowFaceModal(false)}
+                onSuccess={handleFaceRegistrationSuccess}
+                onError={handleFaceRegistrationError}
             />
-        </>
+
+            {/* Asset Return Modal */}
+            <AssetReturnComponent
+                open={showReturnModal}
+                onClose={() => setShowReturnModal(false)}
+                asset={selectedAsset}
+                employee={employee}
+                onSuccess={handleReturnSuccess}
+                onError={handleReturnError}
+            />
+        </div>
     );
 }
 
 export default EmployeeProfile;
+
