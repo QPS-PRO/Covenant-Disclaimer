@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { Home } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
-import { Employees, Assets, Departments, Transactions } from "@/pages/management";
+import { Employees, Assets, Departments, Transactions, EmployeeProfile } from "@/pages/management";
 
 const icon = {
   className: "w-5 h-5 text-inherit",
@@ -30,6 +30,14 @@ export const routes = [
         name: "employees",
         path: "/employees",
         element: <Employees />,
+      },
+      ,
+      {
+        icon: <UsersIcon {...icon} />,
+        name: "employee-profile",
+        path: "/employees/:id/profile",
+        element: <EmployeeProfile />,
+        hideFromSidebar: true, // This prevents it from showing in the sidebar
       },
       {
         icon: <CubeIcon {...icon} />,

@@ -217,7 +217,7 @@ export function Employees() {
 
     // New profile navigation handler
     const handleProfile = (employee) => {
-        navigate(`/management/employees/${employee.id}/profile`);
+        navigate(`/dashboard/employees/${employee.id}/profile`);
     };
 
     const handleDelete = async (employee) => {

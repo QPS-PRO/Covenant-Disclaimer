@@ -201,7 +201,7 @@ export function EmployeeProfile() {
                     <Button
                         variant="text"
                         color="white"
-                        onClick={() => navigate('/management/employees')}
+                        onClick={() => navigate('/dashboard/employees')}
                         className="flex items-center gap-2"
                     >
                         <ArrowLeftIcon className="h-4 w-4" />
