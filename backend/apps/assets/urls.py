@@ -1,4 +1,3 @@
-# backend/apps/assets/urls.py - Updated with pagination endpoints
 from django.urls import path
 from . import views
 

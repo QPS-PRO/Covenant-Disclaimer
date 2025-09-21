@@ -7,13 +7,13 @@ export const departmentAPI = {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/departments/${queryString ? `?${queryString}` : ""}`);
     },
-    
+
     getAllForDropdown: (search = '') => {
         const params = search ? { search } : {};
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/departments/all/${queryString ? `?${queryString}` : ""}`);
     },
-    
+
     getById: (id) => apiGet(`/api/departments/${id}/`),
     create: (data) => apiPost('/api/departments/', data),
     update: (id, data) => apiPatch(`/api/departments/${id}/`, data),
@@ -26,12 +26,12 @@ export const employeeAPI = {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/employees/${queryString ? `?${queryString}` : ''}`);
     },
-    
+
     getAllForDropdown: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/employees/all/${queryString ? `?${queryString}` : ''}`);
     },
-    
+
     getById: (id) => apiGet(`/api/employees/${id}/`),
     getProfile: (id) => apiGet(`/api/employees/${id}/profile/`),
     create: (data) => apiPost('/api/employees/', data),
@@ -57,12 +57,12 @@ export const assetAPI = {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/assets/${queryString ? `?${queryString}` : ''}`);
     },
-    
+
     getAllForDropdown: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/assets/all/${queryString ? `?${queryString}` : ''}`);
     },
-    
+
     getById: (id) => apiGet(`/api/assets/${id}/`),
     create: (data) => apiPost('/api/assets/', data),
     update: (id, data) => apiPatch(`/api/assets/${id}/`, data),
@@ -75,18 +75,18 @@ export const transactionAPI = {
         const queryString = new URLSearchParams(params).toString();
         return apiGet(`/api/transactions/${queryString ? `?${queryString}` : ''}`);
     },
-    
+
     getById: (id) => apiGet(`/api/transactions/${id}/`),
     create: (data) => apiPost('/api/transactions/', data),
-    
+
     // Face verification for transactions
     createWithFaceVerification: (data, faceData) => apiPost('/api/transactions/', {
         ...data,
         face_verification_data: faceData
     }),
-    
+
     // Get recent transactions for dashboard (limited, no pagination)
-    getRecent: (limit = 10) => apiGet(`/api/transactions/?ordering=-transaction_date&limit=${limit}`),
+    getRecent: (limit = 5) => apiGet(`/api/transactions/?ordering=-transaction_date&page=1&page_size=${limit}`),
 };
 
 // Dashboard API
@@ -105,11 +105,11 @@ export const dashboardAPI = {
     getDepartmentDistribution: () => apiGet('/api/dashboard/stats/').then(data => data.department_distribution),
 
     // Get comprehensive dashboard data in one call
-    getAllDashboardData: async () => {
+    getAllDashboardData: async (recentLimit = 5) => {
         try {
             const [stats, recentTransactions] = await Promise.all([
                 dashboardAPI.getStats(),
-                transactionAPI.getRecent(10)
+                transactionAPI.getRecent(recentLimit)
             ]);
 
             return {

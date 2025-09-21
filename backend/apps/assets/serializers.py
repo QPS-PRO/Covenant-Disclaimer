@@ -1,9 +1,7 @@
-# backend/apps/assets/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from .models import Department, Employee, Asset, AssetTransaction
-import json
 from .face_recognition_service import verify_employee_face
 
 User = get_user_model()

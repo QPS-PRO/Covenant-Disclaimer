@@ -84,10 +84,8 @@ class Asset(models.Model):
     def clean(self):
         """Custom validation for asset status"""
         super().clean()
-        # If status is being changed to 'assigned', ensure current_holder is set
         if self.status == 'assigned' and not self.current_holder:
             raise ValidationError('Asset marked as assigned must have a current holder.')
-        # If status is not 'assigned', ensure current_holder is not set
         elif self.status != 'assigned' and self.current_holder:
             raise ValidationError('Asset not marked as assigned cannot have a current holder.')
 

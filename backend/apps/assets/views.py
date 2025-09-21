@@ -1,16 +1,12 @@
-# backend/apps/assets/views.py
 from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from datetime import timedelta, date
-import hashlib
-import random
 from .models import Department, Employee, Asset, AssetTransaction
 from .serializers import (
     DepartmentSerializer,
@@ -20,7 +16,6 @@ from .serializers import (
     AssetSerializer,
     AssetTransactionSerializer,
     AssetTransactionCreateSerializer,
-    DashboardStatsSerializer,
     FaceVerificationSerializer,
 )
 from .face_recognition_service import (
@@ -83,7 +78,6 @@ class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
         return EmployeeSerializer
 
     def destroy(self, request, *args, **kwargs):
-        # Soft delete - mark as inactive instead of deleting
         employee = self.get_object()
         employee.is_active = False
         employee.save()
@@ -116,7 +110,6 @@ class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
         asset = self.get_object()
 
         try:
-            # Check if asset can be deleted using the model's can_be_deleted method
             if not asset.can_be_deleted():
                 return Response(
                     {
@@ -132,7 +125,6 @@ class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # If asset can be deleted, proceed with deletion
             return super().destroy(request, *args, **kwargs)
 
         except ValidationError as e:
@@ -162,12 +154,9 @@ class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
         asset = self.get_object()
         partial = kwargs.pop("partial", False)
 
-        # Get the new status from request data
         new_status = request.data.get("status")
 
-        # If status is being changed, validate the change
         if new_status and new_status != asset.status:
-            # If changing to 'assigned' but no current_holder, return error
             if (
                 new_status == "assigned"
                 and not request.data.get("current_holder")
@@ -180,11 +169,9 @@ class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # If changing from 'assigned' to another status, clear current_holder
             if asset.status == "assigned" and new_status != "assigned":
                 request.data["current_holder"] = None
 
-        # Proceed with normal update
         serializer = self.get_serializer(asset, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
@@ -233,7 +220,6 @@ class AssetTransactionDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
 
-# Add new API endpoints for unpaginated data when needed
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def employees_list_all_view(request):
@@ -243,7 +229,6 @@ def employees_list_all_view(request):
             is_active=True
         )
 
-        # Apply filters if provided
         department = request.GET.get("department")
         search = request.GET.get("search")
 
@@ -260,7 +245,7 @@ def employees_list_all_view(request):
 
         serializer = EmployeeSerializer(
             employees[:100], many=True
-        )  # Limit to 100 for performance
+        ) 
         return Response(serializer.data)
     except Exception as e:
         return Response(
@@ -276,7 +261,6 @@ def assets_list_all_view(request):
     try:
         assets = Asset.objects.select_related("department", "current_holder__user")
 
-        # Apply filters if provided
         department = request.GET.get("department")
         status_filter = request.GET.get("status")
         search = request.GET.get("search")
@@ -296,7 +280,7 @@ def assets_list_all_view(request):
 
         serializer = AssetSerializer(
             assets[:100], many=True
-        )  # Limit to 100 for performance
+        )  
         return Response(serializer.data)
     except Exception as e:
         return Response(
@@ -373,7 +357,7 @@ def dashboard_stats_view(request):
                 }
             )
 
-        # FIXED: Department distribution with correct asset counts
+        # Department distribution with correct asset counts
         dept_stats = (
             Department.objects.annotate(
                 employee_count=Count(
@@ -457,7 +441,7 @@ def dashboard_stats_view(request):
             # Time-based data
             "weekly_data": weekly_data,
             "monthly_data": monthly_data,
-            # Department data - FIXED to return correct structure
+            # Department data 
             "department_distribution": list(dept_stats),
             # Value and verification stats
             "total_asset_value": float(total_asset_value),
@@ -484,7 +468,6 @@ def dashboard_stats_view(request):
             {
                 "error": "Failed to fetch dashboard statistics",
                 "detail": str(e),
-                # Provide minimal fallback data
                 "total_employees": 0,
                 "total_assets": 0,
                 "total_departments": 0,
@@ -557,7 +540,7 @@ def dashboard_charts_data_view(request):
             }
             weekly_data.append(daily_data)
 
-        # FIXED: Department assets chart with proper asset counts
+        # Department assets chart with proper asset counts
         dept_data = (
             Department.objects.annotate(asset_count=Count("assets", distinct=True))
             .values("name", "asset_count")
@@ -607,7 +590,6 @@ def employee_profile_view(request, employee_id):
         )
         current_assets_data = AssetSerializer(current_assets, many=True).data
 
-        # ✅ عدّ مجمّع حسب النوع مرة واحدة
         grouped = (
             AssetTransaction.objects.filter(employee=employee)
             .values("transaction_type")
@@ -632,12 +614,10 @@ def employee_profile_view(request, employee_id):
                     "total_transactions": by_type["issue"] + by_type["return"],
                     "current_assets_count": current_assets.count(),
                     "face_verified_transactions": face_verified_transactions,
-                    # ✅ الأرقام اللي انت عايزها
                     "transactions_by_type": {
-                        "assign": by_type["issue"],  # assign = issue
+                        "assign": by_type["issue"],  
                         "return": by_type["return"],
                     },
-                    # (اختياري) عشان التوافق الخلفي لو في كود قديم بيعتمد عليهم
                     "total_issues": by_type["issue"],
                     "total_returns": by_type["return"],
                     "has_face_data": bool(employee.face_recognition_data),
@@ -666,7 +646,6 @@ def verify_face_view(request):
         employee = serializer.validated_data["employee"]
         face_data = serializer.validated_data["face_data"]
 
-        # Perform real face verification
         verification_result = verify_employee_face(employee, face_data)
 
         return Response(
@@ -703,7 +682,6 @@ def update_employee_face_data(request, employee_id):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Process the face registration
         result = process_employee_face_registration(employee, face_image_data)
 
         if result["success"]:
