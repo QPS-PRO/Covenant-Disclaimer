@@ -37,7 +37,12 @@ export const employeeAPI = {
     create: (data) => apiPost('/api/employees/', data),
     update: (id, data) => apiPatch(`/api/employees/${id}/`, data),
     delete: (id) => apiDelete(`/api/employees/${id}/`),
-
+    getCurrentAssets: (id) => apiGet(`/api/employees/${id}/current-assets/`),
+    getStats: (id) => apiGet(`/api/employees/${id}/stats/`),
+    getTransactionHistory: (id, params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiGet(`/api/employees/${id}/transactions/${queryString ? `?${queryString}` : ''}`);
+    },
     // Face recognition specific endpoints
     updateFaceData: (id, faceImageData) => apiPost(`/api/employees/${id}/face/`, {
         face_recognition_data: faceImageData
@@ -85,6 +90,10 @@ export const transactionAPI = {
         face_verification_data: faceData
     }),
 
+    createReturn: (data) => apiPost('/api/transactions/return/', data),
+    bulkReturn: (data) => apiPost('/api/transactions/bulk-return/', data),
+    getTransactionDetails: (id) => apiGet(`/api/transactions/${id}/details/`),
+    
     // Get recent transactions for dashboard (limited, no pagination)
     getRecent: (limit = 5) => apiGet(`/api/transactions/?ordering=-transaction_date&page=1&page_size=${limit}`),
 };
@@ -317,5 +326,150 @@ export const formatters = {
     // Format confidence score
     formatConfidence: (confidence) => {
         return `${(confidence * 100).toFixed(1)}%`;
+    }
+};
+
+
+// Asset return specific API
+export const assetReturnAPI = {
+    // Process asset return with face verification
+    processReturn: async (assetId, employeeId, returnData, faceVerificationData) => {
+        return apiPost('/api/assets/return/', {
+            asset_id: assetId,
+            employee_id: employeeId,
+            return_condition: returnData.return_condition,
+            damage_notes: returnData.damage_notes,
+            notes: returnData.notes,
+            face_verification_data: faceVerificationData
+        });
+    },
+
+    // Get return history for an asset
+    getAssetReturnHistory: (assetId) => apiGet(`/api/assets/${assetId}/return-history/`),
+
+    // Get return statistics
+    getReturnStats: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiGet(`/api/returns/stats/${queryString ? `?${queryString}` : ''}`);
+    }
+};
+
+// Utility functions for employee profile
+export const employeeProfileUtils = {
+    // Format employee data for display
+    formatEmployeeData: (employee) => ({
+        ...employee,
+        displayName: employee.name || `${employee.first_name} ${employee.last_name}`,
+        avatar: employee.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || 'User')}&background=0d47a1&color=fff&size=128`,
+        memberSince: formatters.formatDate(employee.created_at || employee.date_joined),
+        isActive: employee.is_active ?? true,
+        hasFaceData: employee.has_face_data ?? false,
+    }),
+
+    // Calculate employee activity score
+    calculateActivityScore: (stats) => {
+        if (!stats) return 0;
+        const totalTransactions = stats.total_transactions || 0;
+        const currentAssets = stats.current_assets_count || 0;
+        const faceVerificationRate = stats.face_verification_rate || 0;
+        
+        // Simple scoring algorithm
+        return Math.min(100, (totalTransactions * 2) + (currentAssets * 5) + (faceVerificationRate * 10));
+    },
+
+    // Get employee status color
+    getEmployeeStatusColor: (employee) => {
+        if (!employee.is_active) return 'red';
+        if (!employee.has_face_data) return 'orange';
+        return 'green';
+    },
+
+    // Get employee status text
+    getEmployeeStatusText: (employee) => {
+        if (!employee.is_active) return 'Inactive';
+        if (!employee.has_face_data) return 'Missing Face Data';
+        return 'Active';
+    }
+};
+
+// Enhanced formatters for profile page
+export const profileFormatters = {
+    ...formatters, // Include existing formatters
+
+    // Format asset condition with color
+    formatAssetCondition: (condition) => {
+        const conditionColors = {
+            'Excellent': 'green',
+            'Good': 'green', 
+            'Fair': 'yellow',
+            'Poor': 'orange',
+            'Damaged': 'red',
+            'Broken': 'red'
+        };
+        return {
+            text: condition,
+            color: conditionColors[condition] || 'gray'
+        };
+    },
+
+    // Format verification status with details
+    formatVerificationStatus: (isVerified, confidence) => {
+        if (isVerified && confidence) {
+            return {
+                text: `Verified (${(confidence * 100).toFixed(1)}%)`,
+                color: 'green',
+                icon: 'check'
+            };
+        } else if (isVerified) {
+            return {
+                text: 'Verified',
+                color: 'green', 
+                icon: 'check'
+            };
+        } else {
+            return {
+                text: 'Not Verified',
+                color: 'red',
+                icon: 'x'
+            };
+        }
+    },
+
+    // Format transaction summary
+    formatTransactionSummary: (transaction) => ({
+        id: transaction.id,
+        type: transaction.transaction_type,
+        assetName: transaction.asset_name,
+        date: formatters.formatDate(transaction.transaction_date),
+        verification: profileFormatters.formatVerificationStatus(
+            transaction.face_verification_success,
+            transaction.face_verification_confidence
+        ),
+        condition: transaction.return_condition ? 
+            profileFormatters.formatAssetCondition(transaction.return_condition) : null,
+        hasNotes: !!(transaction.notes || transaction.damage_notes)
+    })
+};
+
+// Profile page specific constants
+export const PROFILE_CONSTANTS = {
+    TABS: {
+        OVERVIEW: 'overview',
+        ASSETS: 'assets', 
+        HISTORY: 'history'
+    },
+    
+    ASSET_CONDITIONS: [
+        { value: 'Excellent', label: 'Excellent - Like new', color: 'green' },
+        { value: 'Good', label: 'Good - No issues', color: 'green' },
+        { value: 'Fair', label: 'Fair - Minor wear', color: 'yellow' },
+        { value: 'Poor', label: 'Poor - Significant wear', color: 'orange' },
+        { value: 'Damaged', label: 'Damaged - Needs repair', color: 'red' },
+        { value: 'Broken', label: 'Broken - Not functional', color: 'red' }
+    ],
+    
+    PAGINATION: {
+        DEFAULT_PAGE_SIZE: 10,
+        MAX_PAGE_SIZE: 50
     }
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Card,
     CardHeader,
@@ -30,12 +31,14 @@ import {
     CameraIcon,
     CheckCircleIcon,
     XCircleIcon,
-    UserCircleIcon
+    UserCircleIcon,
+    UserIcon
 } from "@heroicons/react/24/outline";
 import { employeeAPI, departmentAPI, formatters } from "@/lib/assetApi";
 import FaceRecognitionComponent from "../../components/FaceRecognitionComponent";
 
 export function Employees() {
+    const navigate = useNavigate();
     const [employees, setEmployees] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -102,7 +105,7 @@ export function Employees() {
             setTotalPages(Number(response?.total_pages || 1));
             setTotalCount(Number(response?.count || dataArray.length));
             setPage(Number(response?.current_page || 1));
-            setError(""); 
+            setError("");
         } catch (err) {
             const status = err?.response?.status ?? err?.status;
 
@@ -120,7 +123,7 @@ export function Employees() {
                     setTotalPages(Number(fallback?.total_pages || 1));
                     setTotalCount(Number(fallback?.count || dataArray.length));
                     setPage(Number(fallback?.current_page || 1));
-                    setError(""); 
+                    setError("");
                     return;
                 } catch (e2) {
                 }
@@ -131,7 +134,6 @@ export function Employees() {
         }
     };
 
-
     const fetchDepartments = async () => {
         try {
             const response = await departmentAPI.getAll();
@@ -141,27 +143,24 @@ export function Employees() {
         }
     };
 
-
     useEffect(() => {
         if (!mounted) return;
 
         const t = setTimeout(() => {
             if (page !== 1) {
-                setPage(1);        
+                setPage(1);
             } else {
-                fetchEmployees(); 
+                fetchEmployees();
             }
         }, 300);
 
         return () => clearTimeout(t);
     }, [searchTerm, selectedDepartment, mounted]);
 
-
     useEffect(() => {
         if (!mounted) return;
         fetchEmployees();
     }, [page]);
-
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -179,7 +178,7 @@ export function Employees() {
                 await employeeAPI.create(formData);
             }
             handleModalClose();
-            setPage(1);                  
+            setPage(1);
             await fetchEmployees();
         } catch (err) {
             setError(err.response?.data?.detail || err.message || "Failed to save employee");
@@ -214,6 +213,11 @@ export function Employees() {
         } catch (err) {
             setError("Failed to fetch employee details");
         }
+    };
+
+    // New profile navigation handler
+    const handleProfile = (employee) => {
+        navigate(`/management/employees/${employee.id}/profile`);
     };
 
     const handleDelete = async (employee) => {
@@ -335,14 +339,12 @@ export function Employees() {
                         <div className="w-full md:w-48">
                             <Select
                                 label="Filter by Department"
-                                value={selectedDepartment ?? ""}                      // keep it a string
+                                value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
                                 selected={(element) => {
-                                    // Case 1: MTW passes the actual <Option />
                                     if (React.isValidElement(element) && element.props?.children != null) {
-                                        return element.props.children; // department name
+                                        return element.props.children;
                                     }
-                                    // Case 2: raw value or undefined -> derive from state
                                     const raw =
                                         (typeof element === "string" || typeof element === "number")
                                             ? String(element)
@@ -359,9 +361,9 @@ export function Employees() {
                                     </Option>
                                 ))}
                             </Select>
-
                         </div>
                     </div>
+
                     {/* Table */}
                     <div className="overflow-x-scroll">
                         <table className="w-full min-w-[640px] table-auto">
@@ -443,11 +445,22 @@ export function Employees() {
                                                 />
                                             </td>
                                             <td className={className}>
-                                                <div className="flex gap-2">
+                                                <div className="flex gap-1">
+                                                    {/* Profile Button - New */}
+                                                    <IconButton
+                                                        variant="text"
+                                                        color="green"
+                                                        onClick={() => handleProfile(employee)}
+                                                        title="View Profile"
+                                                    >
+                                                        <UserIcon className="h-4 w-4" />
+                                                    </IconButton>
+
                                                     <IconButton
                                                         variant="text"
                                                         color="blue-gray"
                                                         onClick={() => handleView(employee)}
+                                                        title="Quick View"
                                                     >
                                                         <EyeIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -455,6 +468,7 @@ export function Employees() {
                                                         variant="text"
                                                         color="blue-gray"
                                                         onClick={() => handleEdit(employee)}
+                                                        title="Edit Employee"
                                                     >
                                                         <PencilIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -462,6 +476,7 @@ export function Employees() {
                                                         variant="text"
                                                         color="red"
                                                         onClick={() => handleDelete(employee)}
+                                                        title="Delete Employee"
                                                     >
                                                         <TrashIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -473,7 +488,8 @@ export function Employees() {
                             </tbody>
                         </table>
                     </div>
-                    {/* paginator */}
+
+                    {/* Pagination */}
                     <div className="flex items-center justify-between px-6 py-4 text-sm text-blue-gray-600">
                         <span>
                             Showing <b>{rangeStart}</b>–<b>{rangeEnd}</b> of <b>{totalCount}</b>
@@ -545,17 +561,15 @@ export function Employees() {
                                     </div>
                                     <Select
                                         label="Department"
-                                        value={formData.department ?? ""} // keep as string
+                                        value={formData.department ?? ""}
                                         onChange={(value) =>
                                             setFormData((prev) => ({ ...prev, department: value ?? "" }))
                                         }
                                         required
                                         selected={(element) => {
-                                            // If MTW hands us the actual <Option />, use its children (the label)
                                             if (React.isValidElement(element) && element.props?.children != null) {
                                                 return element.props.children;
                                             }
-                                            // Fallback: element may be raw value or undefined — derive from state
                                             const raw =
                                                 (typeof element === "string" || typeof element === "number")
                                                     ? String(element)
@@ -572,7 +586,6 @@ export function Employees() {
                                             </Option>
                                         ))}
                                     </Select>
-
                                 </TabPanel>
                             </TabsBody>
                         </Tabs>
@@ -648,17 +661,15 @@ export function Employees() {
                                     </div>
                                     <Select
                                         label="Department"
-                                        value={formData.department ?? ""} // keep as string
+                                        value={formData.department ?? ""}
                                         onChange={(value) =>
                                             setFormData((prev) => ({ ...prev, department: value ?? "" }))
                                         }
                                         required
                                         selected={(element) => {
-                                            // If MTW hands us the actual <Option />, use its children (the label)
                                             if (React.isValidElement(element) && element.props?.children != null) {
                                                 return element.props.children;
                                             }
-                                            // Fallback: element may be raw value or undefined — derive from state
                                             const raw =
                                                 (typeof element === "string" || typeof element === "number")
                                                     ? String(element)
@@ -675,7 +686,6 @@ export function Employees() {
                                             </Option>
                                         ))}
                                     </Select>
-
                                 </TabPanel>
                                 <TabPanel value="face" className="space-y-4">
                                     <Card className="p-4">
@@ -727,11 +737,22 @@ export function Employees() {
                 </form>
             </Dialog>
 
-            {/* View Employee Modal */}
+            {/* Quick View Employee Modal */}
             <Dialog open={showViewModal} handler={handleModalClose} size="xl">
                 {selectedEmployee && (
                     <>
-                        <DialogHeader>Employee Profile - {selectedEmployee.name}</DialogHeader>
+                        <DialogHeader className="flex items-center justify-between">
+                            <span>Employee Profile - {selectedEmployee.name}</span>
+                            <Button
+                                size="sm"
+                                color="blue"
+                                onClick={() => handleProfile(selectedEmployee)}
+                                className="flex items-center gap-2"
+                            >
+                                <UserIcon className="h-4 w-4" />
+                                Full Profile
+                            </Button>
+                        </DialogHeader>
 
                         <DialogBody className="max-h-[70vh] overflow-y-auto">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -837,7 +858,7 @@ export function Employees() {
                                 </Card>
                             </div>
 
-                            {/* Statistics (unchanged) */}
+                            {/* Statistics */}
                             {selectedEmployee.stats && (
                                 <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-orange-500 px-5 py-3">
@@ -861,19 +882,17 @@ export function Employees() {
                                                 <Typography variant="small" color="gray">Total Transactions</Typography>
                                             </div>
 
-                                            {/* ✅ Assigns */}
                                             <div className="text-center">
                                                 <Typography variant="h4" color="blue">
-                                                    {selectedEmployee.stats.transactions_by_type?.assign
+                                                    {selectedEmployee.stats.transactions_by_type?.issue
                                                         ?? selectedEmployee.stats.total_issues
                                                         ?? 0}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">Assigns</Typography>
+                                                <Typography variant="small" color="gray">Issues</Typography>
                                             </div>
 
-                                            {/* ✅ Returns */}
                                             <div className="text-center">
-                                                <Typography variant="h4" color="blue">
+                                                <Typography variant="h4" color="orange">
                                                     {selectedEmployee.stats.transactions_by_type?.return
                                                         ?? selectedEmployee.stats.total_returns
                                                         ?? 0}
@@ -884,18 +903,24 @@ export function Employees() {
                                     </CardBody>
                                 </Card>
                             )}
-
                         </DialogBody>
 
                         <DialogFooter>
+                            <Button
+                                variant="text"
+                                color="blue"
+                                onClick={() => handleProfile(selectedEmployee)}
+                                className="mr-2"
+                            >
+                                View Full Profile
+                            </Button>
                             <Button onClick={handleModalClose}>Close</Button>
                         </DialogFooter>
                     </>
                 )}
             </Dialog>
 
-
-            {/* Face Registration Modal - Rendered separately with proper state management */}
+            {/* Face Registration Modal */}
             <FaceRecognitionComponent
                 open={showFaceModal}
                 mode="register"

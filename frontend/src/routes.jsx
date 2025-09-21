@@ -48,7 +48,7 @@ export const routes = [
         name: "transactions",
         path: "/transactions",
         element: <Transactions />,
-      },
+      }
     ],
   },
   // Keep auth pages for routing but don't show them in sidebar

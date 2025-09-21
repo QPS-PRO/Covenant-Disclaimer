@@ -268,22 +268,30 @@ class AssetTransactionCreateSerializer(serializers.ModelSerializer):
 
 class AssetTransactionSerializer(serializers.ModelSerializer):
     asset_name = serializers.CharField(source='asset.name', read_only=True)
-    asset_serial = serializers.CharField(source='asset.serial_number', read_only=True)
+    asset_serial_number = serializers.CharField(source='asset.serial_number', read_only=True)
     employee_name = serializers.CharField(source='employee.name', read_only=True)
     employee_id = serializers.CharField(source='employee.employee_id', read_only=True)
     processed_by_name = serializers.CharField(source='processed_by.get_full_name', read_only=True)
+    verification_status = serializers.SerializerMethodField()
     
     class Meta:
         model = AssetTransaction
         fields = [
-            'id', 'asset', 'asset_name', 'asset_serial',
+            'id', 'asset', 'asset_name', 'asset_serial_number',
             'employee', 'employee_name', 'employee_id',
             'transaction_type', 'transaction_date', 'notes',
             'processed_by', 'processed_by_name',
             'face_verification_success', 'face_verification_confidence',
-            'return_condition', 'damage_notes'
+            'return_condition', 'damage_notes', 'verification_status'
         ]
         read_only_fields = ['id', 'transaction_date']
+
+    def get_verification_status(self, obj):
+        """Return human-readable verification status"""
+        if obj.face_verification_success:
+            return f"Verified ({obj.face_verification_confidence:.1%})"
+        return "Not Verified"
+
 
 class DashboardStatsSerializer(serializers.Serializer):
     total_employees = serializers.IntegerField()
@@ -328,3 +336,93 @@ class FaceRegistrationSerializer(serializers.Serializer):
 class FaceImageValidationSerializer(serializers.Serializer):
     """Serializer for face image validation"""
     face_image_data = serializers.CharField()
+    
+class EmployeeProfileSerializer(serializers.ModelSerializer):
+    """Comprehensive serializer for employee profile page"""
+    name = serializers.CharField(read_only=True)
+    email = serializers.CharField(read_only=True)
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    user_data = UserBasicSerializer(source='user', read_only=True)
+    has_face_data = serializers.SerializerMethodField()
+    member_since = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Employee
+        fields = (
+            'id', 'employee_id', 'name', 'email', 'phone_number',
+            'department', 'department_name', 'user_data', 'is_active',
+            'has_face_data', 'member_since', 'created_at', 'updated_at'
+        )
+
+    def get_has_face_data(self, obj):
+        return bool(obj.face_recognition_data)
+
+    def get_member_since(self, obj):
+        return obj.created_at.strftime('%B %d, %Y') if obj.created_at else None
+
+class AssetReturnSerializer(serializers.Serializer):
+    """Serializer for asset return endpoint"""
+    asset_id = serializers.IntegerField()
+    employee_id = serializers.IntegerField()
+    return_condition = serializers.ChoiceField(choices=[
+        ('Excellent', 'Excellent'),
+        ('Good', 'Good'),
+        ('Fair', 'Fair'),
+        ('Poor', 'Poor'),
+        ('Damaged', 'Damaged'),
+        ('Broken', 'Broken'),
+    ])
+    damage_notes = serializers.CharField(required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+    face_verification_data = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        # Validate asset exists and is assigned
+        try:
+            asset = Asset.objects.get(id=data['asset_id'])
+            if asset.status != 'assigned':
+                raise serializers.ValidationError(f"Asset is not currently assigned (status: {asset.status})")
+            data['asset'] = asset
+        except Asset.DoesNotExist:
+            raise serializers.ValidationError("Asset not found")
+
+        # Validate employee exists and is active
+        try:
+            employee = Employee.objects.get(id=data['employee_id'], is_active=True)
+            data['employee'] = employee
+        except Employee.DoesNotExist:
+            raise serializers.ValidationError("Employee not found or inactive")
+
+        # Validate asset is assigned to this employee
+        if asset.current_holder != employee:
+            current_holder = asset.current_holder.name if asset.current_holder else "None"
+            raise serializers.ValidationError(
+                f"Asset is not assigned to this employee (currently assigned to: {current_holder})"
+            )
+
+        # Validate damage notes are provided for damaged/broken items
+        if data['return_condition'] in ['Damaged', 'Broken', 'Poor'] and not data.get('damage_notes'):
+            raise serializers.ValidationError(
+                f"Damage description is required for items in '{data['return_condition']}' condition"
+            )
+
+        return data
+
+class EmployeeStatsSerializer(serializers.Serializer):
+    """Serializer for employee statistics"""
+    employee_id = serializers.IntegerField()
+    employee_name = serializers.CharField()
+    has_face_data = serializers.BooleanField()
+    current_assets_count = serializers.IntegerField()
+    is_active = serializers.BooleanField()
+    total_transactions = serializers.IntegerField()
+    transactions_by_type = serializers.DictField()
+    total_issues = serializers.IntegerField()
+    total_returns = serializers.IntegerField()
+    face_verified_transactions = serializers.IntegerField()
+    face_verification_rate = serializers.FloatField()
+    recent_activity = serializers.DictField()
+    monthly_trends = serializers.ListField()
+    return_conditions = serializers.ListField()
+    average_monthly_transactions = serializers.FloatField()
+    return_rate = serializers.FloatField()

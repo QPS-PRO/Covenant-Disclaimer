@@ -568,72 +568,72 @@ def dashboard_charts_data_view(request):
         )
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def employee_profile_view(request, employee_id):
-    try:
-        employee = Employee.objects.select_related("user", "department").get(
-            id=employee_id, is_active=True
-        )
+# @api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+# def employee_profile_view(request, employee_id):
+#     try:
+#         employee = Employee.objects.select_related("user", "department").get(
+#             id=employee_id, is_active=True
+#         )
 
-        employee_data = EmployeeSerializer(employee).data
+#         employee_data = EmployeeSerializer(employee).data
 
-        transactions = (
-            AssetTransaction.objects.filter(employee=employee)
-            .select_related("asset", "processed_by")
-            .order_by("-transaction_date")[:50]
-        )
-        transaction_data = AssetTransactionSerializer(transactions, many=True).data
+#         transactions = (
+#             AssetTransaction.objects.filter(employee=employee)
+#             .select_related("asset", "processed_by")
+#             .order_by("-transaction_date")[:50]
+#         )
+#         transaction_data = AssetTransactionSerializer(transactions, many=True).data
 
-        current_assets = Asset.objects.filter(current_holder=employee).select_related(
-            "department"
-        )
-        current_assets_data = AssetSerializer(current_assets, many=True).data
+#         current_assets = Asset.objects.filter(current_holder=employee).select_related(
+#             "department"
+#         )
+#         current_assets_data = AssetSerializer(current_assets, many=True).data
 
-        grouped = (
-            AssetTransaction.objects.filter(employee=employee)
-            .values("transaction_type")
-            .annotate(total=Count("id"))
-        )
-        by_type = {"issue": 0, "return": 0}
-        for row in grouped:
-            t = row["transaction_type"]
-            if t in by_type:
-                by_type[t] = row["total"]
+#         grouped = (
+#             AssetTransaction.objects.filter(employee=employee)
+#             .values("transaction_type")
+#             .annotate(total=Count("id"))
+#         )
+#         by_type = {"issue": 0, "return": 0}
+#         for row in grouped:
+#             t = row["transaction_type"]
+#             if t in by_type:
+#                 by_type[t] = row["total"]
 
-        face_verified_transactions = AssetTransaction.objects.filter(
-            employee=employee, face_verification_success=True
-        ).count()
+#         face_verified_transactions = AssetTransaction.objects.filter(
+#             employee=employee, face_verification_success=True
+#         ).count()
 
-        return Response(
-            {
-                "employee": employee_data,
-                "current_assets": current_assets_data,
-                "transaction_history": transaction_data,
-                "stats": {
-                    "total_transactions": by_type["issue"] + by_type["return"],
-                    "current_assets_count": current_assets.count(),
-                    "face_verified_transactions": face_verified_transactions,
-                    "transactions_by_type": {
-                        "assign": by_type["issue"],  
-                        "return": by_type["return"],
-                    },
-                    "total_issues": by_type["issue"],
-                    "total_returns": by_type["return"],
-                    "has_face_data": bool(employee.face_recognition_data),
-                },
-            }
-        )
-    except Employee.DoesNotExist:
-        return Response(
-            {"error": "Employee not found or inactive"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-    except Exception as e:
-        return Response(
-            {"error": f"Internal server error: {str(e)}"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+#         return Response(
+#             {
+#                 "employee": employee_data,
+#                 "current_assets": current_assets_data,
+#                 "transaction_history": transaction_data,
+#                 "stats": {
+#                     "total_transactions": by_type["issue"] + by_type["return"],
+#                     "current_assets_count": current_assets.count(),
+#                     "face_verified_transactions": face_verified_transactions,
+#                     "transactions_by_type": {
+#                         "assign": by_type["issue"],  
+#                         "return": by_type["return"],
+#                     },
+#                     "total_issues": by_type["issue"],
+#                     "total_returns": by_type["return"],
+#                     "has_face_data": bool(employee.face_recognition_data),
+#                 },
+#             }
+#         )
+#     except Employee.DoesNotExist:
+#         return Response(
+#             {"error": "Employee not found or inactive"},
+#             status=status.HTTP_404_NOT_FOUND,
+#         )
+#     except Exception as e:
+#         return Response(
+#             {"error": f"Internal server error: {str(e)}"},
+#             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#         )
 
 
 @api_view(["POST"])
@@ -736,5 +736,459 @@ def validate_face_image_view(request):
     except Exception as e:
         return Response(
             {"error": f"Image validation failed: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def employee_profile_view(request, employee_id):
+    """
+    GET /api/employees/{id}/profile/
+    Get comprehensive employee profile data including stats, current assets, and transaction history
+    """
+    try:
+        employee = Employee.objects.select_related("user", "department").get(
+            id=employee_id, is_active=True
+        )
+
+        # Basic employee data
+        employee_data = EmployeeSerializer(employee).data
+
+        # Get current assets assigned to this employee
+        current_assets = Asset.objects.filter(current_holder=employee).select_related(
+            "department"
+        )
+        current_assets_data = AssetSerializer(current_assets, many=True).data
+
+        # Get transaction history (limit to recent 50 for performance)
+        transactions = (
+            AssetTransaction.objects.filter(employee=employee)
+            .select_related("asset", "processed_by")
+            .order_by("-transaction_date")[:50]
+        )
+        transaction_data = AssetTransactionSerializer(transactions, many=True).data
+
+        # Calculate statistics
+        all_transactions = AssetTransaction.objects.filter(employee=employee)
+        
+        # Group transactions by type
+        transactions_by_type = (
+            all_transactions.values("transaction_type")
+            .annotate(total=Count("id"))
+        )
+        
+        by_type = {"issue": 0, "return": 0}
+        for row in transactions_by_type:
+            transaction_type = row["transaction_type"]
+            if transaction_type in by_type:
+                by_type[transaction_type] = row["total"]
+
+        # Face verification statistics
+        face_verified_transactions = all_transactions.filter(
+            face_verification_success=True
+        ).count()
+        
+        total_transactions = all_transactions.count()
+        face_verification_rate = 0
+        if total_transactions > 0:
+            face_verification_rate = (face_verified_transactions / total_transactions) * 100
+
+        # Build response
+        stats = {
+            "total_transactions": total_transactions,
+            "current_assets_count": current_assets.count(),
+            "face_verified_transactions": face_verified_transactions,
+            "face_verification_rate": round(face_verification_rate, 2),
+            "transactions_by_type": {
+                "issue": by_type["issue"],  # Frontend expects 'issue' 
+                "return": by_type["return"],
+            },
+            "total_issues": by_type["issue"],
+            "total_returns": by_type["return"],
+            "has_face_data": bool(employee.face_recognition_data),
+        }
+
+        return Response(
+            {
+                "employee": employee_data,
+                "current_assets": current_assets_data,
+                "transaction_history": transaction_data,
+                "stats": stats,
+            }
+        )
+        
+    except Employee.DoesNotExist:
+        return Response(
+            {"error": "Employee not found or inactive"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Internal server error: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def employee_current_assets_view(request, employee_id):
+    """
+    GET /api/employees/{id}/current-assets/
+    Get current assets assigned to an employee
+    """
+    try:
+        employee = Employee.objects.get(id=employee_id, is_active=True)
+        
+        current_assets = Asset.objects.filter(current_holder=employee).select_related(
+            "department"
+        ).order_by("name")
+        
+        serializer = AssetSerializer(current_assets, many=True)
+        
+        return Response({
+            "employee_id": employee_id,
+            "employee_name": employee.name,
+            "current_assets_count": current_assets.count(),
+            "current_assets": serializer.data
+        })
+        
+    except Employee.DoesNotExist:
+        return Response(
+            {"error": "Employee not found or inactive"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Internal server error: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def employee_transactions_view(request, employee_id):
+    """
+    GET /api/employees/{id}/transactions/
+    Get transaction history for an employee with pagination
+    """
+    try:
+        employee = Employee.objects.get(id=employee_id, is_active=True)
+        
+        # Get query parameters
+        transaction_type = request.GET.get('transaction_type')
+        page = int(request.GET.get('page', 1))
+        page_size = min(int(request.GET.get('page_size', 20)), 100)  # Max 100 per page
+        
+        # Build queryset
+        transactions = AssetTransaction.objects.filter(employee=employee).select_related(
+            "asset", "processed_by"
+        )
+        
+        # Filter by transaction type if specified
+        if transaction_type in ['issue', 'return']:
+            transactions = transactions.filter(transaction_type=transaction_type)
+        
+        # Order by most recent first
+        transactions = transactions.order_by("-transaction_date")
+        
+        # Calculate pagination
+        total_count = transactions.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        
+        # Get paginated results
+        paginated_transactions = transactions[start:end]
+        
+        serializer = AssetTransactionSerializer(paginated_transactions, many=True)
+        
+        # Calculate pagination info
+        total_pages = (total_count + page_size - 1) // page_size
+        has_next = page < total_pages
+        has_previous = page > 1
+        
+        return Response({
+            "employee_id": employee_id,
+            "employee_name": employee.name,
+            "transactions": serializer.data,
+            "pagination": {
+                "current_page": page,
+                "total_pages": total_pages,
+                "total_count": total_count,
+                "page_size": page_size,
+                "has_next": has_next,
+                "has_previous": has_previous,
+                "next_page": page + 1 if has_next else None,
+                "previous_page": page - 1 if has_previous else None,
+            },
+            "filters": {
+                "transaction_type": transaction_type
+            }
+        })
+        
+    except Employee.DoesNotExist:
+        return Response(
+            {"error": "Employee not found or inactive"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except ValueError as e:
+        return Response(
+            {"error": "Invalid page or page_size parameter"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Internal server error: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def employee_stats_view(request, employee_id):
+    """
+    GET /api/employees/{id}/stats/
+    Get detailed statistics for an employee
+    """
+    try:
+        employee = Employee.objects.get(id=employee_id, is_active=True)
+        
+        # Get all transactions for this employee
+        all_transactions = AssetTransaction.objects.filter(employee=employee)
+        
+        # Current assets count
+        current_assets_count = Asset.objects.filter(current_holder=employee).count()
+        
+        # Transaction counts by type
+        transactions_by_type = (
+            all_transactions.values("transaction_type")
+            .annotate(total=Count("id"))
+        )
+        
+        by_type = {"issue": 0, "return": 0}
+        for row in transactions_by_type:
+            transaction_type = row["transaction_type"]
+            if transaction_type in by_type:
+                by_type[transaction_type] = row["total"]
+        
+        # Face verification statistics
+        face_verified_count = all_transactions.filter(
+            face_verification_success=True
+        ).count()
+        
+        total_transactions = all_transactions.count()
+        face_verification_rate = 0
+        if total_transactions > 0:
+            face_verification_rate = (face_verified_count / total_transactions) * 100
+        
+        # Recent activity (last 30 days)
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        recent_transactions = all_transactions.filter(
+            transaction_date__gte=thirty_days_ago
+        ).count()
+        
+        # Monthly transaction trends (last 6 months)
+        monthly_trends = []
+        for i in range(6):
+            month_start = timezone.now().replace(day=1) - timedelta(days=30 * i)
+            if i < 5:
+                month_end = timezone.now().replace(day=1) - timedelta(days=30 * (i - 1))
+            else:
+                month_end = timezone.now()
+            
+            month_transactions = all_transactions.filter(
+                transaction_date__gte=month_start,
+                transaction_date__lt=month_end
+            )
+            
+            monthly_trends.insert(0, {
+                "month": month_start.strftime("%Y-%m"),
+                "month_name": month_start.strftime("%b %Y"),
+                "total_transactions": month_transactions.count(),
+                "issues": month_transactions.filter(transaction_type="issue").count(),
+                "returns": month_transactions.filter(transaction_type="return").count(),
+            })
+        
+        # Asset condition statistics (for returns)
+        return_conditions = (
+            all_transactions.filter(transaction_type="return")
+            .exclude(return_condition__isnull=True)
+            .exclude(return_condition="")
+            .values("return_condition")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
+        
+        stats = {
+            "employee_id": employee_id,
+            "employee_name": employee.name,
+            "has_face_data": bool(employee.face_recognition_data),
+            
+            # Current status
+            "current_assets_count": current_assets_count,
+            "is_active": employee.is_active,
+            
+            # Transaction statistics
+            "total_transactions": total_transactions,
+            "transactions_by_type": {
+                "issue": by_type["issue"],
+                "return": by_type["return"],
+            },
+            "total_issues": by_type["issue"],
+            "total_returns": by_type["return"],
+            
+            # Face verification
+            "face_verified_transactions": face_verified_count,
+            "face_verification_rate": round(face_verification_rate, 2),
+            
+            # Time-based statistics
+            "recent_activity": {
+                "last_30_days_transactions": recent_transactions,
+            },
+            "monthly_trends": monthly_trends,
+            
+            # Return condition statistics
+            "return_conditions": list(return_conditions),
+            
+            # Calculated metrics
+            "average_monthly_transactions": round(total_transactions / 12, 2),
+            "return_rate": round((by_type["return"] / by_type["issue"] * 100) if by_type["issue"] > 0 else 0, 2),
+        }
+        
+        return Response(stats)
+        
+    except Employee.DoesNotExist:
+        return Response(
+            {"error": "Employee not found or inactive"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return Response(
+            {"error": f"Internal server error: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def asset_return_view(request):
+    """
+    POST /api/assets/return/
+    Process asset return with face verification and condition assessment
+    """
+    try:
+        # Extract data from request
+        asset_id = request.data.get('asset_id')
+        employee_id = request.data.get('employee_id') 
+        return_condition = request.data.get('return_condition')
+        damage_notes = request.data.get('damage_notes', '')
+        notes = request.data.get('notes', '')
+        face_verification_data = request.data.get('face_verification_data')
+        
+        # Validate required fields
+        if not all([asset_id, employee_id, return_condition]):
+            return Response(
+                {"error": "asset_id, employee_id, and return_condition are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Get asset and employee
+        try:
+            asset = Asset.objects.select_related('current_holder').get(id=asset_id)
+            employee = Employee.objects.get(id=employee_id, is_active=True)
+        except Asset.DoesNotExist:
+            return Response(
+                {"error": "Asset not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Employee.DoesNotExist:
+            return Response(
+                {"error": "Employee not found or inactive"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        # Validate asset can be returned
+        if asset.status != 'assigned':
+            return Response(
+                {"error": f"Asset '{asset.name}' is not currently assigned (status: {asset.status})"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        if asset.current_holder != employee:
+            current_holder_name = asset.current_holder.name if asset.current_holder else "None"
+            return Response(
+                {"error": f"Asset '{asset.name}' is not assigned to {employee.name} (currently assigned to: {current_holder_name})"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Face verification if employee has face data
+        face_verification_success = False
+        face_verification_confidence = 0.0
+        
+        if employee.face_recognition_data:
+            if not face_verification_data:
+                return Response(
+                    {"error": f"Face verification is required for employee '{employee.name}' who has registered face data"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            # Perform face verification
+            verification_result = verify_employee_face(employee, face_verification_data)
+            
+            if not verification_result['success']:
+                error_msg = f"Face verification failed: {verification_result.get('error', 'Unknown error')}"
+                if verification_result.get('confidence'):
+                    confidence_pct = verification_result['confidence'] * 100
+                    threshold_pct = verification_result.get('threshold', 0.6) * 100
+                    error_msg += f" (Confidence: {confidence_pct:.1f}%, Required: {threshold_pct:.0f}%)"
+                
+                return Response(
+                    {
+                        "error": error_msg,
+                        "verification_details": verification_result
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            face_verification_success = True
+            face_verification_confidence = verification_result.get('confidence', 0.0)
+        
+        # Create return transaction
+        transaction = AssetTransaction.objects.create(
+            asset=asset,
+            employee=employee,
+            transaction_type='return',
+            return_condition=return_condition,
+            damage_notes=damage_notes,
+            notes=notes,
+            face_verification_success=face_verification_success,
+            face_verification_confidence=face_verification_confidence,
+            processed_by=request.user
+        )
+        
+        # Update asset status
+        asset.status = 'available'
+        asset.current_holder = None
+        asset.save()
+        
+        # Serialize response
+        transaction_data = AssetTransactionSerializer(transaction).data
+        
+        return Response(
+            {
+                "success": True,
+                "message": f"Asset '{asset.name}' returned successfully",
+                "transaction": transaction_data,
+                "asset": AssetSerializer(asset).data,
+                "face_verification": {
+                    "success": face_verification_success,
+                    "confidence": face_verification_confidence,
+                }
+            },
+            status=status.HTTP_201_CREATED,
+        )
+        
+    except Exception as e:
+        return Response(
+            {"error": f"Internal server error: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

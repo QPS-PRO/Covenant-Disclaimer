@@ -13,11 +13,18 @@ urlpatterns = [
     path('employees/<int:employee_id>/profile/', views.employee_profile_view, name='employee-profile'),
     path('employees/all/', views.employees_list_all_view, name='employees-list-all'),  # For dropdowns
     
+    # Individual employee data endpoints
+    path('employees/<int:employee_id>/current-assets/', views.employee_current_assets_view, name='employee-current-assets'),
+    path('employees/<int:employee_id>/transactions/', views.employee_transactions_view, name='employee-transactions'),
+    path('employees/<int:employee_id>/stats/', views.employee_stats_view, name='employee-stats'),
+    
     # Asset URLs
     path('assets/', views.AssetListCreateView.as_view(), name='asset-list-create'),
     path('assets/<int:pk>/', views.AssetDetailView.as_view(), name='asset-detail'),
     path('assets/all/', views.assets_list_all_view, name='assets-list-all'),  # For dropdowns
-    
+    #For employee profile return
+    path('assets/return/', views.asset_return_view, name='asset-return'),
+
     # Transaction URLs
     path('transactions/', views.AssetTransactionListCreateView.as_view(), name='transaction-list-create'),
     path('transactions/<int:pk>/', views.AssetTransactionDetailView.as_view(), name='transaction-detail'),
