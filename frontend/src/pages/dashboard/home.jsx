@@ -177,7 +177,7 @@ export function Home() {
       chart: { toolbar: { show: false } },
       title: { show: false },
       dataLabels: { enabled: false },
-      colors: ["#1e40af", "#f59e0b"],
+      colors: ["#2aaf1e", "#f59e0b"],
       plotOptions: { bar: { columnWidth: "40%", borderRadius: 2 } },
       xaxis: {
         categories: chartData?.weeklyChart?.categories || ["No data"],
@@ -211,7 +211,7 @@ export function Home() {
       chart: { toolbar: { show: false } },
       title: { show: false },
       dataLabels: { enabled: false },
-      colors: ["#1e40af", "#f59e0b"],
+      colors: ["#2aaf1e", "#f59e0b"],
       stroke: { lineCap: "round", curve: "smooth", width: 3 },
       markers: { size: 4 },
       xaxis: {
@@ -237,7 +237,7 @@ export function Home() {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
-  const getTransactionColor = (type) => (type === "issue" ? "green" : "blue");
+  const getTransactionColor = (type) => (type === "issue" ? "green" : "orange");
   const getTransactionIcon = (type) => (type === "issue" ? "📤" : "📥");
   const transactionTypeLabels = { issue: "Assign", return: "Return" };
   const getTransactionLabel = (type) => transactionTypeLabels[type] ?? (type ? type[0].toUpperCase() + type.slice(1) : "—");
@@ -489,12 +489,12 @@ export function Home() {
                       <td className={className}>
                         <div className="flex items-center">
                           {transaction.face_verification_success ? (
-                            <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                            <CheckCircleIcon className="h-4 w-4 text-blue-500" />
                           ) : (
                             <XCircleIcon className="h-4 w-4 text-red-500" />
                           )}
                           <Typography
-                            className={`ml-2 text-xs font-medium ${transaction.face_verification_success ? "text-green-600" : "text-red-600"
+                            className={`ml-2 text-xs font-medium ${transaction.face_verification_success ? "text-blue-600" : "text-red-600"
                               }`}
                           >
                             {transaction.face_verification_success ? "Verified" : "Not Verified"}

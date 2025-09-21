@@ -335,13 +335,13 @@ export function EmployeeProfile() {
                         </TabsHeader>
 
                         {/* Debug box – keep OUTSIDE TabsBody */}
-                        {process.env.NODE_ENV === "development" && (
+                        {/* {process.env.NODE_ENV === "development" && (
                             <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
                                 <strong>Debug:</strong> Active Tab: {activeTab}, Current Assets:{" "}
                                 {currentAssets.length}, Transaction History:{" "}
                                 {transactionHistory.length}, Employee ID: {id}
                             </div>
-                        )}
+                        )} */}
 
                         <TabsBody>
                             {/* Overview */}

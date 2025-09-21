@@ -370,7 +370,6 @@ class AssetReturnSerializer(serializers.Serializer):
         ('Fair', 'Fair'),
         ('Poor', 'Poor'),
         ('Damaged', 'Damaged'),
-        ('Broken', 'Broken'),
     ])
     damage_notes = serializers.CharField(required=False, allow_blank=True)
     notes = serializers.CharField(required=False, allow_blank=True)
@@ -400,8 +399,8 @@ class AssetReturnSerializer(serializers.Serializer):
                 f"Asset is not assigned to this employee (currently assigned to: {current_holder})"
             )
 
-        # Validate damage notes are provided for damaged/broken items
-        if data['return_condition'] in ['Damaged', 'Broken', 'Poor'] and not data.get('damage_notes'):
+        # Validate damage notes are provided for damaged items
+        if data['return_condition'] in ['Damaged', 'Poor'] and not data.get('damage_notes'):
             raise serializers.ValidationError(
                 f"Damage description is required for items in '{data['return_condition']}' condition"
             )

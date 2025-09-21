@@ -55,8 +55,8 @@ const AssetReturnComponent = ({
             return;
         }
 
-        // Validate damage notes for damaged/poor/broken conditions
-        if (['Damaged', 'Broken', 'Poor'].includes(formData.return_condition) && !formData.damage_notes) {
+        // Validate damage notes for damaged/poor conditions
+        if (['Damaged', 'Poor'].includes(formData.return_condition) && !formData.damage_notes) {
             onError({ error: 'Please provide damage description for this condition' });
             return;
         }
@@ -80,7 +80,33 @@ const AssetReturnComponent = ({
                 assetId: asset.id,
                 employeeId: employee.id,
                 formData,
-                hasVerification: !!verificationResult
+                hasVerification: !!verificationResult,
+                verificationResult: verificationResult // Debug: log the entire verification result
+            });
+
+            // Extract face verification data properly
+            let faceVerificationData = null;
+            if (verificationResult) {
+                // Try different possible field names
+                faceVerificationData = verificationResult.face_image_data ||
+                    verificationResult.face_data ||
+                    verificationResult.capturedImage ||
+                    null;
+
+                // If we have verification result but no face data, create a minimal verification object
+                if (!faceVerificationData && verificationResult.success) {
+                    faceVerificationData = {
+                        verified: true,
+                        confidence: verificationResult.confidence,
+                        employee_id: employee.id
+                    };
+                }
+            }
+
+            console.log('Face verification data being sent:', {
+                hasData: !!faceVerificationData,
+                dataType: typeof faceVerificationData,
+                keys: faceVerificationData ? Object.keys(faceVerificationData) : []
             });
 
             // Use the asset return API endpoint
@@ -88,7 +114,7 @@ const AssetReturnComponent = ({
                 asset.id,
                 employee.id,
                 formData,
-                verificationResult?.face_data || null
+                faceVerificationData
             );
 
             console.log('Return response:', response);
@@ -115,6 +141,9 @@ const AssetReturnComponent = ({
             if (error.response?.data) {
                 errorMessage = error.response.data.error || errorMessage;
                 errorDetails = error.response.data.details || error.response.data.detail || errorDetails;
+
+                // Log the full error response for debugging
+                console.error('Full error response:', error.response.data);
             }
 
             onError({
@@ -129,6 +158,17 @@ const AssetReturnComponent = ({
 
     const handleFaceVerificationSuccess = useCallback(async (verificationResult) => {
         console.log('Face verification successful:', verificationResult);
+
+        // Log the structure of the verification result for debugging
+        console.log('Verification result structure:', {
+            success: verificationResult?.success,
+            confidence: verificationResult?.confidence,
+            hasImageData: !!verificationResult?.face_image_data,
+            hasFaceData: !!verificationResult?.face_data,
+            hasCapturedImage: !!verificationResult?.capturedImage,
+            allKeys: Object.keys(verificationResult || {})
+        });
+
         await handleProcessReturn(verificationResult);
     }, [asset, employee, formData, onSuccess, onError]);
 
@@ -220,16 +260,14 @@ const AssetReturnComponent = ({
                         required
                     >
                         <Option value="">Select Condition</Option>
-                        <Option value="Excellent">Excellent - Like new</Option>
-                        <Option value="Good">Good - No issues</Option>
-                        <Option value="Fair">Fair - Minor wear</Option>
-                        <Option value="Poor">Poor - Significant wear</Option>
-                        <Option value="Damaged">Damaged - Needs repair</Option>
-                        <Option value="Broken">Broken - Not functional</Option>
+                        <Option value="Excellent">Excellent</Option>
+                        <Option value="Good">Good</Option>
+                        <Option value="Fair">Fair</Option>
+                        <Option value="Poor">Poor</Option>
+                        <Option value="Damaged">Damaged</Option>
                     </Select>
 
                     {(formData.return_condition === 'Damaged' ||
-                        formData.return_condition === 'Broken' ||
                         formData.return_condition === 'Poor') && (
                             <>
                                 <Alert color="amber" icon={<ExclamationTriangleIcon className="h-6 w-6" />}>
@@ -255,7 +293,6 @@ const AssetReturnComponent = ({
                         name="notes"
                         value={formData.notes}
                         onChange={handleInputChange}
-                        placeholder="Any additional information about the return..."
                         rows={2}
                     />
                 </div>
@@ -269,7 +306,6 @@ const AssetReturnComponent = ({
                     onClick={handleFormSubmit}
                     disabled={!formData.return_condition ||
                         ((formData.return_condition === 'Damaged' ||
-                            formData.return_condition === 'Broken' ||
                             formData.return_condition === 'Poor') &&
                             !formData.damage_notes)}
                     className="flex items-center gap-2"

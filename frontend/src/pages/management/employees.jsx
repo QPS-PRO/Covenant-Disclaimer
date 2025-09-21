@@ -386,7 +386,7 @@ export function Employees() {
                                         <tr key={employee.id}>
                                             <td className={className}>
                                                 <div className="flex items-center gap-3">
-                                                    <UserCircleIcon className="h-9 w-9 text-blue-gray-500" />
+                                                    <UserCircleIcon className="h-9 w-9 text-blue-500" onClick={() => handleProfile(employee)} />
                                                     <div>
                                                         <Typography variant="small" color="blue-gray" className="font-semibold">
                                                             {employee.name}
@@ -439,7 +439,7 @@ export function Employees() {
                                             <td className={className}>
                                                 <Chip
                                                     variant="gradient"
-                                                    color={employee.is_active ? "green" : "red"}
+                                                    color={employee.is_active ? "blue" : "red"}
                                                     value={employee.is_active ? "ACTIVE" : "INACTIVE"}
                                                     className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                 />
@@ -447,14 +447,14 @@ export function Employees() {
                                             <td className={className}>
                                                 <div className="flex gap-1">
                                                     {/* Profile Button - New */}
-                                                    <IconButton
+                                                    {/* <IconButton
                                                         variant="text"
-                                                        color="green"
+                                                        color="blue"
                                                         onClick={() => handleProfile(employee)}
                                                         title="View Profile"
                                                     >
                                                         <UserIcon className="h-4 w-4" />
-                                                    </IconButton>
+                                                    </IconButton> */}
 
                                                     <IconButton
                                                         variant="text"
@@ -906,14 +906,14 @@ export function Employees() {
                         </DialogBody>
 
                         <DialogFooter>
-                            <Button
+                            {/* <Button
                                 variant="text"
                                 color="blue"
                                 onClick={() => handleProfile(selectedEmployee)}
                                 className="mr-2"
                             >
                                 View Full Profile
-                            </Button>
+                            </Button> */}
                             <Button onClick={handleModalClose}>Close</Button>
                         </DialogFooter>
                     </>

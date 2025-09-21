@@ -605,13 +605,13 @@ export function Transactions() {
                                             <td className={className}>
                                                 <div className="flex items-center gap-1">
                                                     {transaction.face_verification_success ? (
-                                                        <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                                                        <CheckCircleIcon className="h-4 w-4 text-blue-500" />
                                                     ) : (
                                                         <XCircleIcon className="h-4 w-4 text-red-500" />
                                                     )}
                                                     <Chip
                                                         variant="gradient"
-                                                        color={transaction.face_verification_success ? "green" : "red"}
+                                                        color={transaction.face_verification_success ? "blue" : "red"}
                                                         value={transaction.face_verification_success ? "VERIFIED" : "NOT VERIFIED"}
                                                         className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                     />

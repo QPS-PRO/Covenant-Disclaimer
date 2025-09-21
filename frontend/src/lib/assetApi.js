@@ -404,7 +404,6 @@ export const profileFormatters = {
             'Fair': 'yellow',
             'Poor': 'orange',
             'Damaged': 'red',
-            'Broken': 'red'
         };
         return {
             text: condition,
@@ -460,12 +459,11 @@ export const PROFILE_CONSTANTS = {
     },
     
     ASSET_CONDITIONS: [
-        { value: 'Excellent', label: 'Excellent - Like new', color: 'green' },
-        { value: 'Good', label: 'Good - No issues', color: 'green' },
-        { value: 'Fair', label: 'Fair - Minor wear', color: 'yellow' },
-        { value: 'Poor', label: 'Poor - Significant wear', color: 'orange' },
-        { value: 'Damaged', label: 'Damaged - Needs repair', color: 'red' },
-        { value: 'Broken', label: 'Broken - Not functional', color: 'red' }
+        { value: 'Excellent', label: 'Excellent', color: 'green' },
+        { value: 'Good', label: 'Good', color: 'green' },
+        { value: 'Fair', label: 'Fair', color: 'yellow' },
+        { value: 'Poor', label: 'Poor', color: 'orange' },
+        { value: 'Damaged', label: 'Damaged', color: 'red' },
     ],
     
     PAGINATION: {
