@@ -84,16 +84,16 @@ export function Navbar({ brandName, routes, action }) {
 
 Navbar.defaultProps = {
   brandName: "Qurtubah Schools",
-  action: (
-    <a
-      href="https://www.creative-tim.com/product/material-tailwind-dashboard-react"
-      target="_blank"
-    >
-      <Button variant="gradient" size="sm" fullWidth>
-        free download
-      </Button>
-    </a>
-  ),
+  // action: (
+  //   <a
+  //     href="https://www.creative-tim.com/product/material-tailwind-dashboard-react"
+  //     target="_blank"
+  //   >
+  //     <Button variant="gradient" size="sm" fullWidth>
+  //       free download
+  //     </Button>
+  //   </a>
+  // ),
 };
 
 Navbar.propTypes = {

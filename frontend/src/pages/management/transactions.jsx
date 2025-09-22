@@ -159,7 +159,7 @@ export function Transactions() {
 
     const fetchAssets = async () => {
         try {
-            const response = await assetAPI.getAll();
+            const response = await assetAPI.getAllForDropdown();
             setAssets(response.results || response);
         } catch (err) {
             console.error("Failed to fetch assets:", err);
@@ -168,7 +168,7 @@ export function Transactions() {
 
     const fetchEmployees = async () => {
         try {
-            const response = await employeeAPI.getAll();
+            const response = await employeeAPI.getAllForDropdown();
             setEmployees(response.results || response);
         } catch (err) {
             console.error("Failed to fetch employees:", err);
@@ -177,7 +177,7 @@ export function Transactions() {
 
     const fetchDepartments = async () => {
         try {
-            const response = await departmentAPI.getAll();
+            const response = await departmentAPI.getAllForDropdown();
             setDepartments(response.results || response);
         } catch (err) {
             console.error("Failed to fetch departments:", err);
@@ -500,6 +500,10 @@ export function Transactions() {
                                 label="Filter by Department"
                                 value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
+                                menuProps={{
+                                    className: "select-menu-in-dialog",
+                                    placement: "bottom-start",
+                                }}
                                 selected={(element) => {
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
@@ -683,6 +687,10 @@ export function Transactions() {
                                     }))
                                 }
                                 required
+                                menuProps={{
+                                    className: "select-menu-in-dialog max-h-48 overflow-y-auto",
+                                    placement: "bottom-start",
+                                }}
                                 selected={(element) => {
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
@@ -705,9 +713,6 @@ export function Transactions() {
                                         label += ` - ${holder?.name || "Unknown"}`;
                                     }
                                     return label;
-                                }}
-                                menuProps={{
-                                    className: "max-h-48 overflow-y-auto"
                                 }}
                             >
                                 <Option
@@ -770,6 +775,10 @@ export function Transactions() {
                                     }))
                                 }
                                 required
+                                menuProps={{
+                                    className: "select-menu-in-dialog max-h-48 overflow-y-auto",
+                                    placement: "bottom-start",
+                                }}
                                 selected={(element) => {
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
@@ -788,7 +797,6 @@ export function Transactions() {
 
                                     return `${e.name} (${e.employee_id}) ${e.has_face_data ? " 🔒" : " ⚠️"}`;
                                 }}
-                                menuProps={{ className: "max-h-48 overflow-y-auto" }}
                             >
                                 {/* SEARCH ROW (interactive, not selectable) */}
                                 <Option
@@ -941,6 +949,10 @@ export function Transactions() {
                                         return_condition: value ?? "",
                                     }))
                                 }
+                                menuProps={{
+                                    className: "select-menu-in-dialog",
+                                    placement: "bottom-start",
+                                }}
                                 required={formData.transaction_type === "return"}
                                 selected={(element) => {
                                     // If MTW passes the selected <Option/>, show its children

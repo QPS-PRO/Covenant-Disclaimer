@@ -137,7 +137,7 @@ export function Assets() {
 
     const fetchDepartments = async () => {
         try {
-            const response = await departmentAPI.getAll();
+            const response = await departmentAPI.getAllForDropdown();
             setDepartments(response.results || response);
         } catch (err) {
             console.error("Failed to fetch departments:", err);
@@ -146,7 +146,7 @@ export function Assets() {
 
     const fetchEmployees = async () => {
         try {
-            const response = await employeeAPI.getAll();
+            const response = await employeeAPI.getAllForDropdown();
             setEmployees(response.results || response);
         } catch (err) {
             console.error("Failed to fetch employees:", err);
@@ -372,6 +372,10 @@ export function Assets() {
                                 label="Filter by Department"
                                 value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
+                                menuProps={{
+                                    className: "select-menu-in-dialog",
+                                    placement: "bottom-start",
+                                }}
                                 selected={(element) => {
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
@@ -578,6 +582,10 @@ export function Assets() {
                                 value={formData.department}
                                 onChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
                                 required
+                                menuProps={{
+                                    className: "select-menu-in-dialog",
+                                    placement: "bottom-start",
+                                }}
                             >
                                 {departments.map((dept) => (
                                     <Option key={dept.id} value={dept.id.toString()}>
@@ -591,6 +599,10 @@ export function Assets() {
                                 value={formData.status}
                                 onChange={handleStatusChange}
                                 required
+                                menuProps={{
+                                    className: "select-menu-in-dialog",
+                                    placement: "bottom-start",
+                                }}
                             >
                                 {statusOptions.map((status) => (
                                     <Option key={status.value} value={status.value}>
@@ -609,6 +621,10 @@ export function Assets() {
                                     setFormData((prev) => ({ ...prev, current_holder: value ?? "" }))
                                 }
                                 required
+                                menuProps={{
+                                    className: "select-menu-in-dialog max-h-48 overflow-y-auto",
+                                    placement: "bottom-start",
+                                }}
                                 selected={(element) => {
                                     // If MTW gives us the selected <Option/>, show its children
                                     if (React.isValidElement(element) && element.props?.children != null) {
@@ -629,7 +645,6 @@ export function Assets() {
 
                                     return e ? `${e.name} (${e.employee_id})` : "Select Employee";
                                 }}
-                                menuProps={{ className: "max-h-48 overflow-y-auto" }}
                             >
                                 {/* Make placeholder non-selectable */}
                                 <Option value="" disabled>

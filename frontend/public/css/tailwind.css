@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Fix for Material Tailwind Select in Dialogs */
+.select-menu-in-dialog {
+    position: fixed !important;
+    z-index: 9999 !important;
+    max-height: 240px !important;
+    overflow-y: auto !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    background: white !important;
+}
+
+/* Ensure dialog has proper stacking context */
+.dialog-container {
+    z-index: 40 !important;
+}
+
+/* Custom scrollbar for the select dropdown */
+.select-menu-in-dialog::-webkit-scrollbar {
+    width: 6px;
+}
+
+.select-menu-in-dialog::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+.select-menu-in-dialog::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.select-menu-in-dialog::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

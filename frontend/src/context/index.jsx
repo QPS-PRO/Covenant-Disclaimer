@@ -31,15 +31,22 @@ export function reducer(state, action) {
 }
 
 export function MaterialTailwindControllerProvider({ children }) {
-  const initialState = {
-    openSidenav: false,
-    sidenavColor: "dark",
-    sidenavType: "white",
-    transparentNavbar: true,
-    fixedNavbar: false,
-    openConfigurator: false,
-  };
+  // const initialState = {
+  //   openSidenav: false,
+  //   sidenavColor: "dark",
+  //   sidenavType: "white",
+  //   transparentNavbar: true,
+  //   fixedNavbar: false,
+  //   openConfigurator: false,
+  // };
 
+  const initialState = {
+    openConfigurator: false,
+    // locked defaults
+    sidenavColor: "white",   // accent choice is "white"
+    sidenavType: "dark",     // dark sidenav
+    fixedNavbar: false,       // optional: keep navbar fixed
+  };
   const [controller, dispatch] = React.useReducer(reducer, initialState);
   const value = React.useMemo(
     () => [controller, dispatch],

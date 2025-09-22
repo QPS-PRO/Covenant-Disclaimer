@@ -136,7 +136,7 @@ export function Employees() {
 
     const fetchDepartments = async () => {
         try {
-            const response = await departmentAPI.getAll();
+            const response = await departmentAPI.getAllForDropdown();
             setDepartments(response.results || response);
         } catch (err) {
             console.error("Failed to fetch departments:", err);
@@ -341,6 +341,10 @@ export function Employees() {
                                 label="Filter by Department"
                                 value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
+                                menuProps={{
+                                    className: "select-menu-in-dialog",
+                                    placement: "bottom-start",
+                                }}
                                 selected={(element) => {
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
@@ -558,7 +562,7 @@ export function Employees() {
                                             onChange={handleInputChange}
                                             required
                                         />
-                                    </div>
+                                    </div >
                                     <Select
                                         label="Department"
                                         value={formData.department ?? ""}
@@ -566,6 +570,10 @@ export function Employees() {
                                             setFormData((prev) => ({ ...prev, department: value ?? "" }))
                                         }
                                         required
+                                        menuProps={{
+                                            className: "select-menu-in-dialog",
+                                            placement: "bottom-start",
+                                        }}
                                         selected={(element) => {
                                             if (React.isValidElement(element) && element.props?.children != null) {
                                                 return element.props.children;
@@ -666,6 +674,10 @@ export function Employees() {
                                             setFormData((prev) => ({ ...prev, department: value ?? "" }))
                                         }
                                         required
+                                        menuProps={{
+                                            className: "select-menu-in-dialog",
+                                            placement: "bottom-start",
+                                        }}
                                         selected={(element) => {
                                             if (React.isValidElement(element) && element.props?.children != null) {
                                                 return element.props.children;

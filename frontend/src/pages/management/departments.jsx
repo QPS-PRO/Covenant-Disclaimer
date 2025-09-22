@@ -84,7 +84,7 @@ export function Departments() {
             setTotalPages(Number(response?.total_pages || 1));
             setTotalCount(Number(response?.count || dataArray.length));
             setPage(Number(response?.current_page || 1));
-            setError(""); 
+            setError("");
         } catch (err) {
             const status = err?.response?.status ?? err?.status;
             if (status === 404 && page > 1) {
@@ -99,7 +99,7 @@ export function Departments() {
                     setTotalPages(Number(fallback?.total_pages || 1));
                     setTotalCount(Number(fallback?.count || dataArray.length));
                     setPage(Number(fallback?.current_page || 1));
-                    setError(""); 
+                    setError("");
                     return;
                 } catch (e2) {
                 }
@@ -109,20 +109,27 @@ export function Departments() {
         }
     };
 
-
-
     const fetchUsers = async () => {
         try {
-            const response = await employeeAPI.getAll();
-            const employeeData = response.results || response;
+            // FIX: Use the dropdown endpoint to get ALL employees without pagination
+            const response = await employeeAPI.getAllForDropdown();
+
+            // The response should be a direct array from the "all" endpoint
+            const employeeData = Array.isArray(response) ? response : (response.results || response || []);
+
             const userData = employeeData.map((emp) => ({
-                id: emp.user_data.id,
-                name: emp.name,
-                email: emp.user_data.email,
+                id: emp.user_data?.id || emp.id,
+                name: emp.name || `${emp.user_data?.first_name || ''} ${emp.user_data?.last_name || ''}`.trim() || 'Unknown',
+                email: emp.user_data?.email || emp.email || '',
+                first_name: emp.user_data?.first_name || emp.first_name || '',
+                last_name: emp.user_data?.last_name || emp.last_name || '',
             }));
+
+            console.log('Fetched users for dropdown:', userData.length, 'users');
             setUsers(userData);
         } catch (err) {
             console.error("Failed to fetch users:", err);
+            setError("Failed to load employee list for manager selection");
         }
     };
 
@@ -140,12 +147,10 @@ export function Departments() {
         return () => clearTimeout(timer);
     }, [searchTerm, mounted]);
 
-
     useEffect(() => {
         if (!mounted) return;
         fetchDepartments();
     }, [page]);
-
 
     // Pager helpers
     const canPrev = page > 1;
@@ -460,6 +465,10 @@ export function Departments() {
                             onChange={(value) =>
                                 setFormData((prev) => ({ ...prev, manager: value ?? "" }))
                             }
+                            menuProps={{
+                                className: "select-menu-in-dialog",
+                                placement: "bottom-start",
+                            }}
                             selected={(element) => {
                                 // Case 1: MTW passes the actual <Option />
                                 if (React.isValidElement(element) && element.props?.children != null) {
@@ -491,6 +500,12 @@ export function Departments() {
                             ))}
                         </Select>
 
+                        {/* Debug info to show how many users are loaded */}
+                        {process.env.NODE_ENV === 'development' && (
+                            <div className="text-xs text-gray-500 mt-2">
+                                Debug: {users.length} users loaded for manager selection
+                            </div>
+                        )}
                     </DialogBody>
                     <DialogFooter>
                         <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">

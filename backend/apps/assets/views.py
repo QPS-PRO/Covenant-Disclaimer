@@ -244,7 +244,7 @@ def employees_list_all_view(request):
             )
 
         serializer = EmployeeSerializer(
-            employees[:100], many=True
+            employees, many=True
         ) 
         return Response(serializer.data)
     except Exception as e:
@@ -279,7 +279,7 @@ def assets_list_all_view(request):
             )
 
         serializer = AssetSerializer(
-            assets[:100], many=True
+            assets, many=True
         )  
         return Response(serializer.data)
     except Exception as e:
