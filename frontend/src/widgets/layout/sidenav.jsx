@@ -17,7 +17,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
   const { sidenavColor, sidenavType, openSidenav } = controller;
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
-  
+
   const sidenavTypes = {
     dark: "bg-gradient-to-br from-gray-800 to-gray-900",
     white: "bg-white shadow-sm",
@@ -39,19 +39,39 @@ export function Sidenav({ brandImg, brandName, routes }) {
     return navTranslations[name.toLowerCase()] || name;
   };
 
+  // Fixed positioning and transform logic
+  const getSidenavClasses = () => {
+    let classes = `${sidenavTypes[sidenavType]} fixed inset-0 z-50 my-4 h-[calc(100vh-32px)] w-72 rounded-xl transition-transform duration-300 border border-blue-gray-100`;
+
+    if (isRTL) {
+      // RTL mode - sidebar on the right
+      classes += ` mr-4`;
+      if (openSidenav) {
+        classes += ` translate-x-0`; // Show sidebar
+      } else {
+        classes += ` translate-x-full`; // Hide to the right
+      }
+      // Always visible on large screens in RTL
+      classes += ` xl:translate-x-0`;
+    } else {
+      // LTR mode - sidebar on the left  
+      classes += ` ml-4`;
+      if (openSidenav) {
+        classes += ` translate-x-0`; // Show sidebar
+      } else {
+        classes += ` -translate-x-full`; // Hide to the left
+      }
+      // Always visible on large screens in LTR
+      classes += ` xl:translate-x-0`;
+    }
+
+    return classes;
+  };
+
   return (
-    <aside
-      className={`${sidenavTypes[sidenavType]} ${
-        openSidenav 
-          ? "translate-x-0" 
-          : isRTL ? "translate-x-80" : "-translate-x-80"
-      } fixed inset-0 z-50 my-4 ${isRTL ? 'mr-4' : 'ml-4'} h-[calc(100vh-32px)] w-72 rounded-xl transition-transform duration-300 ${isRTL ? 'xl:translate-x-0' : 'xl:translate-x-0'} border border-blue-gray-100`}
-      style={{ 
-        [isRTL ? 'right' : 'left']: isRTL ? (openSidenav ? '1rem' : '-18rem') : (openSidenav ? '1rem' : '-18rem')
-      }}
-    >
+    <aside className={getSidenavClasses()}>
       <div className="relative">
-        <Link to="/" className={`py-6 px-8 text-center flex items-center ${isRTL ? 'justify-center flex-row-reverse' : 'justify-center'} gap-3`}>
+        <Link to="/" className={`py-6 px-8 text-center flex items-center justify-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
           {brandImg && (
             <img
               src={brandImg}
@@ -72,7 +92,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
           color="white"
           size="sm"
           ripple={false}
-          className={`absolute ${isRTL ? 'left-0' : 'right-0'} top-0 grid ${isRTL ? 'rounded-bl-none rounded-tr-none' : 'rounded-br-none rounded-tl-none'} xl:hidden`}
+          className={`absolute ${isRTL ? 'left-0 rounded-bl-none rounded-tr-none' : 'right-0 rounded-br-none rounded-tl-none'} top-0 grid xl:hidden`}
           onClick={() => setOpenSidenav(dispatch, false)}
         >
           <XMarkIcon strokeWidth={2.5} className="h-5 w-5 text-white" />
@@ -84,7 +104,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
           layout === "dashboard" && (
             <ul key={key} className="mb-4 flex flex-col gap-1">
               {title && (
-                <li className={`mx-3.5 mt-4 mb-2 ${isRTL ? 'text-right' : ''}`}>
+                <li className={`mx-3.5 mt-4 mb-2 ${isRTL ? 'text-right' : 'text-left'}`}>
                   <Typography
                     variant="small"
                     color={sidenavType === "dark" ? "white" : "blue-gray"}
@@ -109,13 +129,16 @@ export function Sidenav({ brandImg, brandName, routes }) {
                                 ? "white"
                                 : "blue-gray"
                           }
-                          className={`flex items-center gap-4 px-4 capitalize ${isRTL ? 'flex-row-reverse text-right justify-end' : ''}`}
+                          className={`flex items-center gap-4 px-4 capitalize w-full ${isRTL
+                              ? 'flex-row-reverse text-right justify-start'
+                              : 'justify-start'
+                            }`}
                           fullWidth
                         >
                           {icon}
                           <Typography
                             color="inherit"
-                            className={`font-medium capitalize ${isRTL ? 'text-right' : ''}`}
+                            className={`font-medium capitalize ${isRTL ? 'text-right' : 'text-left'}`}
                           >
                             {getNavTranslation(name)}
                           </Typography>

@@ -11,7 +11,7 @@ html[dir="ltr"] {
 
 /* RTL Typography */
 .rtl {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Arabic UI Display', 'SF Arabic', sans-serif;
+    font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Arabic UI Display', 'SF Arabic', sans-serif;
 }
 
 /* RTL Layout Adjustments */
@@ -178,20 +178,27 @@ html[dir="ltr"] {
     left: 1rem !important;
 }
 
-/* RTL Transform */
+/* RTL Transform - FIXED FOR SIDEBAR */
 .rtl .translate-x-full {
-    transform: translateX(-100%) !important;
+    transform: translateX(100%) !important;
+    /* Hide to right */
 }
 
 .rtl .-translate-x-full {
-    transform: translateX(100%) !important;
+    transform: translateX(-100%) !important;
+    /* Hide to left */
 }
 
 .rtl .translate-x-0 {
     transform: translateX(0) !important;
+    /* Show sidebar */
 }
 
 .rtl .-translate-x-80 {
+    transform: translateX(-20rem) !important;
+}
+
+.rtl .translate-x-80 {
     transform: translateX(20rem) !important;
 }
 
@@ -215,23 +222,36 @@ html[dir="ltr"] {
     border-left: 1px solid !important;
 }
 
-/* RTL Sidebar Adjustments */
+/* RTL Sidebar Adjustments - COMPLETELY REVISED */
 .rtl aside {
-    right: 1rem !important;
     left: auto !important;
+    right: 0 !important;
 }
 
-.rtl aside.translate-x-0 {
-    transform: translateX(0) !important;
+/* Ensure proper positioning for large screens */
+@media (min-width: 1280px) {
+    .rtl aside {
+        right: 1rem !important;
+        left: auto !important;
+    }
+
+    html:not(.rtl) aside {
+        left: 1rem !important;
+        right: auto !important;
+    }
 }
 
-.rtl aside.-translate-x-80 {
-    transform: translateX(20rem) !important;
-}
+/* Mobile sidebar positioning */
+@media (max-width: 1279px) {
+    .rtl aside {
+        right: 0 !important;
+        left: auto !important;
+    }
 
-/* RTL Navigation */
-.rtl .xl\:translate-x-0 {
-    transform: translateX(0) !important;
+    html:not(.rtl) aside {
+        left: 0 !important;
+        right: auto !important;
+    }
 }
 
 /* RTL Input Fields */
@@ -473,4 +493,38 @@ html[dir="ltr"] {
 .rtl ::-moz-selection {
     background-color: #3b82f6;
     color: white;
+}
+
+/* Main content area adjustments for RTL */
+.rtl main {
+    padding-right: 1rem !important;
+    padding-left: 0 !important;
+}
+
+/* Ensure main content doesn't overlap with sidebar */
+@media (min-width: 1280px) {
+    .rtl main {
+        margin-right: 18rem !important;
+        margin-left: 0 !important;
+    }
+
+    html:not(.rtl) main {
+        margin-left: 18rem !important;
+        margin-right: 0 !important;
+    }
+}
+
+/* Fix for Material Tailwind components in RTL */
+.rtl .MuiPaper-root {
+    direction: rtl;
+}
+
+.rtl .MuiMenu-paper {
+    direction: rtl;
+}
+
+.rtl .MuiMenuItem-root {
+    direction: rtl;
+    text-align: right;
+    justify-content: flex-end;
 }
