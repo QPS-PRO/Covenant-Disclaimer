@@ -72,13 +72,6 @@ export function Sidenav({ brandImg, brandName, routes }) {
     <aside className={getSidenavClasses()}>
       <div className="relative">
         <Link to="/" className={`py-6 px-8 text-center flex items-center justify-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-          {brandImg && (
-            <img
-              src={brandImg}
-              alt="Qurtubah Schools Logo"
-              className="h-8 w-8 object-contain"
-            />
-          )}
           <Typography
             variant="h6"
             color={sidenavType === "dark" ? "white" : "blue-gray"}

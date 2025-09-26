@@ -8,22 +8,50 @@ import {
 } from "@/widgets/layout";
 import routes from "@/routes";
 import { useMaterialTailwindController, setOpenConfigurator } from "@/context";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Dashboard() {
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavType } = controller;
+  const { isRTL } = useLanguage();
+
+  // Get the layout classes based on RTL/LTR
+  const getLayoutClasses = () => {
+    let classes = "min-h-screen bg-blue-gray-50/50";
+    
+    if (isRTL) {
+      // RTL: sidebar on right, content margin from right
+      classes += " rtl-layout";
+    } else {
+      // LTR: sidebar on left, content margin from left  
+      classes += " ltr-layout";
+    }
+    
+    return classes;
+  };
+
+  const getMainContentClasses = () => {
+    let classes = "p-4 transition-all duration-300";
+    
+    // Add responsive margins for sidebar
+    if (isRTL) {
+      classes += " xl:mr-80"; // margin-right for RTL
+    } else {
+      classes += " xl:ml-80"; // margin-left for LTR
+    }
+    
+    return classes;
+  };
 
   return (
-    <div className="min-h-screen bg-blue-gray-50/50">
+    <div className={getLayoutClasses()}>
       <Sidenav
         routes={routes}
-        brandName="Qurtubah Schools"
-        // brandImg={
-        //   sidenavType === "dark" ? "/img/qurtubah_logo.png" : "/img/qurtubah_logo.png"
-        // }
-
+        brandImg={
+          sidenavType === "dark" ? "/img/logo-ct.png" : "/img/logo-ct-dark.png"
+        }
       />
-      <div className="p-4 xl:ml-80">
+      <div className={getMainContentClasses()}>
         <DashboardNavbar />
         <Configurator />
         <IconButton
@@ -39,16 +67,18 @@ export function Dashboard() {
           {routes.map(
             ({ layout, pages }) =>
               layout === "dashboard" &&
-              pages.map(({ path, element }, index) => (
-                <Route key={`dashboard-${index}`} path={path} element={element} />
+              pages.map(({ path, element }) => (
+                <Route exact path={path} element={element} key={path} />
               ))
           )}
         </Routes>
+        <div className="text-blue-gray-600">
+        </div>
       </div>
     </div>
   );
 }
 
-Dashboard.displayName = "/src/layout/dashboard.jsx";
+Dashboard.displayName = "/src/layouts/dashboard.jsx";
 
 export default Dashboard;

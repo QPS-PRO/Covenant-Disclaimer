@@ -528,3 +528,98 @@ html[dir="ltr"] {
     text-align: right;
     justify-content: flex-end;
 }
+/* Add this to your src/styles/rtl.css file for statistics cards RTL support */
+
+/* RTL Statistics Cards - Icon positioning */
+.rtl div[class*="absolute"][class*="grid"][class*="h-16"][class*="w-16"] {
+    left: -0.75rem !important;
+    right: auto !important;
+}
+
+/* RTL Statistics Cards - Content alignment */
+.rtl div[class*="p-4"][class*="pr-6"] {
+    padding-right: 1rem !important;
+    padding-left: 1.5rem !important;
+    text-align: right !important;
+}
+
+/* RTL Statistics Cards - Title and value alignment */
+.rtl div[class*="p-4"] h1,
+.rtl div[class*="p-4"] h2,
+.rtl div[class*="p-4"] h3,
+.rtl div[class*="p-4"] h4,
+.rtl div[class*="p-4"] h5,
+.rtl div[class*="p-4"] h6 {
+    text-align: right !important;
+}
+
+.rtl div[class*="p-4"] p[class*="font-normal"] {
+    text-align: right !important;
+}
+
+/* RTL Dashboard Header - Complete layout flip */
+.rtl div[class*="mb-6"][class*="flex"][class*="justify-between"] {
+    flex-direction: row-reverse !important;
+}
+
+.rtl div[class*="mb-6"] > div:first-child {
+    text-align: right !important;
+}
+
+.rtl div[class*="mb-6"] > div:first-child h1,
+.rtl div[class*="mb-6"] > div:first-child h2,
+.rtl div[class*="mb-6"] > div:first-child h3,
+.rtl div[class*="mb-6"] > div:first-child h4 {
+    text-align: right !important;
+}
+
+.rtl div[class*="mb-6"] > div:first-child p {
+    text-align: right !important;
+}
+
+/* RTL Button - Icon and text arrangement */
+.rtl button[class*="flex"][class*="items-center"][class*="gap-2"] {
+    flex-direction: row-reverse !important;
+}
+
+/* RTL Statistics Grid - Ensure proper alignment */
+.rtl div[class*="grid"][class*="gap-y-10"][class*="gap-x-6"] {
+    direction: rtl;
+}
+
+.rtl div[class*="grid"][class*="gap-y-10"] > * {
+    direction: rtl;
+}
+
+/* Ensure Material Tailwind cards respect RTL */
+.rtl .MuiCard-root,
+.rtl [class*="border-blue-gray-100"] {
+    direction: rtl;
+    text-align: right;
+}
+
+/* RTL Card body content */
+.rtl [class*="CardBody"],
+.rtl [class*="card-body"],
+.rtl div[class*="p-4"]:not([class*="space-y"]) {
+    text-align: right !important;
+    direction: rtl;
+}
+
+/* Additional RTL Typography fixes */
+.rtl [class*="text-blue-gray"] {
+    text-align: inherit !important;
+}
+
+/* RTL Responsive fixes for cards */
+@media (min-width: 768px) {
+    .rtl div[class*="md:grid-cols-2"] {
+        direction: rtl;
+    }
+}
+
+@media (min-width: 1280px) {
+    .rtl div[class*="xl:grid-cols-4"] {
+        direction: rtl;
+    }
+}
