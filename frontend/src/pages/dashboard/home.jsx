@@ -1,4 +1,4 @@
-// frontend/src/pages/dashboard/home.jsx
+// frontend/src/pages/dashboard/home.jsx (partial update - showing key sections)
 import React from "react";
 import {
   Typography,
@@ -25,6 +25,8 @@ import Chart from "react-apexcharts";
 import { useDashboard } from "@/hooks/useDashboard";
 import { Link } from "react-router-dom";
 import { transactionAPI } from "@/lib/assetApi";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Home() {
   const {
@@ -37,6 +39,9 @@ export function Home() {
     refresh,
     hasData,
   } = useDashboard();
+
+  const { t } = useTranslation();
+  const { isRTL } = useLanguage();
 
   // -- Recent transactions limit (5 default) + data fetched from backend
   const [recentLimit, setRecentLimit] = React.useState(5);
@@ -53,12 +58,12 @@ export function Home() {
       setRecentRows(list);
     } catch (e) {
       console.error("Failed to fetch recent transactions:", e);
-      setRecentError("Failed to fetch recent transactions");
+      setRecentError(t('errors.failedToFetch') + " recent transactions");
       setRecentRows([]);
     } finally {
       setRecentLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const handleRefresh = async () => {
     await refresh();
@@ -81,60 +86,60 @@ export function Home() {
     return (
       <div className="flex flex-col justify-center items-center min-h-96">
         <Typography variant="h6" color="red" className="mb-4">
-          Error loading dashboard data
+          {t('errors.loadingDashboard')}
         </Typography>
         <Typography variant="small" color="gray" className="mb-4">
           {error}
         </Typography>
         <Button onClick={refresh} color="blue">
-          Try Again
+          {t('actions.tryAgain')}
         </Button>
       </div>
     );
   }
 
-  // ---- Cards config
+  // ---- Cards config with translations
   const statisticsCardsConfig = [
     {
       color: "blue",
       icon: BuildingOfficeIcon,
-      title: "Total Departments",
+      title: t('dashboard.totalDepartments'),
       value: stats?.total_departments?.toLocaleString() || "0",
       to: "/dashboard/departments",
     },
     {
       color: "green",
       icon: CubeIcon,
-      title: "Total Assets",
+      title: t('dashboard.totalAssets'),
       value: stats?.total_assets?.toLocaleString() || "0",
       to: "/dashboard/assets",
     },
     {
       color: "pink",
       icon: UsersIcon,
-      title: "Total Employees",
+      title: t('dashboard.totalEmployees'),
       value: stats?.total_employees?.toLocaleString() || "0",
       to: "/dashboard/employees",
     },
     {
       color: "orange",
       icon: ArrowsRightLeftIcon,
-      title: "Recent Transactions",
+      title: t('dashboard.recentTransactions'),
       value: stats?.recent_transactions?.toLocaleString() || "0",
       to: "/dashboard/transactions",
     },
   ];
 
-  // ---- Charts setup (unchanged logic, small helpers)
+  // ---- Charts setup with translation-aware labels
   const normalizeLabel = (label) => {
     const L = String(label).trim().toLowerCase();
-    if (L === "issue" || L === "issues" || L === "issued") return "Assigns";
-    if (L === "assigned") return "Assigned";
-    if (L === "return" || L === "returns" || L === "returned") return "Return";
+    if (L === "issue" || L === "issues" || L === "issued") return t('transactions.assign');
+    if (L === "assigned") return t('status.assigned');
+    if (L === "return" || L === "returns" || L === "returned") return t('transactions.return');
     return label;
   };
 
-  const rawStatusLabels = chartData?.assetStatusChart?.labels || ["No data"];
+  const rawStatusLabels = chartData?.assetStatusChart?.labels || [t('common.noData')];
   const displayStatusLabels = rawStatusLabels.map(normalizeLabel);
 
   const assetStatusChart = {
@@ -235,12 +240,22 @@ export function Home() {
   // ---- Helpers for table display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleDateString(isRTL ? "ar-SA" : "en-US", { 
+      month: "short", 
+      day: "numeric", 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
   };
+
   const getTransactionColor = (type) => (type === "issue" ? "green" : "orange");
   const getTransactionIcon = (type) => (type === "issue" ? "📤" : "📥");
-  const transactionTypeLabels = { issue: "Assign", return: "Return" };
-  const getTransactionLabel = (type) => transactionTypeLabels[type] ?? (type ? type[0].toUpperCase() + type.slice(1) : "—");
+  const getTransactionLabel = (type) => {
+    if (type === "issue") return t('transactions.assign');
+    if (type === "return") return t('transactions.return');
+    return type ? type[0].toUpperCase() + type.slice(1) : "—";
+  };
+
   const getAssetName = (t) => t.asset_name ?? t.asset?.name ?? "N/A";
   const getAssetSerial = (t) => t.asset_serial ?? t.asset?.serial_number ?? "N/A";
   const getEmployeeName = (t) =>
@@ -249,14 +264,14 @@ export function Home() {
   return (
     <div className="mt-12">
       {/* Header with refresh button */}
-      <div className="mb-6 flex justify-between items-center">
-        <div>
+      <div className={`mb-6 flex justify-between items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className={isRTL ? 'text-right' : ''}>
           <Typography variant="h4" color="blue-gray">
-            Asset Management Dashboard
+            {t('dashboard.title')}
           </Typography>
           {lastUpdated && (
             <Typography variant="small" color="gray">
-              Last updated: {lastUpdated.toLocaleTimeString()}
+              {t('dashboard.lastUpdated')}: {lastUpdated.toLocaleTimeString()}
             </Typography>
           )}
         </div>
@@ -268,7 +283,7 @@ export function Home() {
           disabled={refreshing}
         >
           <ArrowPathIcon className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-          {refreshing ? "Refreshing..." : "Refresh"}
+          {refreshing ? t('dashboard.refreshing') : t('dashboard.refresh')}
         </Button>
       </div>
 
@@ -294,13 +309,17 @@ export function Home() {
 
       {/* Charts Row */}
       <div className="mb-6 grid grid-cols-1 gap-y-12 gap-x-6 md:grid-cols-2 xl:grid-cols-2">
-        <Card className="border border-blue-gray-100 shadow-sm">
+      <Card className="border border-blue-gray-100 shadow-sm">
           <CardHeader variant="gradient" floated={false} shadow={false}>
             <Chart {...assetStatusChart} />
           </CardHeader>
           <CardBody className="px-6 pt-0">
-            <Typography variant="h6" color="blue-gray">Asset Status Distribution</Typography>
-            <Typography variant="small" className="font-normal text-blue-gray-600">Current distribution of assets by status</Typography>
+            <Typography variant="h6" color="blue-gray">
+              {t('dashboard.assetStatusDistribution')}
+            </Typography>
+            <Typography variant="small" className="font-normal text-blue-gray-600">
+              {t('dashboard.currentDistribution')}
+            </Typography>
           </CardBody>
         </Card>
 
@@ -309,8 +328,8 @@ export function Home() {
             <Chart {...weeklyTransactionsChart} />
           </CardHeader>
           <CardBody className="px-6 pt-0">
-            <Typography variant="h6" color="blue-gray">Weekly Transactions</Typography>
-            <Typography variant="small" className="font-normal text-blue-gray-600">Assets assigns and returns over the past week</Typography>
+            <Typography variant="h6" color="blue-gray">{t('dashboard.weeklyTransactions')}</Typography>
+            <Typography variant="small" className="font-normal text-blue-gray-600">{t('dashboard.weeklyAssignsReturns')}</Typography>
           </CardBody>
         </Card>
       </div>
@@ -335,8 +354,8 @@ export function Home() {
             />
           </CardHeader>
           <CardBody className="px-6 pt-0">
-            <Typography variant="h6" color="blue-gray">Assets by Department</Typography>
-            <Typography variant="small" className="font-normal text-blue-gray-600">Distribution of assets across departments</Typography>
+            <Typography variant="h6" color="blue-gray">{t('dashboard.assetsByDepartment')}</Typography>
+            <Typography variant="small" className="font-normal text-blue-gray-600">{t('dashboard.departmentDistribution')}</Typography>
           </CardBody>
         </Card>
 
@@ -372,8 +391,8 @@ export function Home() {
             }} />
           </CardHeader>
           <CardBody className="px-6 pt-0">
-            <Typography variant="h6" color="blue-gray">Yearly Transaction Trends</Typography>
-            <Typography variant="small" className="font-normal text-blue-gray-600">Monthly assets assigns and returns throughout the year</Typography>
+            <Typography variant="h6" color="blue-gray">{t('dashboard.yearlyTrends')}</Typography>
+            <Typography variant="small" className="font-normal text-blue-gray-600">{t('dashboard.monthlyTrends')}</Typography>
           </CardBody>
         </Card>
       </div>
@@ -386,24 +405,24 @@ export function Home() {
           color="transparent"
           className="m-0 flex items-center justify-between p-6 overflow-visible"
         >
-          <div>
+          <div className={isRTL ? 'text-right' : ''}>
             <Typography variant="h6" color="blue-gray" className="mb-1">
-              Recent Transactions
+              {t('dashboard.recentTransactions')}
             </Typography>
             <Typography
               variant="small"
               className="flex items-center gap-1 font-normal text-blue-gray-600"
             >
               <CalendarIcon strokeWidth={3} className="h-4 w-4 text-blue-gray-200" />
-              Latest asset assignments and returns
+              {t('dashboard.latestTransactions')}
             </Typography>
           </div>
 
-          {/* Show count selector */}
-          <div className="flex items-center gap-3">
-            <Typography variant="small" className="text-blue-gray-600">Show</Typography>
+          <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <Typography variant="small" className="text-blue-gray-600">
+              {t('common.show')}
+            </Typography>
             <Select
-              // hide the floating label but keep spacing consistent
               label=" "
               value={String(recentLimit)}
               onChange={(v) => setRecentLimit(Number(v || 5))}
@@ -413,8 +432,8 @@ export function Home() {
               containerProps={{ className: "min-w-[96px] z-[60]" }}
               labelProps={{ className: "hidden" }}
               menuProps={{
-                className: "z-[70] max-h-56 overflow-y-auto", // scrollable menu
-                placement: "bottom-end",                      // open towards the right
+                className: "z-[70] max-h-56 overflow-y-auto",
+                placement: isRTL ? "bottom-start" : "bottom-end",
               }}
             >
               <Option value="5">5</Option>
@@ -436,11 +455,11 @@ export function Home() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
           ) : recentRows?.length > 0 ? (
-            <table className="w-full min-w-[640px] table-auto">
+            <table className={`w-full min-w-[640px] table-auto ${isRTL ? 'text-right' : ''}`}>
               <thead>
                 <tr>
-                  {["ASSET", "EMPLOYEE", "TYPE", "DATE", "VERIFICATION"].map((el) => (
-                    <th key={el} className="border-b border-blue-gray-50 py-3 px-6 text-left">
+                  {[t('common.asset'), t('common.employee'), t('common.type'), t('common.date'), t('common.verification')].map((el, index) => (
+                    <th key={el} className={`border-b border-blue-gray-50 py-3 px-6 ${isRTL ? 'text-right' : 'text-left'}`}>
                       <Typography variant="small" className="text-[11px] font-medium uppercase text-blue-gray-400">
                         {el}
                       </Typography>
@@ -494,10 +513,10 @@ export function Home() {
                             <XCircleIcon className="h-4 w-4 text-red-500" />
                           )}
                           <Typography
-                            className={`ml-2 text-xs font-medium ${transaction.face_verification_success ? "text-blue-600" : "text-red-600"
+                            className={`${isRTL ? 'mr-2' : 'ml-2'} text-xs font-medium ${transaction.face_verification_success ? "text-blue-600" : "text-red-600"
                               }`}
                           >
-                            {transaction.face_verification_success ? "Verified" : "Not Verified"}
+                            {transaction.face_verification_success ? t('common.verified') : t('common.notVerified')}
                           </Typography>
                         </div>
                       </td>
@@ -509,7 +528,7 @@ export function Home() {
           ) : (
             <div className="flex justify-center items-center py-8">
               <Typography variant="small" color="gray">
-                No recent transactions available
+                {t('dashboard.noRecentTransactions')}
               </Typography>
             </div>
           )}

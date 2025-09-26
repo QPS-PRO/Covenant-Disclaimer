@@ -1,3 +1,4 @@
+// src/widgets/layout/dashboard-navbar.jsx
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   Navbar,
@@ -26,6 +27,9 @@ import {
   setOpenSidenav,
 } from "@/context";
 import { useAuth } from "@/lib/api";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 export function DashboardNavbar() {
   const [controller, dispatch] = useMaterialTailwindController();
@@ -34,27 +38,44 @@ export function DashboardNavbar() {
   const [layout, page] = pathname.split("/").filter((el) => el !== "");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { isRTL } = useLanguage();
 
   const handleLogout = async () => {
     await logout();
     navigate("/auth/sign-in", { replace: true });
   };
 
+  // Get translated page name
+  const getPageName = (page) => {
+    const pageTranslations = {
+      home: t('nav.home'),
+      assets: t('nav.assets'),
+      departments: t('nav.departments'),
+      employees: t('nav.employees'),
+      transactions: t('nav.transactions'),
+      reports: t('nav.reports'),
+      settings: t('nav.settings'),
+    };
+    return pageTranslations[page] || page;
+  };
+
   return (
     <Navbar
       color={fixedNavbar ? "white" : "transparent"}
       className={`rounded-xl transition-all ${fixedNavbar
-          ? "sticky top-4 z-40 py-3 shadow-md shadow-blue-gray-500/5"
-          : "px-0 py-1"
+        ? "sticky top-4 z-40 py-3 shadow-md shadow-blue-gray-500/5"
+        : "px-0 py-1"
         }`}
       fullWidth
       blurred={fixedNavbar}
     >
-      <div className="flex flex-col-reverse justify-between gap-6 md:flex-row md:items-center">
+      <div className={`flex ${isRTL ? 'flex-col' : 'flex-col-reverse'} justify-between gap-6 md:flex-row md:items-center`}>
         <div className="capitalize">
           <Breadcrumbs
             className={`bg-transparent p-0 transition-all ${fixedNavbar ? "mt-1" : ""
               }`}
+            separator={isRTL ? "›" : "‹"}
           >
             <Link to={`/${layout}`}>
               <Typography
@@ -62,7 +83,7 @@ export function DashboardNavbar() {
                 color="blue-gray"
                 className="font-normal opacity-50 transition-all hover:text-blue-500 hover:opacity-100"
               >
-                {layout}
+                {t('nav.dashboard')}
               </Typography>
             </Link>
             <Typography
@@ -70,14 +91,15 @@ export function DashboardNavbar() {
               color="blue-gray"
               className="font-normal"
             >
-              {page}
+              {getPageName(page)}
             </Typography>
           </Breadcrumbs>
           <Typography variant="h6" color="blue-gray">
-            {page}
+            {getPageName(page)}
           </Typography>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <IconButton
             variant="text"
             color="blue-gray"
@@ -86,6 +108,9 @@ export function DashboardNavbar() {
           >
             <Bars3Icon strokeWidth={3} className="h-6 w-6 text-blue-gray-500" />
           </IconButton>
+
+          {/* Language Toggle */}
+          <LanguageToggle />
 
           {/* User Menu */}
           <Menu>
@@ -96,20 +121,20 @@ export function DashboardNavbar() {
                 className="hidden items-center gap-1 px-4 xl:flex normal-case"
               >
                 <UserCircleIcon className="h-5 w-5 text-blue-gray-500" />
-                {user?.first_name || "User"}
+                {user?.first_name || t('ui.user')}
               </Button>
             </MenuHandler>
             <MenuList className="w-max border-0">
               <MenuItem className="flex items-center gap-2">
                 <UserCircleIcon className="h-4 w-4" />
-                Profile
+                {t('ui.profile')}
               </MenuItem>
               <MenuItem
                 className="flex items-center gap-2 text-red-500"
                 onClick={handleLogout}
               >
                 <ArrowRightOnRectangleIcon className="h-4 w-4" />
-                Logout
+                {t('ui.logout')}
               </MenuItem>
             </MenuList>
           </Menu>

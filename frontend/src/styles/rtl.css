@@ -1,0 +1,476 @@
+/* src/styles/rtl.css */
+
+/* RTL Base Styles */
+html[dir="rtl"] {
+    direction: rtl;
+}
+
+html[dir="ltr"] {
+    direction: ltr;
+}
+
+/* RTL Typography */
+.rtl {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Arabic UI Display', 'SF Arabic', sans-serif;
+}
+
+/* RTL Layout Adjustments */
+.rtl .text-left {
+    text-align: right !important;
+}
+
+.rtl .text-right {
+    text-align: left !important;
+}
+
+.rtl .float-left {
+    float: right !important;
+}
+
+.rtl .float-right {
+    float: left !important;
+}
+
+/* RTL Margin and Padding */
+.rtl .ml-1 {
+    margin-left: 0 !important;
+    margin-right: 0.25rem !important;
+}
+
+.rtl .ml-2 {
+    margin-left: 0 !important;
+    margin-right: 0.5rem !important;
+}
+
+.rtl .ml-3 {
+    margin-left: 0 !important;
+    margin-right: 0.75rem !important;
+}
+
+.rtl .ml-4 {
+    margin-left: 0 !important;
+    margin-right: 1rem !important;
+}
+
+.rtl .ml-auto {
+    margin-left: 0 !important;
+    margin-right: auto !important;
+}
+
+.rtl .mr-1 {
+    margin-right: 0 !important;
+    margin-left: 0.25rem !important;
+}
+
+.rtl .mr-2 {
+    margin-right: 0 !important;
+    margin-left: 0.5rem !important;
+}
+
+.rtl .mr-3 {
+    margin-right: 0 !important;
+    margin-left: 0.75rem !important;
+}
+
+.rtl .mr-4 {
+    margin-right: 0 !important;
+    margin-left: 1rem !important;
+}
+
+.rtl .mr-auto {
+    margin-right: 0 !important;
+    margin-left: auto !important;
+}
+
+.rtl .pl-1 {
+    padding-left: 0 !important;
+    padding-right: 0.25rem !important;
+}
+
+.rtl .pl-2 {
+    padding-left: 0 !important;
+    padding-right: 0.5rem !important;
+}
+
+.rtl .pl-3 {
+    padding-left: 0 !important;
+    padding-right: 0.75rem !important;
+}
+
+.rtl .pl-4 {
+    padding-left: 0 !important;
+    padding-right: 1rem !important;
+}
+
+.rtl .pl-6 {
+    padding-left: 0 !important;
+    padding-right: 1.5rem !important;
+}
+
+.rtl .pr-1 {
+    padding-right: 0 !important;
+    padding-left: 0.25rem !important;
+}
+
+.rtl .pr-2 {
+    padding-right: 0 !important;
+    padding-left: 0.5rem !important;
+}
+
+.rtl .pr-3 {
+    padding-right: 0 !important;
+    padding-left: 0.75rem !important;
+}
+
+.rtl .pr-4 {
+    padding-right: 0 !important;
+    padding-left: 1rem !important;
+}
+
+.rtl .pr-6 {
+    padding-right: 0 !important;
+    padding-left: 1.5rem !important;
+}
+
+/* RTL Border Radius */
+.rtl .rounded-l {
+    border-radius: 0 0.375rem 0.375rem 0 !important;
+}
+
+.rtl .rounded-r {
+    border-radius: 0.375rem 0 0 0.375rem !important;
+}
+
+.rtl .rounded-tl {
+    border-radius: 0 0.375rem 0 0 !important;
+}
+
+.rtl .rounded-tr {
+    border-radius: 0.375rem 0 0 0 !important;
+}
+
+.rtl .rounded-bl {
+    border-radius: 0 0 0.375rem 0 !important;
+}
+
+.rtl .rounded-br {
+    border-radius: 0 0 0 0.375rem !important;
+}
+
+/* RTL Position */
+.rtl .left-0 {
+    left: auto !important;
+    right: 0 !important;
+}
+
+.rtl .right-0 {
+    right: auto !important;
+    left: 0 !important;
+}
+
+.rtl .left-4 {
+    left: auto !important;
+    right: 1rem !important;
+}
+
+.rtl .right-4 {
+    right: auto !important;
+    left: 1rem !important;
+}
+
+/* RTL Transform */
+.rtl .translate-x-full {
+    transform: translateX(-100%) !important;
+}
+
+.rtl .-translate-x-full {
+    transform: translateX(100%) !important;
+}
+
+.rtl .translate-x-0 {
+    transform: translateX(0) !important;
+}
+
+.rtl .-translate-x-80 {
+    transform: translateX(20rem) !important;
+}
+
+/* RTL Flexbox */
+.rtl .flex-row {
+    flex-direction: row-reverse !important;
+}
+
+.rtl .flex-row-reverse {
+    flex-direction: row !important;
+}
+
+/* RTL Border */
+.rtl .border-l {
+    border-left: 0 !important;
+    border-right: 1px solid !important;
+}
+
+.rtl .border-r {
+    border-right: 0 !important;
+    border-left: 1px solid !important;
+}
+
+/* RTL Sidebar Adjustments */
+.rtl aside {
+    right: 1rem !important;
+    left: auto !important;
+}
+
+.rtl aside.translate-x-0 {
+    transform: translateX(0) !important;
+}
+
+.rtl aside.-translate-x-80 {
+    transform: translateX(20rem) !important;
+}
+
+/* RTL Navigation */
+.rtl .xl\:translate-x-0 {
+    transform: translateX(0) !important;
+}
+
+/* RTL Input Fields */
+.rtl input[type="text"],
+.rtl input[type="email"],
+.rtl input[type="password"],
+.rtl input[type="number"],
+.rtl textarea,
+.rtl select {
+    text-align: right;
+    padding-right: 0.75rem;
+    padding-left: 2.5rem;
+}
+
+/* RTL Icons in Inputs */
+.rtl .input-icon-left {
+    left: auto !important;
+    right: 0.75rem !important;
+}
+
+.rtl .input-icon-right {
+    right: auto !important;
+    left: 0.75rem !important;
+}
+
+/* RTL Dropdowns and Menus */
+.rtl .dropdown-menu {
+    left: auto !important;
+    right: 0 !important;
+}
+
+.rtl .menu-placement-bottom-end {
+    left: auto !important;
+    right: 0 !important;
+}
+
+.rtl .menu-placement-bottom-start {
+    right: auto !important;
+    left: 0 !important;
+}
+
+/* RTL Table Adjustments */
+.rtl table {
+    direction: rtl;
+}
+
+.rtl th,
+.rtl td {
+    text-align: right;
+}
+
+.rtl th:first-child,
+.rtl td:first-child {
+    padding-right: 1.5rem;
+    padding-left: 1.25rem;
+}
+
+.rtl th:last-child,
+.rtl td:last-child {
+    padding-left: 1.5rem;
+    padding-right: 1.25rem;
+}
+
+/* RTL Cards and Containers */
+.rtl .card-body {
+    text-align: right;
+}
+
+/* RTL Buttons */
+.rtl .btn-group>.btn:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+}
+
+.rtl .btn-group>.btn:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+}
+
+/* RTL Modal Adjustments */
+.rtl .modal-header {
+    text-align: right;
+}
+
+.rtl .modal-footer {
+    justify-content: flex-start;
+}
+
+.rtl .modal-footer .btn+.btn {
+    margin-left: 0;
+    margin-right: 0.5rem;
+}
+
+/* RTL Breadcrumb */
+.rtl .breadcrumb {
+    direction: rtl;
+}
+
+.rtl .breadcrumb-item+.breadcrumb-item::before {
+    float: right;
+    padding-right: 0;
+    padding-left: 0.5rem;
+}
+
+/* RTL Charts (if using chart libraries) */
+.rtl .apexcharts-legend {
+    direction: rtl;
+}
+
+.rtl .apexcharts-legend-text {
+    text-align: right;
+}
+
+/* RTL Pagination */
+.rtl .pagination {
+    direction: rtl;
+}
+
+.rtl .page-item:first-child .page-link {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.rtl .page-item:last-child .page-link {
+    border-top-left-radius: 0.375rem;
+    border-bottom-left-radius: 0.375rem;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* RTL Alerts */
+.rtl .alert {
+    text-align: right;
+}
+
+.rtl .alert-dismissible .btn-close {
+    left: 0;
+    right: auto;
+}
+
+/* RTL Form Controls */
+.rtl .form-label {
+    text-align: right;
+}
+
+.rtl .form-check {
+    text-align: right;
+}
+
+.rtl .form-check-input {
+    float: right;
+    margin-left: 0;
+    margin-right: -1.25em;
+}
+
+.rtl .form-check-label {
+    padding-left: 0;
+    padding-right: 1.25em;
+}
+
+/* RTL Animations */
+.rtl .slide-in-left {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.rtl .slide-in-right {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* RTL Specific Material Tailwind Overrides */
+.rtl .MuiSelect-select {
+    text-align: right !important;
+}
+
+.rtl .MuiInputBase-input {
+    text-align: right !important;
+}
+
+.rtl .MuiFormLabel-root {
+    transform-origin: top right !important;
+}
+
+/* RTL Scrollbars */
+.rtl ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.rtl ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.rtl ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.rtl ::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* RTL Selection Styles */
+.rtl ::selection {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.rtl ::-moz-selection {
+    background-color: #3b82f6;
+    color: white;
+}

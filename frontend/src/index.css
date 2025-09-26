@@ -1,0 +1,68 @@
+/* src/index.css or src/main.css */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Import RTL styles */
+@import './styles/rtl.css';
+
+/* Additional Material Tailwind overrides for RTL */
+.select-menu-in-dialog {
+    z-index: 9999 !important;
+}
+
+/* RTL-specific font loading for Arabic */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap');
+
+.rtl {
+    font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* Ensure proper RTL text rendering */
+.rtl * {
+    direction: inherit;
+}
+
+/* Fix for Material Tailwind Select components in RTL */
+.rtl .MuiSelect-root {
+    direction: rtl;
+}
+
+.rtl .MuiMenuItem-root {
+    direction: rtl;
+    text-align: right;
+}
+
+/* Custom utility classes for RTL support */
+.rtl-flip {
+    transform: scaleX(-1);
+}
+
+.ltr-flip {
+    transform: scaleX(1);
+}
+
+/* Responsive RTL adjustments */
+@media (max-width: 768px) {
+    .rtl aside {
+        right: 0 !important;
+        left: auto !important;
+    }
+
+    .rtl aside.-translate-x-80 {
+        transform: translateX(100%) !important;
+    }
+}
+
+/* Print styles for RTL */
+@media print {
+    .rtl {
+        direction: rtl !important;
+    }
+
+    .rtl table,
+    .rtl th,
+    .rtl td {
+        text-align: right !important;
+    }
+}
