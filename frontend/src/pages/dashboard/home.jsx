@@ -240,11 +240,11 @@ export function Home() {
   // ---- Helpers for table display
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(isRTL ? "ar-SA" : "en-US", { 
-      month: "short", 
-      day: "numeric", 
-      hour: "2-digit", 
-      minute: "2-digit" 
+    return date.toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
     });
   };
 
@@ -264,8 +264,8 @@ export function Home() {
   return (
     <div className="mt-12">
       {/* Header with refresh button */}
-      <div className={`mb-6 flex justify-between items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <div className={isRTL ? 'text-right' : ''}>
+      <div className={`mb-6 flex justify-between items-center dashboard-header ${isRTL ? 'flex-row-reverse rtl' : ''}`}>
+        <div className={`${isRTL ? 'text-right' : ''}`}>
           <Typography variant="h4" color="blue-gray">
             {t('dashboard.title')}
           </Typography>
@@ -278,7 +278,7 @@ export function Home() {
         <Button
           variant="outlined"
           size="sm"
-          className="flex items-center gap-2"
+          className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}
           onClick={handleRefresh}
           disabled={refreshing}
         >
@@ -287,8 +287,9 @@ export function Home() {
         </Button>
       </div>
 
+
       {/* Statistics Cards */}
-      <div className="mb-12 grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className={`mb-12 grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4 ${isRTL ? 'rtl' : ''}`}>
         {statisticsCardsConfig.map(({ icon, title, value, color, to }) => (
           <Link
             key={title}
@@ -296,20 +297,21 @@ export function Home() {
             className="block rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-label={`Go to ${title}`}
           >
-            <StatisticsCard
-              color={color}
-              value={value}
-              title={title}
-              icon={React.createElement(icon, { className: "w-6 h-6 text-white" })}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-            />
+            <div className={`statistics-card ${isRTL ? 'rtl' : ''}`}>
+              <StatisticsCard
+                color={color}
+                value={value}
+                title={title}
+                icon={React.createElement(icon, { className: "w-6 h-6 text-white" })}
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+              />
+            </div>
           </Link>
         ))}
       </div>
-
       {/* Charts Row */}
       <div className="mb-6 grid grid-cols-1 gap-y-12 gap-x-6 md:grid-cols-2 xl:grid-cols-2">
-      <Card className="border border-blue-gray-100 shadow-sm">
+        <Card className="border border-blue-gray-100 shadow-sm">
           <CardHeader variant="gradient" floated={false} shadow={false}>
             <Chart {...assetStatusChart} />
           </CardHeader>

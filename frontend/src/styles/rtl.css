@@ -528,6 +528,7 @@ html[dir="ltr"] {
     text-align: right;
     justify-content: flex-end;
 }
+
 /* Add this to your src/styles/rtl.css file for statistics cards RTL support */
 
 /* RTL Statistics Cards - Icon positioning */
@@ -562,18 +563,18 @@ html[dir="ltr"] {
     flex-direction: row-reverse !important;
 }
 
-.rtl div[class*="mb-6"] > div:first-child {
+.rtl div[class*="mb-6"]>div:first-child {
     text-align: right !important;
 }
 
-.rtl div[class*="mb-6"] > div:first-child h1,
-.rtl div[class*="mb-6"] > div:first-child h2,
-.rtl div[class*="mb-6"] > div:first-child h3,
-.rtl div[class*="mb-6"] > div:first-child h4 {
+.rtl div[class*="mb-6"]>div:first-child h1,
+.rtl div[class*="mb-6"]>div:first-child h2,
+.rtl div[class*="mb-6"]>div:first-child h3,
+.rtl div[class*="mb-6"]>div:first-child h4 {
     text-align: right !important;
 }
 
-.rtl div[class*="mb-6"] > div:first-child p {
+.rtl div[class*="mb-6"]>div:first-child p {
     text-align: right !important;
 }
 
@@ -587,7 +588,7 @@ html[dir="ltr"] {
     direction: rtl;
 }
 
-.rtl div[class*="grid"][class*="gap-y-10"] > * {
+.rtl div[class*="grid"][class*="gap-y-10"]>* {
     direction: rtl;
 }
 
@@ -621,5 +622,174 @@ html[dir="ltr"] {
 @media (min-width: 1280px) {
     .rtl div[class*="xl:grid-cols-4"] {
         direction: rtl;
+    }
+}
+
+/* Add these specific RTL fixes to your src/styles/rtl.css file */
+
+/* RTL Dashboard Header - Complete layout flip */
+.rtl .dashboard-header {
+    flex-direction: row-reverse !important;
+}
+
+.rtl .dashboard-header>div:first-child {
+    text-align: right !important;
+}
+
+.rtl .dashboard-header h4,
+.rtl .dashboard-header h1,
+.rtl .dashboard-header h2,
+.rtl .dashboard-header h3 {
+    text-align: right !important;
+}
+
+.rtl .dashboard-header p,
+.rtl .dashboard-header small {
+    text-align: right !important;
+}
+
+/* RTL Statistics Cards - Icon and content positioning */
+.rtl .statistics-card {
+    direction: rtl !important;
+}
+
+/* RTL Statistics Cards - Icon positioning (left side for Arabic) */
+.rtl .statistics-card .card-icon {
+    left: -0.75rem !important;
+    right: auto !important;
+}
+
+/* RTL Statistics Cards - Content alignment and padding */
+.rtl .statistics-card .card-content {
+    padding-right: 1rem !important;
+    padding-left: 1.5rem !important;
+    text-align: right !important;
+}
+
+/* RTL Statistics Cards - All text elements alignment */
+.rtl .statistics-card h1,
+.rtl .statistics-card h2,
+.rtl .statistics-card h3,
+.rtl .statistics-card h4,
+.rtl .statistics-card h5,
+.rtl .statistics-card h6,
+.rtl .statistics-card p {
+    text-align: right !important;
+}
+
+/* More specific selectors for Material Tailwind components */
+.rtl div[class*="relative"][class*="flex"][class*="flex-col"] div[class*="absolute"] {
+    left: -0.75rem !important;
+    right: auto !important;
+}
+
+.rtl div[class*="relative"][class*="flex"][class*="flex-col"] div[class*="p-4"] {
+    padding-right: 1rem !important;
+    padding-left: 1.5rem !important;
+    text-align: right !important;
+}
+
+/* RTL Button with icon - Reverse flex direction */
+.rtl button[class*="flex"][class*="items-center"][class*="gap-2"] {
+    flex-direction: row-reverse !important;
+}
+
+/* RTL Card Headers with actions */
+.rtl div[class*="flex"][class*="items-center"][class*="justify-between"] {
+    flex-direction: row-reverse !important;
+}
+
+.rtl div[class*="flex"][class*="items-center"][class*="justify-between"]>div:first-child {
+    text-align: right !important;
+}
+
+/* Ensure proper RTL layout for statistics cards grid */
+.rtl div[class*="grid"][class*="gap-y-10"][class*="gap-x-6"] {
+    direction: rtl;
+}
+
+.rtl div[class*="grid"][class*="gap-y-10"]>a,
+.rtl div[class*="grid"][class*="gap-y-10"]>div {
+    direction: rtl;
+}
+
+/* RTL Typography override for all card content */
+.rtl [class*="text-blue-gray"],
+.rtl [class*="text-gray"],
+.rtl [class*="text-white"] {
+    direction: rtl !important;
+    text-align: inherit !important;
+}
+
+/* RTL Chart card headers */
+.rtl div[class*="px-6"][class*="pt-0"] h6,
+.rtl div[class*="px-6"][class*="pt-0"] p {
+    text-align: right !important;
+}
+
+/* RTL Table headers and content */
+.rtl table th {
+    text-align: right !important;
+}
+
+.rtl table td {
+    text-align: right !important;
+}
+
+/* RTL Recent transactions card header */
+.rtl div[class*="m-0"][class*="flex"][class*="items-center"][class*="justify-between"] {
+    flex-direction: row-reverse !important;
+}
+
+.rtl div[class*="m-0"][class*="flex"]>div:first-child {
+    text-align: right !important;
+}
+
+.rtl div[class*="m-0"][class*="flex"]>div:first-child h6,
+.rtl div[class*="m-0"][class*="flex"]>div:first-child p {
+    text-align: right !important;
+}
+
+/* RTL Select component positioning */
+.rtl div[class*="flex"][class*="items-center"][class*="gap-3"] {
+    flex-direction: row-reverse !important;
+}
+
+/* Force RTL direction on specific dashboard elements */
+.rtl .dashboard-container,
+.rtl .dashboard-content {
+    direction: rtl !important;
+}
+
+/* RTL fix for Material Tailwind Select component */
+.rtl div[class*="min-w-"][class*="z-"] {
+    direction: rtl !important;
+}
+
+.rtl div[class*="min-w-"] select,
+.rtl div[class*="min-w-"] input {
+    text-align: right !important;
+    direction: rtl !important;
+}
+
+/* Ensure proper spacing for RTL layout */
+.rtl .statistics-card:hover {
+    direction: rtl !important;
+}
+
+/* RTL responsive adjustments */
+@media (min-width: 768px) {
+    .rtl div[class*="md:grid-cols-2"] {
+        direction: rtl !important;
+    }
+}
+
+@media (min-width: 1280px) {
+    .rtl div[class*="xl:grid-cols-4"] {
+        direction: rtl !important;
+    }
+
+    .rtl div[class*="xl:grid-cols-2"] {
+        direction: rtl !important;
     }
 }
