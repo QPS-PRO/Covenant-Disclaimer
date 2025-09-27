@@ -260,17 +260,23 @@ export function Home() {
   const getAssetSerial = (t) => t.asset_serial ?? t.asset?.serial_number ?? "N/A";
   const getEmployeeName = (t) =>
     t.employee_name ?? t.employee?.name ?? (t.employee?.user ? `${t.employee.user.first_name} ${t.employee.user.last_name}` : null) ?? "N/A";
-
+  const getDashboardClasses = () => {
+    let classes = "mt-12 dashboard-container";
+    if (isRTL) {
+      classes += " rtl";
+    }
+    return classes;
+  };
   return (
-    <div className="mt-12">
+    <div className={getDashboardClasses()}>
       {/* Header with refresh button */}
-      <div className={`mb-6 flex justify-between items-center dashboard-header ${isRTL ? 'flex-row-reverse rtl' : ''}`}>
-        <div className={`${isRTL ? 'text-right' : ''}`}>
-          <Typography variant="h4" color="blue-gray">
+      <div className={`mb-6 flex justify-between items-center dashboard-header ${isRTL ? 'rtl' : ''}`}>
+        <div className={`dashboard-title ${isRTL ? 'text-right order-1' : 'order-1'}`}>
+          <Typography variant="h4" color="blue-gray" className={isRTL ? 'text-right' : ''}>
             {t('dashboard.title')}
           </Typography>
           {lastUpdated && (
-            <Typography variant="small" color="gray">
+            <Typography variant="small" color="gray" className={isRTL ? 'text-right' : ''}>
               {t('dashboard.lastUpdated')}: {lastUpdated.toLocaleTimeString()}
             </Typography>
           )}
@@ -278,7 +284,7 @@ export function Home() {
         <Button
           variant="outlined"
           size="sm"
-          className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}
+          className={`flex items-center gap-2 dashboard-refresh-btn ${isRTL ? 'order-2 flex-row-reverse' : 'order-2'}`}
           onClick={handleRefresh}
           disabled={refreshing}
         >
@@ -289,7 +295,7 @@ export function Home() {
 
 
       {/* Statistics Cards */}
-      <div className={`mb-12 grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4 ${isRTL ? 'rtl' : ''}`}>
+      <div className={`mb-12 grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4 statistics-grid ${isRTL ? 'rtl' : ''}`}>
         {statisticsCardsConfig.map(({ icon, title, value, color, to }) => (
           <Link
             key={title}
@@ -302,13 +308,16 @@ export function Home() {
                 color={color}
                 value={value}
                 title={title}
-                icon={React.createElement(icon, { className: "w-6 h-6 text-white" })}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
+                icon={React.createElement(icon, {
+                  className: `w-6 h-6 text-white icon-container ${isRTL ? 'rtl-icon' : ''}`
+                })}
+                className={`cursor-pointer hover:shadow-lg transition-shadow ${isRTL ? 'rtl-card' : ''}`}
               />
             </div>
           </Link>
         ))}
       </div>
+
       {/* Charts Row */}
       <div className="mb-6 grid grid-cols-1 gap-y-12 gap-x-6 md:grid-cols-2 xl:grid-cols-2">
         <Card className="border border-blue-gray-100 shadow-sm">

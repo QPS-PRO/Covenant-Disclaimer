@@ -93,24 +93,23 @@ export function Sidenav({ brandImg, brandName, routes }) {
       </div>
       <div className="m-4">
         {routes.map(({ layout, title, pages }, key) => (
-          // Only show dashboard routes in sidebar, filter out auth routes
           layout === "dashboard" && (
             <ul key={key} className="mb-4 flex flex-col gap-1">
               {title && (
-                <li className={`mx-3.5 mt-4 mb-2 ${isRTL ? 'text-right' : 'text-left'}`}>
+                <li className={`mx-3.5 mt-4 mb-2 sidenav-title ${isRTL ? 'text-right rtl' : 'text-left'}`}>
                   <Typography
                     variant="small"
                     color={sidenavType === "dark" ? "white" : "blue-gray"}
-                    className="font-black uppercase opacity-75"
+                    className={`font-black uppercase opacity-75 ${isRTL ? 'text-right' : 'text-left'}`}
                   >
                     {getNavTranslation(title)}
                   </Typography>
                 </li>
               )}
               {pages
-                .filter(page => !page.hideFromSidebar) // Filter out pages with hideFromSidebar: true
+                .filter(page => !page.hideFromSidebar)
                 .map(({ icon, name, path }) => (
-                  <li key={name}>
+                  <li key={name} className="nav-item">
                     <NavLink to={`/${layout}${path}`}>
                       {({ isActive }) => (
                         <Button
@@ -122,16 +121,18 @@ export function Sidenav({ brandImg, brandName, routes }) {
                                 ? "white"
                                 : "blue-gray"
                           }
-                          className={`flex items-center gap-4 px-4 capitalize w-full ${isRTL
-                              ? 'flex-row-reverse text-right justify-start'
-                              : 'justify-start'
+                          className={`flex items-center gap-4 px-4 capitalize w-full nav-button ${isRTL
+                            ? 'flex-row-reverse text-right justify-start rtl'
+                            : 'justify-start'
                             }`}
                           fullWidth
                         >
-                          {icon}
+                          <span className={`nav-icon ${isRTL ? 'order-2' : 'order-1'}`}>
+                            {icon}
+                          </span>
                           <Typography
                             color="inherit"
-                            className={`font-medium capitalize ${isRTL ? 'text-right' : 'text-left'}`}
+                            className={`font-medium capitalize nav-text ${isRTL ? 'text-right order-1' : 'text-left order-2'}`}
                           >
                             {getNavTranslation(name)}
                           </Typography>
