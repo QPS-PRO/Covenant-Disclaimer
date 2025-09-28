@@ -1,6 +1,6 @@
-/* src/styles/rtl.css */
-
-/* RTL Base Styles */
+/* ==============================
+RTL BASE & DIRECTION
+============================== */
 html[dir="rtl"] {
     direction: rtl;
 }
@@ -9,239 +9,25 @@ html[dir="ltr"] {
     direction: ltr;
 }
 
-/* RTL Typography */
+/* Optional: add .rtl on the <html> element (or a top-level wrapper) */
 .rtl {
     font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Arabic UI Display', 'SF Arabic', sans-serif;
 }
 
-/* RTL Layout Adjustments */
-.rtl .text-left {
-    text-align: right !important;
-}
-
-.rtl .text-right {
-    text-align: left !important;
-}
-
-.rtl .float-left {
-    float: right !important;
-}
-
-.rtl .float-right {
-    float: left !important;
-}
-
-/* RTL Margin and Padding */
-.rtl .ml-1 {
-    margin-left: 0 !important;
-    margin-right: 0.25rem !important;
-}
-
-.rtl .ml-2 {
-    margin-left: 0 !important;
-    margin-right: 0.5rem !important;
-}
-
-.rtl .ml-3 {
-    margin-left: 0 !important;
-    margin-right: 0.75rem !important;
-}
-
-.rtl .ml-4 {
-    margin-left: 0 !important;
-    margin-right: 1rem !important;
-}
-
-.rtl .ml-auto {
-    margin-left: 0 !important;
-    margin-right: auto !important;
-}
-
-.rtl .mr-1 {
-    margin-right: 0 !important;
-    margin-left: 0.25rem !important;
-}
-
-.rtl .mr-2 {
-    margin-right: 0 !important;
-    margin-left: 0.5rem !important;
-}
-
-.rtl .mr-3 {
-    margin-right: 0 !important;
-    margin-left: 0.75rem !important;
-}
-
-.rtl .mr-4 {
-    margin-right: 0 !important;
-    margin-left: 1rem !important;
-}
-
-.rtl .mr-auto {
-    margin-right: 0 !important;
-    margin-left: auto !important;
-}
-
-.rtl .pl-1 {
-    padding-left: 0 !important;
-    padding-right: 0.25rem !important;
-}
-
-.rtl .pl-2 {
-    padding-left: 0 !important;
-    padding-right: 0.5rem !important;
-}
-
-.rtl .pl-3 {
-    padding-left: 0 !important;
-    padding-right: 0.75rem !important;
-}
-
-.rtl .pl-4 {
-    padding-left: 0 !important;
-    padding-right: 1rem !important;
-}
-
-.rtl .pl-6 {
-    padding-left: 0 !important;
-    padding-right: 1.5rem !important;
-}
-
-.rtl .pr-1 {
-    padding-right: 0 !important;
-    padding-left: 0.25rem !important;
-}
-
-.rtl .pr-2 {
-    padding-right: 0 !important;
-    padding-left: 0.5rem !important;
-}
-
-.rtl .pr-3 {
-    padding-right: 0 !important;
-    padding-left: 0.75rem !important;
-}
-
-.rtl .pr-4 {
-    padding-right: 0 !important;
-    padding-left: 1rem !important;
-}
-
-.rtl .pr-6 {
-    padding-right: 0 !important;
-    padding-left: 1.5rem !important;
-}
-
-/* RTL Border Radius */
-.rtl .rounded-l {
-    border-radius: 0 0.375rem 0.375rem 0 !important;
-}
-
-.rtl .rounded-r {
-    border-radius: 0.375rem 0 0 0.375rem !important;
-}
-
-.rtl .rounded-tl {
-    border-radius: 0 0.375rem 0 0 !important;
-}
-
-.rtl .rounded-tr {
-    border-radius: 0.375rem 0 0 0 !important;
-}
-
-.rtl .rounded-bl {
-    border-radius: 0 0 0.375rem 0 !important;
-}
-
-.rtl .rounded-br {
-    border-radius: 0 0 0 0.375rem !important;
-}
-
-/* RTL Position */
-.rtl .left-0 {
-    left: auto !important;
-    right: 0 !important;
-}
-
-.rtl .right-0 {
-    right: auto !important;
-    left: 0 !important;
-}
-
-.rtl .left-4 {
-    left: auto !important;
-    right: 1rem !important;
-}
-
-.rtl .right-4 {
-    right: auto !important;
-    left: 1rem !important;
-}
-
-/* RTL Transform - FIXED FOR SIDEBAR */
-.rtl .translate-x-full {
-    transform: translateX(100%) !important;
-    /* Hide to right */
-}
-
-.rtl .-translate-x-full {
-    transform: translateX(-100%) !important;
-    /* Hide to left */
-}
-
-.rtl .translate-x-0 {
-    transform: translateX(0) !important;
-    /* Show sidebar */
-}
-
-.rtl .-translate-x-80 {
-    transform: translateX(-20rem) !important;
-}
-
-.rtl .translate-x-80 {
-    transform: translateX(20rem) !important;
-}
-
-/* RTL Flexbox */
-.rtl .flex-row {
-    flex-direction: row-reverse !important;
-}
-
-.rtl .flex-row-reverse {
-    flex-direction: row !important;
-}
-
-/* RTL Border */
-.rtl .border-l {
-    border-left: 0 !important;
-    border-right: 1px solid !important;
-}
-
-.rtl .border-r {
-    border-right: 0 !important;
-    border-left: 1px solid !important;
-}
-
-/* RTL Sidebar Adjustments - COMPLETELY REVISED */
+/* ==============================
+    SIDEBAR POSITIONING (DON'T FLIP FLEX UTILITIES)
+============================== */
 .rtl aside {
+    right: 1rem !important;
     left: auto !important;
-    right: 0 !important;
 }
 
-/* Ensure proper positioning for large screens */
-@media (min-width: 1280px) {
-    .rtl aside {
-        right: 1rem !important;
-        left: auto !important;
-    }
-
-    html:not(.rtl) aside {
-        left: 1rem !important;
-        right: auto !important;
-    }
+html:not(.rtl) aside {
+    left: 1rem !important;
+    right: auto !important;
 }
 
-/* Mobile sidebar positioning */
+/* Mobile sidebar position */
 @media (max-width: 1279px) {
     .rtl aside {
         right: 0 !important;
@@ -254,46 +40,33 @@ html[dir="ltr"] {
     }
 }
 
-/* RTL Input Fields */
-.rtl input[type="text"],
-.rtl input[type="email"],
-.rtl input[type="password"],
-.rtl input[type="number"],
-.rtl textarea,
-.rtl select {
-    text-align: right;
-    padding-right: 0.75rem;
-    padding-left: 2.5rem;
+/* ==============================
+     TEXT ALIGNMENT (DO NOT INVERT UTILITY CLASSES)
+     ============================== */
+/* Keep your JSX-driven text-left/text-right intact.
+     Only set general RTL defaults for content blocks. */
+.rtl h1,
+.rtl h2,
+.rtl h3,
+.rtl h4,
+.rtl h5,
+.rtl h6 {
+    text-align: right !important;
 }
 
-/* RTL Icons in Inputs */
-.rtl .input-icon-left {
-    left: auto !important;
-    right: 0.75rem !important;
+.rtl p,
+.rtl span {
+    text-align: right !important;
 }
 
-.rtl .input-icon-right {
-    right: auto !important;
-    left: 0.75rem !important;
+/* Section headings or card bodies commonly right-aligned in RTL */
+.rtl .card-body,
+.rtl [class*="CardBody"] {
+    text-align: right !important;
+    direction: rtl !important;
 }
 
-/* RTL Dropdowns and Menus */
-.rtl .dropdown-menu {
-    left: auto !important;
-    right: 0 !important;
-}
-
-.rtl .menu-placement-bottom-end {
-    left: auto !important;
-    right: 0 !important;
-}
-
-.rtl .menu-placement-bottom-start {
-    right: auto !important;
-    left: 0 !important;
-}
-
-/* RTL Table Adjustments */
+/* Tables */
 .rtl table {
     direction: rtl;
 }
@@ -303,205 +76,31 @@ html[dir="ltr"] {
     text-align: right;
 }
 
-.rtl th:first-child,
-.rtl td:first-child {
-    padding-right: 1.5rem;
-    padding-left: 1.25rem;
+/* ==============================
+    DASHBOARD LAYOUT HELPERS
+============================== */
+.rtl .dashboard-container {
+    direction: rtl !important;
 }
 
-.rtl th:last-child,
-.rtl td:last-child {
-    padding-left: 1.5rem;
-    padding-right: 1.25rem;
+.rtl .statistics-grid {
+    direction: rtl !important;
 }
 
-/* RTL Cards and Containers */
-.rtl .card-body {
-    text-align: right;
+.rtl .statistics-grid>* {
+    direction: rtl !important;
 }
 
-/* RTL Buttons */
-.rtl .btn-group>.btn:first-child {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    border-top-left-radius: 0.375rem;
-    border-bottom-left-radius: 0.375rem;
+/* Dashboard header can be reversed if desired */
+.rtl .dashboard-header {
+    flex-direction: row-reverse !important;
 }
 
-.rtl .btn-group>.btn:last-child {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-top-right-radius: 0.375rem;
-    border-bottom-right-radius: 0.375rem;
-}
-
-/* RTL Modal Adjustments */
-.rtl .modal-header {
-    text-align: right;
-}
-
-.rtl .modal-footer {
-    justify-content: flex-start;
-}
-
-.rtl .modal-footer .btn+.btn {
-    margin-left: 0;
-    margin-right: 0.5rem;
-}
-
-/* RTL Breadcrumb */
-.rtl .breadcrumb {
-    direction: rtl;
-}
-
-.rtl .breadcrumb-item+.breadcrumb-item::before {
-    float: right;
-    padding-right: 0;
-    padding-left: 0.5rem;
-}
-
-/* RTL Charts (if using chart libraries) */
-.rtl .apexcharts-legend {
-    direction: rtl;
-}
-
-.rtl .apexcharts-legend-text {
-    text-align: right;
-}
-
-/* RTL Pagination */
-.rtl .pagination {
-    direction: rtl;
-}
-
-.rtl .page-item:first-child .page-link {
-    border-top-right-radius: 0.375rem;
-    border-bottom-right-radius: 0.375rem;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
-.rtl .page-item:last-child .page-link {
-    border-top-left-radius: 0.375rem;
-    border-bottom-left-radius: 0.375rem;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-/* RTL Alerts */
-.rtl .alert {
-    text-align: right;
-}
-
-.rtl .alert-dismissible .btn-close {
-    left: 0;
-    right: auto;
-}
-
-/* RTL Form Controls */
-.rtl .form-label {
-    text-align: right;
-}
-
-.rtl .form-check {
-    text-align: right;
-}
-
-.rtl .form-check-input {
-    float: right;
-    margin-left: 0;
-    margin-right: -1.25em;
-}
-
-.rtl .form-check-label {
-    padding-left: 0;
-    padding-right: 1.25em;
-}
-
-/* RTL Animations */
-.rtl .slide-in-left {
-    animation: slideInRight 0.3s ease-out;
-}
-
-.rtl .slide-in-right {
-    animation: slideInLeft 0.3s ease-out;
-}
-
-@keyframes slideInLeft {
-    from {
-        transform: translateX(-100%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-/* RTL Specific Material Tailwind Overrides */
-.rtl .MuiSelect-select {
+.rtl .dashboard-header>div {
     text-align: right !important;
 }
 
-.rtl .MuiInputBase-input {
-    text-align: right !important;
-}
-
-.rtl .MuiFormLabel-root {
-    transform-origin: top right !important;
-}
-
-/* RTL Scrollbars */
-.rtl ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-.rtl ::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.rtl ::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-.rtl ::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* RTL Selection Styles */
-.rtl ::selection {
-    background-color: #3b82f6;
-    color: white;
-}
-
-.rtl ::-moz-selection {
-    background-color: #3b82f6;
-    color: white;
-}
-
-/* Main content area adjustments for RTL */
-.rtl main {
-    padding-right: 1rem !important;
-    padding-left: 0 !important;
-}
-
-/* Ensure main content doesn't overlap with sidebar */
+/* When very wide, reserve space for the sidebar on the right */
 @media (min-width: 1280px) {
     .rtl main {
         margin-right: 18rem !important;
@@ -514,448 +113,43 @@ html[dir="ltr"] {
     }
 }
 
-/* Fix for Material Tailwind components in RTL */
-.rtl .MuiPaper-root {
-    direction: rtl;
-}
-
-.rtl .MuiMenu-paper {
-    direction: rtl;
-}
-
+/* ==============================
+    MATERIAL-UI / MATERIAL-TAILWIND COMMON FIXES
+============================== */
 .rtl .MuiMenuItem-root {
     direction: rtl;
     text-align: right;
-    justify-content: flex-end;
 }
 
-/* Add this to your src/styles/rtl.css file for statistics cards RTL support */
-
-/* RTL Statistics Cards - Icon positioning */
-.rtl div[class*="absolute"][class*="grid"][class*="h-16"][class*="w-16"] {
-    left: -0.75rem !important;
-    right: auto !important;
-}
-
-/* RTL Statistics Cards - Content alignment */
-.rtl div[class*="p-4"][class*="pr-6"] {
-    padding-right: 1rem !important;
-    padding-left: 1.5rem !important;
+.rtl .MuiSelect-select {
     text-align: right !important;
 }
 
-/* RTL Statistics Cards - Title and value alignment */
-.rtl div[class*="p-4"] h1,
-.rtl div[class*="p-4"] h2,
-.rtl div[class*="p-4"] h3,
-.rtl div[class*="p-4"] h4,
-.rtl div[class*="p-4"] h5,
-.rtl div[class*="p-4"] h6 {
+.rtl .MuiInputBase-input {
     text-align: right !important;
 }
 
-.rtl div[class*="p-4"] p[class*="font-normal"] {
-    text-align: right !important;
-}
-
-/* RTL Dashboard Header - Complete layout flip */
-.rtl div[class*="mb-6"][class*="flex"][class*="justify-between"] {
-    flex-direction: row-reverse !important;
-}
-
-.rtl div[class*="mb-6"]>div:first-child {
-    text-align: right !important;
-}
-
-.rtl div[class*="mb-6"]>div:first-child h1,
-.rtl div[class*="mb-6"]>div:first-child h2,
-.rtl div[class*="mb-6"]>div:first-child h3,
-.rtl div[class*="mb-6"]>div:first-child h4 {
-    text-align: right !important;
-}
-
-.rtl div[class*="mb-6"]>div:first-child p {
-    text-align: right !important;
-}
-
-/* RTL Button - Icon and text arrangement */
-.rtl button[class*="flex"][class*="items-center"][class*="gap-2"] {
-    flex-direction: row-reverse !important;
-}
-
-/* RTL Statistics Grid - Ensure proper alignment */
-.rtl div[class*="grid"][class*="gap-y-10"][class*="gap-x-6"] {
-    direction: rtl;
-}
-
-.rtl div[class*="grid"][class*="gap-y-10"]>* {
-    direction: rtl;
-}
-
-/* Ensure Material Tailwind cards respect RTL */
-.rtl .MuiCard-root,
-.rtl [class*="border-blue-gray-100"] {
-    direction: rtl;
+/* Inputs */
+.rtl input[type="text"],
+.rtl input[type="email"],
+.rtl input[type="password"],
+.rtl input[type="number"],
+.rtl textarea,
+.rtl select {
     text-align: right;
 }
 
-/* RTL Card body content */
-.rtl [class*="CardBody"],
-.rtl [class*="card-body"],
-.rtl div[class*="p-4"]:not([class*="space-y"]) {
-    text-align: right !important;
-    direction: rtl;
+/* Dropdown menus opening to the right in RTL */
+.rtl .dropdown-menu {
+    left: auto !important;
+    right: 0 !important;
 }
 
-/* Additional RTL Typography fixes */
-.rtl [class*="text-blue-gray"] {
-    text-align: inherit !important;
-}
-
-/* RTL Responsive fixes for cards */
-@media (min-width: 768px) {
-    .rtl div[class*="md:grid-cols-2"] {
-        direction: rtl;
-    }
-}
-
-@media (min-width: 1280px) {
-    .rtl div[class*="xl:grid-cols-4"] {
-        direction: rtl;
-    }
-}
-
-/* Add these specific RTL fixes to your src/styles/rtl.css file */
-
-/* RTL Dashboard Header - Complete layout flip */
-.rtl .dashboard-header {
-    flex-direction: row-reverse !important;
-}
-
-.rtl .dashboard-header>div:first-child {
-    text-align: right !important;
-}
-
-.rtl .dashboard-header h4,
-.rtl .dashboard-header h1,
-.rtl .dashboard-header h2,
-.rtl .dashboard-header h3 {
-    text-align: right !important;
-}
-
-.rtl .dashboard-header p,
-.rtl .dashboard-header small {
-    text-align: right !important;
-}
-
-/* RTL Statistics Cards - Icon and content positioning */
-.rtl .statistics-card {
-    direction: rtl !important;
-}
-
-/* RTL Statistics Cards - Icon positioning (left side for Arabic) */
-.rtl .statistics-card .card-icon {
-    left: -0.75rem !important;
-    right: auto !important;
-}
-
-/* RTL Statistics Cards - Content alignment and padding */
-.rtl .statistics-card .card-content {
-    padding-right: 1rem !important;
-    padding-left: 1.5rem !important;
-    text-align: right !important;
-}
-
-/* RTL Statistics Cards - All text elements alignment */
-.rtl .statistics-card h1,
-.rtl .statistics-card h2,
-.rtl .statistics-card h3,
-.rtl .statistics-card h4,
-.rtl .statistics-card h5,
-.rtl .statistics-card h6,
-.rtl .statistics-card p {
-    text-align: right !important;
-}
-
-/* More specific selectors for Material Tailwind components */
-.rtl div[class*="relative"][class*="flex"][class*="flex-col"] div[class*="absolute"] {
-    left: -0.75rem !important;
-    right: auto !important;
-}
-
-.rtl div[class*="relative"][class*="flex"][class*="flex-col"] div[class*="p-4"] {
-    padding-right: 1rem !important;
-    padding-left: 1.5rem !important;
-    text-align: right !important;
-}
-
-/* RTL Button with icon - Reverse flex direction */
-.rtl button[class*="flex"][class*="items-center"][class*="gap-2"] {
-    flex-direction: row-reverse !important;
-}
-
-/* RTL Card Headers with actions */
-.rtl div[class*="flex"][class*="items-center"][class*="justify-between"] {
-    flex-direction: row-reverse !important;
-}
-
-.rtl div[class*="flex"][class*="items-center"][class*="justify-between"]>div:first-child {
-    text-align: right !important;
-}
-
-/* Ensure proper RTL layout for statistics cards grid */
-.rtl div[class*="grid"][class*="gap-y-10"][class*="gap-x-6"] {
-    direction: rtl;
-}
-
-.rtl div[class*="grid"][class*="gap-y-10"]>a,
-.rtl div[class*="grid"][class*="gap-y-10"]>div {
-    direction: rtl;
-}
-
-/* RTL Typography override for all card content */
-.rtl [class*="text-blue-gray"],
-.rtl [class*="text-gray"],
-.rtl [class*="text-white"] {
-    direction: rtl !important;
-    text-align: inherit !important;
-}
-
-/* RTL Chart card headers */
-.rtl div[class*="px-6"][class*="pt-0"] h6,
-.rtl div[class*="px-6"][class*="pt-0"] p {
-    text-align: right !important;
-}
-
-/* RTL Table headers and content */
-.rtl table th {
-    text-align: right !important;
-}
-
-.rtl table td {
-    text-align: right !important;
-}
-
-/* RTL Recent transactions card header */
-.rtl div[class*="m-0"][class*="flex"][class*="items-center"][class*="justify-between"] {
-    flex-direction: row-reverse !important;
-}
-
-.rtl div[class*="m-0"][class*="flex"]>div:first-child {
-    text-align: right !important;
-}
-
-.rtl div[class*="m-0"][class*="flex"]>div:first-child h6,
-.rtl div[class*="m-0"][class*="flex"]>div:first-child p {
-    text-align: right !important;
-}
-
-/* RTL Select component positioning */
-.rtl div[class*="flex"][class*="items-center"][class*="gap-3"] {
-    flex-direction: row-reverse !important;
-}
-
-/* Force RTL direction on specific dashboard elements */
-.rtl .dashboard-container,
-.rtl .dashboard-content {
-    direction: rtl !important;
-}
-
-/* RTL fix for Material Tailwind Select component */
-.rtl div[class*="min-w-"][class*="z-"] {
-    direction: rtl !important;
-}
-
-.rtl div[class*="min-w-"] select,
-.rtl div[class*="min-w-"] input {
-    text-align: right !important;
-    direction: rtl !important;
-}
-
-/* Ensure proper spacing for RTL layout */
-.rtl .statistics-card:hover {
-    direction: rtl !important;
-}
-
-/* RTL responsive adjustments */
-@media (min-width: 768px) {
-    .rtl div[class*="md:grid-cols-2"] {
-        direction: rtl !important;
-    }
-}
-
-@media (min-width: 1280px) {
-    .rtl div[class*="xl:grid-cols-4"] {
-        direction: rtl !important;
-    }
-
-    .rtl div[class*="xl:grid-cols-2"] {
-        direction: rtl !important;
-    }
-}
-/* Add these fixes to your src/styles/rtl.css file */
-
-/* 1. Dashboard Header - Title and Button Positioning Fix */
-.rtl .dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-direction: row-reverse !important; /* This flips the entire layout */
-}
-
-.rtl .dashboard-header > div:first-child {
-    text-align: right !important;
-    order: 1; /* Title goes to the right */
-}
-
-.rtl .dashboard-header > div:last-child {
-    order: 2; /* Button goes to the left */
-}
-
-/* More specific targeting for the header flex container */
-.rtl div[class*="mb-6"][class*="flex"][class*="justify-between"][class*="items-center"] {
-    flex-direction: row-reverse !important;
-}
-
-/* 2. Statistics Cards - Icon Positioning Fix */
-.rtl .statistics-card {
-    position: relative !important;
-    overflow: visible !important;
-}
-
-/* Fix the icon positioning in statistics cards */
-.rtl .statistics-card .icon-container {
-    position: absolute !important;
-    left: -0.75rem !important; /* Move icon to the left side */
-    right: auto !important;
-    top: 0.5rem !important;
-    width: 4rem !important;
-    height: 4rem !important;
-}
-
-/* Alternative targeting for Material Tailwind cards */
-.rtl [class*="absolute"][class*="grid"][class*="place-items-center"][class*="h-16"][class*="w-16"] {
-    left: -0.75rem !important;
-    right: auto !important;
-}
-
-/* Adjust card content padding to accommodate left-side icon */
-.rtl .statistics-card .card-content {
-    padding-left: 1.5rem !important; /* Add left padding for icon space */
-    padding-right: 1rem !important; /* Reduce right padding */
-    text-align: right !important;
-}
-
-/* More specific Material Tailwind targeting */
-.rtl [class*="p-4"][class*="text-right"] {
-    padding-left: 1.5rem !important;
-    padding-right: 1rem !important;
-}
-
-/* 3. Sidebar Navigation - Title Alignment Fix */
-.rtl .sidenav-title {
-    text-align: right !important;
-    margin-right: 0 !important;
-    margin-left: auto !important;
-}
-
-/* Fix sidebar section titles */
-.rtl .sidenav li[class*="mx-3.5"] {
-    text-align: right !important;
-    margin-right: 0.875rem !important;
-    margin-left: 0.875rem !important;
-}
-
-/* Fix sidebar navigation items */
-.rtl .sidenav .nav-item {
-    flex-direction: row-reverse !important;
-    text-align: right !important;
-    justify-content: flex-start !important;
-}
-
-/* Material Tailwind Button fixes for sidebar */
-.rtl .sidenav button[class*="flex"][class*="items-center"] {
-    flex-direction: row-reverse !important;
-    justify-content: flex-start !important;
-    text-align: right !important;
-}
-
-.rtl .sidenav button[class*="flex"][class*="items-center"] svg {
-    margin-left: 1rem !important;
-    margin-right: 0 !important;
-}
-
-/* 4. Additional General RTL Fixes */
-
-/* Fix flex containers that should be reversed in RTL */
-.rtl .flex[class*="justify-between"] {
-    flex-direction: row-reverse !important;
-}
-
-.rtl .flex[class*="items-center"][class*="gap-"] {
-    flex-direction: row-reverse !important;
-}
-
-/* Fix button groups in RTL */
-.rtl button[class*="flex"][class*="items-center"][class*="gap-"] {
-    flex-direction: row-reverse !important;
-}
-
-/* Typography alignment fixes */
-.rtl h1, .rtl h2, .rtl h3, .rtl h4, .rtl h5, .rtl h6 {
-    text-align: right !important;
-}
-
-.rtl p, .rtl span {
-    text-align: right !important;
-}
-
-/* Fix Material Tailwind Typography component */
-.rtl [class*="MuiTypography-root"] {
-    text-align: right !important;
-}
-
-/* 5. Specific Component Overrides */
-
-/* Dashboard layout container */
-.rtl .dashboard-container {
-    direction: rtl !important;
-}
-
-/* Statistics grid container */
-.rtl .statistics-grid {
-    direction: rtl !important;
-}
-
-.rtl .statistics-grid > * {
-    direction: rtl !important;
-}
-
-/* Card body alignment */
-.rtl .card-body,
-.rtl [class*="CardBody"] {
-    text-align: right !important;
-    direction: rtl !important;
-}
-
-/* Button text alignment */
-.rtl button {
-    text-align: center !important;
-}
-
-.rtl button[class*="justify-start"] {
-    justify-content: flex-start !important;
-}
-
-/* 6. Responsive Fixes */
+/* Responsive header alignment tweaks */
 @media (max-width: 1279px) {
     .rtl .dashboard-header {
         flex-direction: column !important;
         align-items: flex-end !important;
-    }
-    
-    .rtl .statistics-grid {
-        direction: rtl !important;
     }
 }
 
@@ -964,4 +158,11 @@ html[dir="ltr"] {
         flex-direction: row-reverse !important;
         align-items: center !important;
     }
+}
+
+/* ==============================
+    OPTIONAL: flip only directional icons (chevrons/arrows) you opt-in
+============================== */
+html[dir="rtl"] .flip-rtl {
+    transform: scaleX(-1);
 }

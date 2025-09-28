@@ -9,6 +9,7 @@ const enTranslations = {
     translation: {
         // Navigation
         nav: {
+            qurtubahSchools:"Qurtubah Schools",
             dashboard: "Dashboard",
             home: "Home",
             assets: "Assets",
@@ -199,6 +200,7 @@ const arTranslations = {
     translation: {
         // Navigation
         nav: {
+            qurtubahSchools:"مدارس قرطباء",
             dashboard: "لوحة القيادة",
             home: "الرئيسية",
             assets: "الأصول",
