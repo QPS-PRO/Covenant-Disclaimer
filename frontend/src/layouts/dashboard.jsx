@@ -1,3 +1,4 @@
+// frontend/src/layouts/dashboard.jsx
 import { Routes, Route } from "react-router-dom";
 import { Cog6ToothIcon } from "@heroicons/react/24/solid";
 import { IconButton } from "@material-tailwind/react";
@@ -9,21 +10,21 @@ import {
 import routes from "@/routes";
 import { useMaterialTailwindController, setOpenConfigurator } from "@/context";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/lib/api";
 
 export function Dashboard() {
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavType } = controller;
   const { isRTL } = useLanguage();
+  const { user } = useAuth(); // Get user data from auth context
 
   // Get the layout classes based on RTL/LTR
   const getLayoutClasses = () => {
     let classes = "min-h-screen bg-blue-gray-50/50";
     
     if (isRTL) {
-      // RTL: sidebar on right, content margin from right
       classes += " rtl-layout";
     } else {
-      // LTR: sidebar on left, content margin from left  
       classes += " ltr-layout";
     }
     
@@ -33,11 +34,10 @@ export function Dashboard() {
   const getMainContentClasses = () => {
     let classes = "p-4 transition-all duration-300";
     
-    // Add responsive margins for sidebar
     if (isRTL) {
-      classes += " xl:mr-80"; // margin-right for RTL
+      classes += " xl:mr-80";
     } else {
-      classes += " xl:ml-80"; // margin-left for LTR
+      classes += " xl:ml-80";
     }
     
     return classes;
@@ -50,6 +50,7 @@ export function Dashboard() {
         brandImg={
           sidenavType === "dark" ? "/img/logo-ct.png" : "/img/logo-ct-dark.png"
         }
+        user={user} // Pass user data to Sidenav
       />
       <div className={getMainContentClasses()}>
         <DashboardNavbar />

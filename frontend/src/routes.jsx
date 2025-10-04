@@ -42,7 +42,6 @@ export const routes = [
         element: <Employees />,
         hideFromSidebar: (user) => !user.is_staff && !user.is_department_manager,
       },
-      ,
       {
         icon: <UsersIcon {...icon} />,
         name: "employee-profile",
@@ -70,8 +69,7 @@ export const routes = [
         path: "/transactions",
         element: <Transactions />,
         hideFromSidebar: (user) => !user.is_staff && !user.is_department_manager,
-      },
-
+      },  
       {
         icon: <DocumentCheckIcon {...icon} />,
         name: "My Disclaimer",

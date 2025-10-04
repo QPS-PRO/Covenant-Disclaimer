@@ -1,3 +1,4 @@
+# backend/apps/users/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from dj_rest_auth.registration.serializers import RegisterSerializer
@@ -7,13 +8,50 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Serializer for the User model.
+    Serializer for the User model with permission flags.
     """
+    is_department_manager = serializers.SerializerMethodField()
+    department = serializers.SerializerMethodField()
+    department_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name")
-        read_only_fields = ("email",)
+        fields = (
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "is_staff",
+            "is_superuser",
+            "is_department_manager",
+            "department",
+            "department_id",
+        )
+        read_only_fields = ("email", "is_staff", "is_superuser")
+
+    def get_is_department_manager(self, obj):
+        """Check if user is a department manager"""
+        try:
+            employee = obj.employee_profile
+            return employee.department.manager == obj
+        except:
+            return False
+
+    def get_department(self, obj):
+        """Get user's department name"""
+        try:
+            employee = obj.employee_profile
+            return employee.department.name
+        except:
+            return None
+
+    def get_department_id(self, obj):
+        """Get user's department ID"""
+        try:
+            employee = obj.employee_profile
+            return employee.department.id
+        except:
+            return None
 
 
 class CustomRegisterSerializer(RegisterSerializer):

@@ -147,7 +147,7 @@ def department_disclaimer_order_create_view(request):
         max_order = (
             DepartmentDisclaimerOrder.objects.filter(
                 employee_department=department, is_active=True
-            ).aggregate(max_order=models.Max("order"))["max_order"]
+            ).aggregate(max_order=Max("order"))["max_order"]
             or 0
         )
 
