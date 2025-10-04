@@ -92,6 +92,13 @@ export async function apiPatch(path, data, options = {}) {
     });
 }
 
+export async function apiPut(path, data, options = {}) {
+    return apiRequest(path, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        ...options,
+    });
+}
 export async function apiDelete(path, options = {}) {
     return apiRequest(path, { method: 'DELETE', ...options });
 }

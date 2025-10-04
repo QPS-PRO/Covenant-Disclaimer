@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/context/LanguageContext";
 import React from "react";
 
-export function Sidenav({ brandImg, brandName, routes }) {
+export function Sidenav({ brandImg, brandName, routes, user }) {
   const [controller, dispatch] = useMaterialTailwindController();
   const { sidenavColor, sidenavType, openSidenav } = controller;
   const { t } = useTranslation();
@@ -33,6 +33,10 @@ export function Sidenav({ brandImg, brandName, routes }) {
       reports: t("nav.reports"),
       settings: t("nav.settings"),
       dashboard: t("nav.dashboard"),
+      "my disclaimer": t("nav.myDisclaimer", { defaultValue: "My Disclaimer" }),
+      "disclaimer requests": t("nav.disclaimerRequests", { defaultValue: "Disclaimer Requests" }),
+      "disclaimer setup": t("nav.disclaimerSetup", { defaultValue: "Disclaimer Setup" }),
+      "admin disclaimer config": t("nav.adminDisclaimerConfig", { defaultValue: "Admin Config" }),
     };
     return navTranslations[name.toLowerCase()] || name;
   };
@@ -52,6 +56,22 @@ export function Sidenav({ brandImg, brandName, routes }) {
     const extra = isRTL ? "flip-rtl" : "";
     const nextClass = `${iconEl.props.className || ""} ${extra}`.trim();
     return React.cloneElement(iconEl, { className: nextClass });
+  };
+
+  // Function to check if a page should be hidden
+  const shouldHidePage = (page) => {
+    // If hideFromSidebar is explicitly true, hide it
+    if (page.hideFromSidebar === true) {
+      return true;
+    }
+
+    // If hideFromSidebar is a function, call it with user data
+    if (typeof page.hideFromSidebar === 'function') {
+      return page.hideFromSidebar(user || {});
+    }
+
+    // Otherwise, show the page
+    return false;
   };
 
   return (
@@ -103,7 +123,7 @@ export function Sidenav({ brandImg, brandName, routes }) {
               ) : null}
 
               {pages
-                .filter((page) => !page.hideFromSidebar)
+                .filter((page) => !shouldHidePage(page))
                 .map(({ icon, name, path }) => (
                   <li key={name}>
                     <NavLink to={`/${layout}${path}`}>
@@ -134,7 +154,6 @@ export function Sidenav({ brandImg, brandName, routes }) {
                             </Typography>
                           </div>
                         </Button>
-
                       )}
                     </NavLink>
                   </li>
@@ -150,12 +169,14 @@ export function Sidenav({ brandImg, brandName, routes }) {
 Sidenav.defaultProps = {
   brandImg: null,
   brandName: "Qurtubah Schools",
+  user: null,
 };
 
 Sidenav.propTypes = {
   brandImg: PropTypes.string,
   brandName: PropTypes.string,
   routes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  user: PropTypes.object,
 };
 
 Sidenav.displayName = "/src/widgets/layout/sidenav.jsx";
