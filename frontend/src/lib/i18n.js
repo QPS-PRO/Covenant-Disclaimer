@@ -9,7 +9,7 @@ const enTranslations = {
     translation: {
         // Navigation
         nav: {
-            qurtubahSchools:"Qurtubah Schools",
+            qurtubahSchools: "Qurtubah Schools",
             dashboard: "Dashboard",
             home: "Home",
             assets: "Assets",
@@ -107,6 +107,137 @@ const enTranslations = {
             unassigned: "Unassigned"
         },
 
+        //Departments
+        departments: {
+            title: "Departments Management",
+            add: "Add Department",
+            edit: "Edit Department",
+            create: "Create Department",
+            update: "Update Department",
+            headerAdd: "Add New Department",
+            headerEdit: "Edit Department",
+            name: "Department Name",
+            managerOptional: "Manager (Optional)",
+            noManager: "No manager",
+            noManagerAssigned: "No manager assigned",
+            table: {
+                name: "Department Name",
+                manager: "Manager",
+                employees: "Employees",
+                assets: "Assets",
+                created: "Created",
+                actions: "Actions"
+            },
+
+            searchPlaceholder: "Search departments...",
+            noneFound: "No departments found.",
+            viewTitle: "Department Details - {{name}}",
+            infoHeader: "Department Information",
+            info: {
+                name: "Name",
+                manager: "Manager",
+                activeEmployees: "Active Employees",
+                totalAssets: "Total Assets",
+                created: "Created",
+                lastUpdated: "Last Updated"
+            },
+            deleteTitle: "Confirm Delete",
+            deleteBody:
+                "Are you sure you want to delete this department? This action cannot be undone and will fail if the department has employees or assets assigned."
+        },
+
+        //Employees
+        employees: {
+            title: "Employee Management",
+            add: "Add Employee",
+            edit: "Edit Employee",
+            create: "Create Employee",
+            update: "Update Employee",
+            searchPlaceholder: "Search employees...",
+            filterByDepartment: "Filter by Department",
+            allDepartments: "All Departments",
+            selectDepartment: "Select Department",
+            table: {
+                employee: "Employee",
+                id: "ID",
+                department: "Department",
+                contact: "Contact",
+                faceData: "Face Data",
+                status: "Status",
+                actions: "Actions"
+            },
+            registered: "REGISTERED",
+            notRegistered: "NOT REGISTERED",
+            active: "ACTIVE",
+            inactive: "INACTIVE",
+            quickView: "Quick View",
+            editEmployee: "Edit Employee",
+            deleteEmployee: "Delete Employee",
+            viewProfile: "View Full Profile",
+            close: "Close",
+            confirmDeletePrompt: "Are you sure you want to delete {{name}}?",
+            errors: {
+                fetchList: "Failed to fetch employees",
+                fetchDetails: "Failed to fetch employee details",
+                saveFailed: "Failed to save employee",
+                deleteFailed: "Failed to delete employee"
+            },
+            tabs: {
+                basicInfo: "Basic Information",
+                faceRegistration: "Face Registration",
+                faceManagement: "Face Management"
+            },
+            face: {
+                sectionHeader: "Face Recognition",
+                manageHeader: "Face Recognition Management",
+                statusLabel: "Status:",
+                currentStatus: "Current Status:",
+                register: "Register Face Data",
+                update: "Update Face Data",
+                note: "Face data is required for secure transactions",
+                noteCreateFirst: "Note: Face registration can be done after creating the employee profile.",
+                registeredChip: "FACE REGISTERED",
+                noDataChip: "NO FACE DATA"
+            },
+            profile: {
+                quickTitle: "Employee Profile - {{name}}",
+                fullProfile: "Full Profile",
+                basicInfo: "Basic Information",
+                name: "Name",
+                employeeId: "Employee ID",
+                email: "Email",
+                phone: "Phone",
+                department: "Department",
+                status: "Status",
+                activityStats: "Activity Statistics",
+                currentAssets: "Current Assets",
+                totalTransactions: "Total Transactions",
+                issues: "Issues",
+                returns: "Returns",
+                pageTitle: "Employee Profile",
+                tabs: { overview: "Overview", assets: "Current Assets", history: "Transaction History" },
+                employeeDetails: "Employee Details",
+                processedBy: "Processed by",
+                returnCondition: "Return Condition",
+                damageNotes: "Damage Notes",
+                notes: "Notes",
+                returnAsset: "Return Asset",
+                noCurrentAssets: "No Current Assets",
+                noCurrentAssetsHelp: "This employee doesn't have any assets assigned currently.",
+                loadMoreHistory: "Load More History",
+                noHistory: "No Transaction History",
+                noHistoryHelp: "This employee hasn't completed any transactions yet.",
+                errors: {
+                    notFound: "Employee not found",
+                    fetchProfile: "Failed to fetch employee profile",
+                    fetchAssets: "Failed to fetch current assets",
+                    fetchHistory: "Failed to fetch transaction history",
+                    faceFailed: "Face registration failed",
+                    returnFailed: "Asset return failed"
+                }
+            }
+        },
+
         // Status options
         status: {
             available: "Available",
@@ -191,6 +322,106 @@ const enTranslations = {
             user: "User",
             settings: "Settings",
             notifications: "Notifications"
+        },
+
+        //Transactions
+        transactionsPage: {
+            title: "Asset Transactions",
+            newTransaction: "New Transaction",
+            searchPlaceholder: "Search transactions...",
+            filterByType: "Filter by Type",
+            allTypes: "All Types",
+            table: {
+                type: "Type",
+                asset: "Asset",
+                employee: "Employee",
+                date: "Date",
+                processedBy: "Processed By",
+                verification: "Verification",
+                actions: "Actions"
+            },
+            createTitle: "Create New Transaction",
+            typeLabel: "Transaction Type",
+            issueAsset: "Assign Asset",
+            returnAsset: "Return Asset",
+            selectAsset: "Select Asset",
+            selectEmployee: "Select Employee",
+            availableOnly: "Available Only",
+            assignedOnly: "Assigned Only",
+            foundAvailable: "{{count}} available assets found",
+            foundAssigned: "{{count}} assigned assets found",
+            foundEmployees: "{{count}} active employees found",
+            showingEmployeeForAsset: "Showing employee currently assigned to this asset",
+            currentlyWith: "Currently with",
+            notesOptional: "Notes (Optional)",
+            returnCondition: "Return Condition",
+            selectCondition: "Select Condition",
+            face: {
+                section: "Face Verification",
+                required: "REQUIRED",
+                verified: "VERIFIED",
+                verify: "Verify Face",
+                reverify: "Re-verify Face",
+                faceDataAvailable: "Face data available ✓",
+                noFaceData: "No face data ⚠️",
+                requiredMsg: "Face verification is required before creating the transaction.",
+                mustBeSuccessful: "Face verification is required and must be successful before creating a transaction.",
+                missingData: "Face verification data is missing. Please verify face again.",
+                employeeNeedsRegistration: "Employee does not have face recognition data registered. Please register face data first."
+            },
+            detailsTitle: "Transaction Details",
+            infoCard: "Transaction Information",
+            assetEmployeeCard: "Asset & Employee Details",
+            additionalInfo: "Additional Information",
+            confidence: "Confidence",
+            system: "System",
+            viewClose: "Close",
+            createBtn: "Create Transaction",
+            verificationRequiredBtn: "Verification Required",
+            errors: {
+                fetchTransactions: "Failed to fetch transactions",
+                fetchDetails: "Failed to fetch transaction details",
+                selectEmployeeFirst: "Please select an employee first",
+                faceFailed: "Face verification failed",
+                createFailed: "Failed to create transaction"
+            }
+        },
+        conditions: {
+            excellent: "Excellent",
+            good: "Good",
+            fair: "Fair",
+            poor: "Poor",
+            damaged: "Damaged"
+        },
+
+        //Face Recognition
+        faceComponent: {
+            titleRegister: "Face Registration",
+            titleVerify: "Face Verification",
+            startingCamera: "Starting camera...",
+            cameraNotReady: "Camera not ready",
+            positionFace: "Position your face within the circle and click capture",
+            imageQualityIssues: "Image Quality Issues:",
+            recommendations: "Recommendations:",
+            registrationSuccessful: "Registration Successful!",
+            verificationSuccessful: "Verification Successful!",
+            registrationFailed: "Registration Failed",
+            verificationFailed: "Verification Failed",
+            confidenceScore: "Confidence Score",
+            imageQualityScore: "Image Quality Score",
+            processingRegistration: "Processing registration...",
+            processingVerification: "Processing verification...",
+            capturePhoto: "Capture Photo",
+            retake: "Retake",
+            continue: "Continue",
+            issues: "Issues:",
+            threshold: "Threshold",
+            errors: {
+                displayFeedFailed: "Failed to display camera feed",
+                accessCameraFailed: "Failed to access camera",
+                cameraNotReady: "Camera not ready",
+                captureFailed: "Failed to capture image"
+            }
         }
     }
 };
@@ -200,7 +431,7 @@ const arTranslations = {
     translation: {
         // Navigation
         nav: {
-            qurtubahSchools:"مدارس قرطباء",
+            qurtubahSchools: "مدارس قرطباء",
             dashboard: "لوحة القيادة",
             home: "الرئيسية",
             assets: "الأصول",
@@ -298,6 +529,136 @@ const arTranslations = {
             unassigned: "غير مخصص"
         },
 
+        //Departments
+        departments: {
+            title: "إدارة الأقسام",
+            add: "إضافة قسم",
+            edit: "تعديل القسم",
+            create: "إنشاء قسم",
+            update: "تحديث القسم",
+            headerAdd: "إضافة قسم جديد",
+            headerEdit: "تعديل القسم",
+            name: "اسم القسم",
+            managerOptional: "المدير (اختياري)",
+            noManager: "بدون مدير",
+            noManagerAssigned: "لا يوجد مدير محدد",
+            table: {
+                name: "اسم القسم",
+                manager: "المدير",
+                employees: "الموظفون",
+                assets: "الأصول",
+                created: "تاريخ الإنشاء",
+                actions: "الإجراءات"
+            },
+            searchPlaceholder: "البحث في الأقسام...",
+            noneFound: "لم يتم العثور على أقسام.",
+            viewTitle: "تفاصيل القسم - {{name}}",
+            infoHeader: "معلومات القسم",
+            info: {
+                name: "الاسم",
+                manager: "المدير",
+                activeEmployees: "الموظفون النشطون",
+                totalAssets: "إجمالي الأصول",
+                created: "تاريخ الإنشاء",
+                lastUpdated: "آخر تحديث"
+            },
+            deleteTitle: "تأكيد الحذف",
+            deleteBody:
+                "هل أنت متأكد أنك تريد حذف هذا القسم؟ لا يمكن التراجع عن هذا الإجراء، وسيفشل إذا كان للقسم موظفون أو أصول مخصصة."
+        },
+
+        //Employees
+        employees: {
+            title: "إدارة الموظفين",
+            add: "إضافة موظف",
+            edit: "تعديل الموظف",
+            create: "إنشاء موظف",
+            update: "تحديث الموظف",
+            searchPlaceholder: "البحث في الموظفين...",
+            filterByDepartment: "تصفية حسب القسم",
+            allDepartments: "جميع الأقسام",
+            selectDepartment: "اختر القسم",
+            table: {
+                employee: "الموظف",
+                id: "المعرف",
+                department: "القسم",
+                contact: "التواصل",
+                faceData: "بيانات الوجه",
+                status: "الحالة",
+                actions: "الإجراءات"
+            },
+            registered: "مسجل",
+            notRegistered: "غير مسجل",
+            active: "نشط",
+            inactive: "غير نشط",
+            quickView: "عرض سريع",
+            editEmployee: "تعديل الموظف",
+            deleteEmployee: "حذف الموظف",
+            viewProfile: "عرض الملف الكامل",
+            close: "إغلاق",
+            confirmDeletePrompt: "هل أنت متأكد من حذف {{name}}؟",
+            errors: {
+                fetchList: "فشل في جلب الموظفين",
+                fetchDetails: "فشل في جلب تفاصيل الموظف",
+                saveFailed: "فشل في حفظ بيانات الموظف",
+                deleteFailed: "فشل في حذف الموظف"
+            },
+            tabs: {
+                basicInfo: "المعلومات الأساسية",
+                faceRegistration: "تسجيل الوجه",
+                faceManagement: "إدارة بيانات الوجه"
+            },
+            face: {
+                sectionHeader: "التعرف على الوجه",
+                manageHeader: "إدارة التعرف على الوجه",
+                statusLabel: "الحالة:",
+                currentStatus: "الحالة الحالية:",
+                register: "تسجيل بيانات الوجه",
+                update: "تحديث بيانات الوجه",
+                note: "بيانات الوجه مطلوبة للعمليات الآمنة",
+                noteCreateFirst: "ملاحظة: يمكن تسجيل الوجه بعد إنشاء ملف الموظف.",
+                registeredChip: "تم تسجيل الوجه",
+                noDataChip: "لا توجد بيانات وجه"
+            },
+            profile: {
+                quickTitle: "ملف الموظف - {{name}}",
+                fullProfile: "الملف الكامل",
+                basicInfo: "المعلومات الأساسية",
+                name: "الاسم",
+                employeeId: "معرف الموظف",
+                email: "البريد الإلكتروني",
+                phone: "الهاتف",
+                department: "القسم",
+                status: "الحالة",
+                activityStats: "إحصائيات النشاط",
+                currentAssets: "الأصول الحالية",
+                totalTransactions: "إجمالي المعاملات",
+                issues: "إصدارات",
+                returns: "إرجاعات",
+                pageTitle: "ملف الموظف",
+                tabs: { overview: "نظرة عامة", assets: "الأصول الحالية", history: "سجل المعاملات" },
+                employeeDetails: "تفاصيل الموظف",
+                processedBy: "تمت المعالجة بواسطة",
+                returnCondition: "حالة الإرجاع",
+                damageNotes: "ملاحظات التلف",
+                notes: "ملاحظات",
+                returnAsset: "إرجاع الأصل",
+                noCurrentAssets: "لا توجد أصول حالية",
+                noCurrentAssetsHelp: "لا توجد أصول مخصصة لهذا الموظف حالياً.",
+                loadMoreHistory: "تحميل المزيد من السجل",
+                noHistory: "لا يوجد سجل معاملات",
+                noHistoryHelp: "لم يُنجز هذا الموظف أي معاملات حتى الآن.",
+                errors: {
+                    notFound: "الموظف غير موجود",
+                    fetchProfile: "فشل في جلب ملف الموظف",
+                    fetchAssets: "فشل في جلب الأصول الحالية",
+                    fetchHistory: "فشل في جلب سجل المعاملات",
+                    faceFailed: "فشل تسجيل الوجه",
+                    returnFailed: "فشل إرجاع الأصل"
+                }
+            }
+        },
+
         // Status options
         status: {
             available: "متاح",
@@ -382,6 +743,107 @@ const arTranslations = {
             user: "المستخدم",
             settings: "الإعدادات",
             notifications: "الإشعارات"
+        },
+
+        //Transactions
+        transactionsPage: {
+            title: "معاملات الأصول",
+            newTransaction: "معاملة جديدة",
+            searchPlaceholder: "ابحث في المعاملات...",
+            filterByType: "تصفية حسب النوع",
+            allTypes: "كل الأنواع",
+            table: {
+                type: "النوع",
+                asset: "الأصل",
+                employee: "الموظف",
+                date: "التاريخ",
+                processedBy: "تمت المعالجة بواسطة",
+                verification: "التحقق",
+                actions: "إجراءات"
+            },
+            createTitle: "إنشاء معاملة جديدة",
+            typeLabel: "نوع المعاملة",
+            issueAsset: "تخصيص أصل",
+            returnAsset: "إرجاع أصل",
+            selectAsset: "اختر الأصل",
+            selectEmployee: "اختر الموظف",
+            availableOnly: "المتاح فقط",
+            assignedOnly: "المخصص فقط",
+            foundAvailable: "تم العثور على {{count}} من الأصول المتاحة",
+            foundAssigned: "تم العثور على {{count}} من الأصول المخصصة",
+            foundEmployees: "تم العثور على {{count}} موظف نشط",
+            showingEmployeeForAsset: "عرض الموظف المخصص لهذا الأصل حالياً",
+            currentlyWith: "لدى",
+            notesOptional: "ملاحظات (اختياري)",
+            returnCondition: "حالة الإرجاع",
+            selectCondition: "اختر الحالة",
+            face: {
+                section: "التحقق بالوجه",
+                required: "مطلوب",
+                verified: "تم التحقق",
+                verify: "تحقق بالوجه",
+                reverify: "إعادة التحقق بالوجه",
+                faceDataAvailable: "بيانات الوجه متوفرة ✓",
+                noFaceData: "لا توجد بيانات وجه ⚠️",
+                requiredMsg: "التحقق بالوجه مطلوب قبل إنشاء المعاملة.",
+                mustBeSuccessful: "يجب أن يكون التحقق بالوجه ناجحاً قبل إنشاء المعاملة.",
+                missingData: "بيانات التحقق بالوجه مفقودة. يرجى إعادة التحقق.",
+                employeeNeedsRegistration: "لا توجد بيانات تعرف وجه للموظف. يرجى تسجيل بيانات الوجه أولاً."
+            },
+            detailsTitle: "تفاصيل المعاملة",
+            infoCard: "معلومات المعاملة",
+            assetEmployeeCard: "تفاصيل الأصل والموظف",
+            additionalInfo: "معلومات إضافية",
+            confidence: "نسبة الثقة",
+            system: "النظام",
+            viewClose: "إغلاق",
+            createBtn: "إنشاء المعاملة",
+            verificationRequiredBtn: "التحقق مطلوب",
+            errors: {
+                fetchTransactions: "فشل في جلب المعاملات",
+                fetchDetails: "فشل في جلب تفاصيل المعاملة",
+                selectEmployeeFirst: "يرجى اختيار موظف أولاً",
+                faceFailed: "فشل التحقق بالوجه",
+                createFailed: "فشل إنشاء المعاملة"
+            }
+        },
+
+        conditions: {
+            excellent: "ممتاز",
+            good: "جيد",
+            fair: "متوسط",
+            poor: "ضعيف",
+            damaged: "متضرر"
+        },
+
+        //Face Recognition
+        faceComponent: {
+            titleRegister: "تسجيل الوجه",
+            titleVerify: "التحقق بالوجه",
+            startingCamera: "جاري تشغيل الكاميرا...",
+            cameraNotReady: "الكاميرا غير جاهزة",
+            positionFace: "ضع وجهك داخل الدائرة ثم اضغط التقاط",
+            imageQualityIssues: "مشاكل جودة الصورة:",
+            recommendations: "التوصيات:",
+            registrationSuccessful: "تم التسجيل بنجاح!",
+            verificationSuccessful: "تم التحقق بنجاح!",
+            registrationFailed: "فشل التسجيل",
+            verificationFailed: "فشل التحقق",
+            confidenceScore: "درجة الثقة",
+            imageQualityScore: "درجة جودة الصورة",
+            processingRegistration: "جاري معالجة التسجيل...",
+            processingVerification: "جاري معالجة التحقق...",
+            capturePhoto: "التقاط صورة",
+            retake: "إعادة الالتقاط",
+            continue: "متابعة",
+            issues: "المشكلات:",
+            threshold: "الحد الأدنى",
+            errors: {
+                displayFeedFailed: "فشل عرض بث الكاميرا",
+                accessCameraFailed: "فشل الوصول إلى الكاميرا",
+                cameraNotReady: "الكاميرا غير جاهزة",
+                captureFailed: "فشل التقاط الصورة"
+            }
         }
     }
 };

@@ -1,3 +1,4 @@
+// frontend/src/pages/management/employees.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -32,13 +33,18 @@ import {
     CheckCircleIcon,
     XCircleIcon,
     UserCircleIcon,
-    UserIcon
+    UserIcon,
 } from "@heroicons/react/24/outline";
-import { employeeAPI, departmentAPI, formatters } from "@/lib/assetApi";
+import { employeeAPI, departmentAPI } from "@/lib/assetApi";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/context/LanguageContext";
 import FaceRecognitionComponent from "../../components/FaceRecognitionComponent";
 
 export function Employees() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
+    const { isRTL } = useLanguage();
+
     const [employees, setEmployees] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -50,30 +56,19 @@ export function Employees() {
     // pagination state
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [pageSize, setPageSize] = useState(
-        Number(import.meta.env.VITE_PAGE_SIZE || 15)
-    );
+    const [pageSize, setPageSize] = useState(Number(import.meta.env.VITE_PAGE_SIZE || 15));
     const [totalCount, setTotalCount] = useState(0);
 
-    // Modal states
+    // modal states
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [showFaceModal, setShowFaceModal] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [activeTab, setActiveTab] = useState("basic");
-
-    // Form states
-    const [formData, setFormData] = useState({
-        first_name: "",
-        last_name: "",
-        email: "",
-        employee_id: "",
-        phone_number: "",
-        department: "",
-    });
-    const [formLoading, setFormLoading] = useState(false);
     const [faceRegistrationMode, setFaceRegistrationMode] = useState("register");
+
+    const locale = isRTL ? "ar-SA" : "en-SA";
 
     useEffect(() => {
         if (!mounted) {
@@ -98,8 +93,7 @@ export function Employees() {
             if (searchTerm) params.search = searchTerm;
 
             const response = await employeeAPI.getAll(params);
-
-            const dataArray = Array.isArray(response) ? response : (response.results || []);
+            const dataArray = Array.isArray(response) ? response : response.results || [];
             setEmployees(dataArray);
 
             setTotalPages(Number(response?.total_pages || 1));
@@ -108,7 +102,6 @@ export function Employees() {
             setError("");
         } catch (err) {
             const status = err?.response?.status ?? err?.status;
-
             if (status === 404 && page > 1) {
                 try {
                     const fallback = await employeeAPI.getAll({
@@ -117,19 +110,16 @@ export function Employees() {
                         ...(selectedDepartment ? { department: selectedDepartment } : {}),
                         ...(searchTerm ? { search: searchTerm } : {}),
                     });
-
-                    const dataArray = Array.isArray(fallback) ? fallback : (fallback.results || []);
+                    const dataArray = Array.isArray(fallback) ? fallback : fallback.results || [];
                     setEmployees(dataArray);
                     setTotalPages(Number(fallback?.total_pages || 1));
                     setTotalCount(Number(fallback?.count || dataArray.length));
                     setPage(Number(fallback?.current_page || 1));
                     setError("");
                     return;
-                } catch (e2) {
-                }
+                } catch { }
             }
-
-            setError("Failed to fetch employees");
+            setError(`${t("errors.failedToFetch")} ${t("nav.employees")}`);
             console.error(err);
         }
     };
@@ -145,16 +135,11 @@ export function Employees() {
 
     useEffect(() => {
         if (!mounted) return;
-
-        const t = setTimeout(() => {
-            if (page !== 1) {
-                setPage(1);
-            } else {
-                fetchEmployees();
-            }
+        const tmr = setTimeout(() => {
+            if (page !== 1) setPage(1);
+            else fetchEmployees();
         }, 300);
-
-        return () => clearTimeout(t);
+        return () => clearTimeout(tmr);
     }, [searchTerm, selectedDepartment, mounted]);
 
     useEffect(() => {
@@ -164,8 +149,18 @@ export function Employees() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
+
+    const [formData, setFormData] = useState({
+        first_name: "",
+        last_name: "",
+        email: "",
+        employee_id: "",
+        phone_number: "",
+        department: "",
+    });
+    const [formLoading, setFormLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -181,7 +176,7 @@ export function Employees() {
             setPage(1);
             await fetchEmployees();
         } catch (err) {
-            setError(err.response?.data?.detail || err.message || "Failed to save employee");
+            setError(err.response?.data?.detail || err.message || t("employees.errors.saveFailed"));
         } finally {
             setFormLoading(false);
         }
@@ -211,25 +206,23 @@ export function Employees() {
             });
             setShowViewModal(true);
         } catch (err) {
-            setError("Failed to fetch employee details");
+            setError(t("employees.errors.fetchDetails"));
         }
     };
 
-    // New profile navigation handler
     const handleProfile = (employee) => {
         navigate(`/dashboard/employees/${employee.id}/profile`);
     };
 
     const handleDelete = async (employee) => {
-        if (window.confirm(`Are you sure you want to delete ${employee.name}?`)) {
+        // translated confirm
+        if (window.confirm(t("employees.confirmDeletePrompt", { name: employee.name }))) {
             try {
                 await employeeAPI.delete(employee.id);
                 await fetchEmployees();
-                if (employees.length === 1 && page > 1) {
-                    setPage(p => Math.max(1, p - 1));
-                }
+                if (employees.length === 1 && page > 1) setPage((p) => Math.max(1, p - 1));
             } catch (err) {
-                setError("Failed to delete employee");
+                setError(t("employees.errors.deleteFailed"));
             }
         }
     };
@@ -251,13 +244,13 @@ export function Employees() {
         setSelectedEmployee(null);
         await fetchEmployees();
         setError("");
-    }, [faceRegistrationMode]);
+    }, []);
 
     const handleFaceRegistrationError = useCallback((error) => {
         setShowFaceModal(false);
         setSelectedEmployee(null);
-        setError(error.error || "Face registration failed");
-    }, []);
+        setError(error.error || t("employees.errors.saveFailed"));
+    }, [t]);
 
     const handleFaceModalClose = useCallback(() => {
         setShowFaceModal(false);
@@ -306,31 +299,23 @@ export function Employees() {
                 <CardHeader variant="gradient" color="gray" className="mb-8 p-6">
                     <div className="flex items-center justify-between">
                         <Typography variant="h6" color="white">
-                            Employee Management
+                            {t("employees.title")}
                         </Typography>
-                        <Button
-                            className="flex items-center gap-3"
-                            size="sm"
-                            onClick={() => setShowAddModal(true)}
-                        >
+                        <Button className="flex items-center gap-3" size="sm" onClick={() => setShowAddModal(true)}>
                             <PlusIcon strokeWidth={2} className="h-4 w-4" />
-                            Add Employee
+                            {t("employees.add")}
                         </Button>
                     </div>
                 </CardHeader>
 
                 <CardBody className="px-0 pt-0 pb-2">
-                    {error && (
-                        <Alert color="red" className="mb-6 mx-6">
-                            {error}
-                        </Alert>
-                    )}
+                    {error && <Alert color="red" className="mb-6 mx-6">{error}</Alert>}
 
                     {/* Filters */}
                     <div className="flex flex-col md:flex-row gap-4 mb-6 px-6">
                         <div className="w-full md:w-72">
                             <Input
-                                label="Search employees..."
+                                label={t("employees.searchPlaceholder")}
                                 icon={<MagnifyingGlassIcon className="h-5 w-5" />}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -338,27 +323,24 @@ export function Employees() {
                         </div>
                         <div className="w-full md:w-48">
                             <Select
-                                label="Filter by Department"
+                                label={t("employees.filterByDepartment")}
                                 value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
-                                menuProps={{
-                                    className: "select-menu-in-dialog",
-                                    placement: "bottom-start",
-                                }}
+                                menuProps={{ className: "select-menu-in-dialog", placement: "bottom-start" }}
                                 selected={(element) => {
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
                                     }
                                     const raw =
-                                        (typeof element === "string" || typeof element === "number")
+                                        typeof element === "string" || typeof element === "number"
                                             ? String(element)
-                                            : (selectedDepartment ?? "");
-                                    if (!raw) return "All Departments";
-                                    const d = departments.find(dep => dep.id.toString() === raw);
-                                    return d ? d.name : "All Departments";
+                                            : selectedDepartment ?? "";
+                                    if (!raw) return t("employees.allDepartments");
+                                    const d = departments.find((dep) => dep.id.toString() === raw);
+                                    return d ? d.name : t("employees.allDepartments");
                                 }}
                             >
-                                <Option value="">All Departments</Option>
+                                <Option value="">{t("employees.allDepartments")}</Option>
                                 {departments.map((dept) => (
                                     <Option key={dept.id} value={dept.id.toString()}>
                                         {dept.name}
@@ -373,7 +355,15 @@ export function Employees() {
                         <table className="w-full min-w-[640px] table-auto">
                             <thead>
                                 <tr>
-                                    {["Employee", "ID", "Department", "Contact", "Face Data", "Status", "Actions"].map((el) => (
+                                    {[
+                                        t("employees.table.employee"),
+                                        t("employees.table.id"),
+                                        t("employees.table.department"),
+                                        t("employees.table.contact"),
+                                        t("employees.table.faceData"),
+                                        t("employees.table.status"),
+                                        t("employees.table.actions"),
+                                    ].map((el) => (
                                         <th key={el} className="border-b border-blue-gray-50 py-3 px-5 text-left">
                                             <Typography variant="small" className="text-[11px] font-bold uppercase text-blue-gray-400">
                                                 {el}
@@ -421,12 +411,12 @@ export function Employees() {
                                                     {employee.has_face_data ? (
                                                         <div className="flex items-center gap-1">
                                                             <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                                                            <Chip color="green" value="REGISTERED" className="text-xs" />
+                                                            <Chip color="green" value={t("employees.registered")} className="text-xs" />
                                                         </div>
                                                     ) : (
                                                         <div className="flex items-center gap-1">
                                                             <XCircleIcon className="h-4 w-4 text-red-500" />
-                                                            <Chip color="red" value="NOT REGISTERED" className="text-xs" />
+                                                            <Chip color="red" value={t("employees.notRegistered")} className="text-xs" />
                                                         </div>
                                                     )}
                                                     <Button
@@ -434,7 +424,10 @@ export function Employees() {
                                                         variant="text"
                                                         color="blue"
                                                         className="p-1"
-                                                        onClick={() => handleFaceRegistration(employee, employee.has_face_data ? "update" : "register")}
+                                                        onClick={() =>
+                                                            handleFaceRegistration(employee, employee.has_face_data ? "update" : "register")
+                                                        }
+                                                        title={employee.has_face_data ? t("employees.face.update") : t("employees.face.register")}
                                                     >
                                                         <CameraIcon className="h-4 w-4" />
                                                     </Button>
@@ -444,27 +437,17 @@ export function Employees() {
                                                 <Chip
                                                     variant="gradient"
                                                     color={employee.is_active ? "blue" : "red"}
-                                                    value={employee.is_active ? "ACTIVE" : "INACTIVE"}
+                                                    value={employee.is_active ? t("employees.active") : t("employees.inactive")}
                                                     className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                 />
                                             </td>
                                             <td className={className}>
                                                 <div className="flex gap-1">
-                                                    {/* Profile Button - New */}
-                                                    {/* <IconButton
-                                                        variant="text"
-                                                        color="blue"
-                                                        onClick={() => handleProfile(employee)}
-                                                        title="View Profile"
-                                                    >
-                                                        <UserIcon className="h-4 w-4" />
-                                                    </IconButton> */}
-
                                                     <IconButton
                                                         variant="text"
                                                         color="blue-gray"
                                                         onClick={() => handleView(employee)}
-                                                        title="Quick View"
+                                                        title={t("employees.quickView")}
                                                     >
                                                         <EyeIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -472,7 +455,7 @@ export function Employees() {
                                                         variant="text"
                                                         color="blue-gray"
                                                         onClick={() => handleEdit(employee)}
-                                                        title="Edit Employee"
+                                                        title={t("employees.editEmployee")}
                                                     >
                                                         <PencilIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -480,7 +463,7 @@ export function Employees() {
                                                         variant="text"
                                                         color="red"
                                                         onClick={() => handleDelete(employee)}
-                                                        title="Delete Employee"
+                                                        title={t("employees.deleteEmployee")}
                                                     >
                                                         <TrashIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -496,16 +479,24 @@ export function Employees() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between px-6 py-4 text-sm text-blue-gray-600">
                         <span>
-                            Showing <b>{rangeStart}</b>–<b>{rangeEnd}</b> of <b>{totalCount}</b>
+                            {t("common.showing")} <b>{rangeStart}</b>–<b>{rangeEnd}</b> {t("common.of")} <b>{totalCount}</b>
                         </span>
                         <div className="flex items-center gap-2">
-                            <Button variant="text" size="sm" onClick={goFirst} disabled={!canPrev}>First</Button>
-                            <Button variant="text" size="sm" onClick={goPrev} disabled={!canPrev}>Prev</Button>
+                            <Button variant="text" size="sm" onClick={goFirst} disabled={!canPrev}>
+                                {t("actions.first")}
+                            </Button>
+                            <Button variant="text" size="sm" onClick={goPrev} disabled={!canPrev}>
+                                {t("actions.previous")}
+                            </Button>
                             <span className="px-2">
-                                Page <b>{page}</b> of <b>{totalPages}</b>
+                                {t("common.page")} <b>{page}</b> {t("common.of")} <b>{totalPages}</b>
                             </span>
-                            <Button variant="text" size="sm" onClick={goNext} disabled={!canNext}>Next</Button>
-                            <Button variant="text" size="sm" onClick={goLast} disabled={!canNext}>Last</Button>
+                            <Button variant="text" size="sm" onClick={goNext} disabled={!canNext}>
+                                {t("actions.next")}
+                            </Button>
+                            <Button variant="text" size="sm" onClick={goLast} disabled={!canNext}>
+                                {t("actions.last")}
+                            </Button>
                         </div>
                     </div>
                 </CardBody>
@@ -513,26 +504,26 @@ export function Employees() {
 
             {/* Add Employee Modal */}
             <Dialog open={showAddModal} handler={handleModalClose} size="lg">
-                <DialogHeader>Add New Employee</DialogHeader>
+                <DialogHeader>{t("employees.add")}</DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="space-y-4">
                         <Tabs value={activeTab} onChange={setActiveTab}>
                             <TabsHeader>
-                                <Tab value="basic">Basic Information</Tab>
-                                <Tab value="face" disabled>Face Registration</Tab>
+                                <Tab value="basic">{t("employees.tabs.basicInfo")}</Tab>
+                                <Tab value="face" disabled>{t("employees.tabs.faceRegistration")}</Tab>
                             </TabsHeader>
                             <TabsBody>
                                 <TabPanel value="basic" className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
-                                            label="First Name"
+                                            label={t("auth.firstName")}
                                             name="first_name"
                                             value={formData.first_name}
                                             onChange={handleInputChange}
                                             required
                                         />
                                         <Input
-                                            label="Last Name"
+                                            label={t("auth.lastName")}
                                             name="last_name"
                                             value={formData.last_name}
                                             onChange={handleInputChange}
@@ -541,7 +532,7 @@ export function Employees() {
                                     </div>
                                     <Input
                                         type="email"
-                                        label="Email"
+                                        label={t("auth.email")}
                                         name="email"
                                         value={formData.email}
                                         onChange={handleInputChange}
@@ -549,45 +540,38 @@ export function Employees() {
                                     />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
-                                            label="Employee ID"
+                                            label={t("employees.profile.employeeId")}
                                             name="employee_id"
                                             value={formData.employee_id}
                                             onChange={handleInputChange}
                                             required
                                         />
                                         <Input
-                                            label="Phone Number"
+                                            label={t("employees.profile.phone")}
                                             name="phone_number"
                                             value={formData.phone_number}
                                             onChange={handleInputChange}
                                             required
                                         />
-                                    </div >
+                                    </div>
                                     <Select
-                                        label="Department"
+                                        label={t("assets.department")}
                                         value={formData.department ?? ""}
-                                        onChange={(value) =>
-                                            setFormData((prev) => ({ ...prev, department: value ?? "" }))
-                                        }
+                                        onChange={(value) => setFormData((prev) => ({ ...prev, department: value ?? "" }))}
                                         required
-                                        menuProps={{
-                                            className: "select-menu-in-dialog",
-                                            placement: "bottom-start",
-                                        }}
+                                        menuProps={{ className: "select-menu-in-dialog", placement: "bottom-start" }}
                                         selected={(element) => {
-                                            if (React.isValidElement(element) && element.props?.children != null) {
-                                                return element.props.children;
-                                            }
+                                            if (React.isValidElement(element) && element.props?.children != null) return element.props.children;
                                             const raw =
-                                                (typeof element === "string" || typeof element === "number")
+                                                typeof element === "string" || typeof element === "number"
                                                     ? String(element)
-                                                    : (formData.department ?? "");
-                                            if (!raw) return "Select Department";
+                                                    : formData.department ?? "";
+                                            if (!raw) return t("employees.selectDepartment");
                                             const d = departments.find((dep) => dep.id.toString() === raw);
-                                            return d ? d.name : "Select Department";
+                                            return d ? d.name : t("employees.selectDepartment");
                                         }}
                                     >
-                                        <Option value="">Select Department</Option>
+                                        <Option value="">{t("employees.selectDepartment")}</Option>
                                         {departments.map((dept) => (
                                             <Option key={dept.id} value={dept.id.toString()}>
                                                 {dept.name}
@@ -599,17 +583,15 @@ export function Employees() {
                         </Tabs>
 
                         <Alert color="blue" className="mt-4">
-                            <Typography variant="small">
-                                Note: Face registration can be done after creating the employee profile.
-                            </Typography>
+                            <Typography variant="small">{t("employees.face.noteCreateFirst")}</Typography>
                         </Alert>
                     </DialogBody>
                     <DialogFooter>
                         <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
-                            Cancel
+                            {t("actions.cancel")}
                         </Button>
                         <Button type="submit" loading={formLoading}>
-                            Create Employee
+                            {t("employees.create")}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -617,26 +599,26 @@ export function Employees() {
 
             {/* Edit Employee Modal */}
             <Dialog open={showEditModal} handler={handleModalClose} size="lg">
-                <DialogHeader>Edit Employee</DialogHeader>
+                <DialogHeader>{t("employees.edit")}</DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="space-y-4">
                         <Tabs value={activeTab} onChange={setActiveTab}>
                             <TabsHeader>
-                                <Tab value="basic">Basic Information</Tab>
-                                <Tab value="face">Face Management</Tab>
+                                <Tab value="basic">{t("employees.tabs.basicInfo")}</Tab>
+                                <Tab value="face">{t("employees.tabs.faceManagement")}</Tab>
                             </TabsHeader>
                             <TabsBody>
                                 <TabPanel value="basic" className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
-                                            label="First Name"
+                                            label={t("auth.firstName")}
                                             name="first_name"
                                             value={formData.first_name}
                                             onChange={handleInputChange}
                                             required
                                         />
                                         <Input
-                                            label="Last Name"
+                                            label={t("auth.lastName")}
                                             name="last_name"
                                             value={formData.last_name}
                                             onChange={handleInputChange}
@@ -645,7 +627,7 @@ export function Employees() {
                                     </div>
                                     <Input
                                         type="email"
-                                        label="Email"
+                                        label={t("auth.email")}
                                         name="email"
                                         value={formData.email}
                                         onChange={handleInputChange}
@@ -653,14 +635,14 @@ export function Employees() {
                                     />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
-                                            label="Employee ID"
+                                            label={t("employees.profile.employeeId")}
                                             name="employee_id"
                                             value={formData.employee_id}
                                             onChange={handleInputChange}
                                             required
                                         />
                                         <Input
-                                            label="Phone Number"
+                                            label={t("employees.profile.phone")}
                                             name="phone_number"
                                             value={formData.phone_number}
                                             onChange={handleInputChange}
@@ -668,30 +650,23 @@ export function Employees() {
                                         />
                                     </div>
                                     <Select
-                                        label="Department"
+                                        label={t("assets.department")}
                                         value={formData.department ?? ""}
-                                        onChange={(value) =>
-                                            setFormData((prev) => ({ ...prev, department: value ?? "" }))
-                                        }
+                                        onChange={(value) => setFormData((prev) => ({ ...prev, department: value ?? "" }))}
                                         required
-                                        menuProps={{
-                                            className: "select-menu-in-dialog",
-                                            placement: "bottom-start",
-                                        }}
+                                        menuProps={{ className: "select-menu-in-dialog", placement: "bottom-start" }}
                                         selected={(element) => {
-                                            if (React.isValidElement(element) && element.props?.children != null) {
-                                                return element.props.children;
-                                            }
+                                            if (React.isValidElement(element) && element.props?.children != null) return element.props.children;
                                             const raw =
-                                                (typeof element === "string" || typeof element === "number")
+                                                typeof element === "string" || typeof element === "number"
                                                     ? String(element)
-                                                    : (formData.department ?? "");
-                                            if (!raw) return "Select Department";
+                                                    : formData.department ?? "";
+                                            if (!raw) return t("employees.selectDepartment");
                                             const d = departments.find((dep) => dep.id.toString() === raw);
-                                            return d ? d.name : "Select Department";
+                                            return d ? d.name : t("employees.selectDepartment");
                                         }}
                                     >
-                                        <Option value="">Select Department</Option>
+                                        <Option value="">{t("employees.selectDepartment")}</Option>
                                         {departments.map((dept) => (
                                             <Option key={dept.id} value={dept.id.toString()}>
                                                 {dept.name}
@@ -699,38 +674,42 @@ export function Employees() {
                                         ))}
                                     </Select>
                                 </TabPanel>
+
                                 <TabPanel value="face" className="space-y-4">
                                     <Card className="p-4">
                                         <div className="text-center space-y-4">
                                             <CameraIcon className="h-16 w-16 mx-auto text-blue-500" />
-                                            <Typography variant="h6">
-                                                Face Recognition Management
-                                            </Typography>
+                                            <Typography variant="h6">{t("employees.face.manageHeader")}</Typography>
 
                                             <div className="flex items-center justify-center gap-2">
                                                 <Typography variant="small" color="gray">
-                                                    Current Status:
+                                                    {t("employees.currentStatus") || t("employees.face.currentStatus")}
                                                 </Typography>
                                                 {selectedEmployee?.has_face_data ? (
-                                                    <Chip color="green" value="REGISTERED" />
+                                                    <Chip color="green" value={t("employees.registered")} />
                                                 ) : (
-                                                    <Chip color="red" value="NOT REGISTERED" />
+                                                    <Chip color="red" value={t("employees.notRegistered")} />
                                                 )}
                                             </div>
 
                                             <div className="flex justify-center gap-3">
                                                 <Button
                                                     color="blue"
-                                                    onClick={() => handleFaceRegistration(selectedEmployee, selectedEmployee?.has_face_data ? "update" : "register")}
+                                                    onClick={() =>
+                                                        handleFaceRegistration(
+                                                            selectedEmployee,
+                                                            selectedEmployee?.has_face_data ? "update" : "register"
+                                                        )
+                                                    }
                                                     className="flex items-center gap-2"
                                                 >
                                                     <CameraIcon className="h-4 w-4" />
-                                                    {selectedEmployee?.has_face_data ? "Update Face Data" : "Register Face Data"}
+                                                    {selectedEmployee?.has_face_data ? t("employees.face.update") : t("employees.face.register")}
                                                 </Button>
                                             </div>
 
                                             <Typography variant="small" color="gray" className="text-center">
-                                                Face registration is required for secure asset transactions
+                                                {t("employees.face.note")}
                                             </Typography>
                                         </div>
                                     </Card>
@@ -740,10 +719,10 @@ export function Employees() {
                     </DialogBody>
                     <DialogFooter>
                         <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
-                            Cancel
+                            {t("actions.cancel")}
                         </Button>
                         <Button type="submit" loading={formLoading}>
-                            Update Employee
+                            {t("employees.update")}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -754,7 +733,7 @@ export function Employees() {
                 {selectedEmployee && (
                     <>
                         <DialogHeader className="flex items-center justify-between">
-                            <span>Employee Profile - {selectedEmployee.name}</span>
+                            <span>{t("employees.profile.quickTitle", { name: selectedEmployee.name })}</span>
                             <Button
                                 size="sm"
                                 color="blue"
@@ -762,7 +741,7 @@ export function Employees() {
                                 className="flex items-center gap-2"
                             >
                                 <UserIcon className="h-4 w-4" />
-                                Full Profile
+                                {t("employees.profile.fullProfile")}
                             </Button>
                         </DialogHeader>
 
@@ -770,44 +749,50 @@ export function Employees() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Basic Info */}
                                 <Card className="shadow-sm rounded-xl overflow-hidden">
-                                    <CardHeader
-                                        floated={false}
-                                        shadow={false}
-                                        className="bg-blue-600 px-5 py-3"
-                                    >
+                                    <CardHeader floated={false} shadow={false} className="bg-blue-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Basic Information
+                                            {t("employees.profile.basicInfo")}
                                         </Typography>
                                     </CardHeader>
 
                                     <CardBody className="p-6">
                                         <dl className="divide-y divide-gray-100">
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Name</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right truncate">{selectedEmployee.name}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("employees.profile.name")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right truncate">
+                                                    {selectedEmployee.name}
+                                                </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Employee ID</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedEmployee.employee_id}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("employees.profile.employeeId")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {selectedEmployee.employee_id}
+                                                </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Email</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right truncate">{selectedEmployee.email}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("employees.profile.email")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right truncate">
+                                                    {selectedEmployee.email}
+                                                </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Phone</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedEmployee.phone_number}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("employees.profile.phone")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {selectedEmployee.phone_number}
+                                                </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Department</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedEmployee.department_name}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("employees.profile.department")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {selectedEmployee.department_name}
+                                                </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Status</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("employees.profile.status")}</dt>
                                                 <dd className="col-span-3 flex justify-end">
                                                     <Chip
                                                         color={selectedEmployee.is_active ? "green" : "red"}
-                                                        value={selectedEmployee.is_active ? "ACTIVE" : "INACTIVE"}
+                                                        value={selectedEmployee.is_active ? t("employees.active") : t("employees.inactive")}
                                                         className="text-xs"
                                                     />
                                                 </dd>
@@ -818,13 +803,9 @@ export function Employees() {
 
                                 {/* Face Recognition */}
                                 <Card className="shadow-sm rounded-xl overflow-hidden">
-                                    <CardHeader
-                                        floated={false}
-                                        shadow={false}
-                                        className="bg-green-600 px-5 py-3"
-                                    >
+                                    <CardHeader floated={false} shadow={false} className="bg-green-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Face Recognition
+                                            {t("employees.face.sectionHeader")}
                                         </Typography>
                                     </CardHeader>
 
@@ -833,16 +814,18 @@ export function Employees() {
                                             <CameraIcon className="h-12 w-12 text-blue-500" />
 
                                             <div className="flex items-center gap-2">
-                                                <Typography variant="small" color="gray">Status:</Typography>
+                                                <Typography variant="small" color="gray">
+                                                    {t("employees.face.statusLabel")}
+                                                </Typography>
                                                 {selectedEmployee.has_face_data ? (
                                                     <div className="flex items-center gap-1">
                                                         <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                                                        <Chip color="green" value="REGISTERED" className="text-xs" />
+                                                        <Chip color="green" value={t("employees.registered")} className="text-xs" />
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-1">
                                                         <XCircleIcon className="h-4 w-4 text-red-500" />
-                                                        <Chip color="red" value="NOT REGISTERED" className="text-xs" />
+                                                        <Chip color="red" value={t("employees.notRegistered")} className="text-xs" />
                                                     </div>
                                                 )}
                                             </div>
@@ -859,11 +842,11 @@ export function Employees() {
                                                 className="flex items-center gap-2"
                                             >
                                                 <CameraIcon className="h-4 w-4" />
-                                                {selectedEmployee.has_face_data ? "Update Face Data" : "Register Face Data"}
+                                                {selectedEmployee.has_face_data ? t("employees.face.update") : t("employees.face.register")}
                                             </Button>
 
                                             <Typography variant="small" color="gray" className="text-center">
-                                                Face data is required for secure transactions
+                                                {t("employees.face.note")}
                                             </Typography>
                                         </div>
                                     </CardBody>
@@ -875,7 +858,7 @@ export function Employees() {
                                 <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-orange-500 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Activity Statistics
+                                            {t("employees.profile.activityStats")}
                                         </Typography>
                                     </CardHeader>
                                     <CardBody className="p-6">
@@ -884,32 +867,40 @@ export function Employees() {
                                                 <Typography variant="h4" color="blue">
                                                     {selectedEmployee.stats.current_assets_count}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">Current Assets</Typography>
+                                                <Typography variant="small" color="gray">
+                                                    {t("employees.profile.currentAssets")}
+                                                </Typography>
                                             </div>
 
                                             <div className="text-center">
                                                 <Typography variant="h4" color="green">
                                                     {selectedEmployee.stats.total_transactions}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">Total Transactions</Typography>
+                                                <Typography variant="small" color="gray">
+                                                    {t("employees.profile.totalTransactions")}
+                                                </Typography>
                                             </div>
 
                                             <div className="text-center">
                                                 <Typography variant="h4" color="blue">
-                                                    {selectedEmployee.stats.transactions_by_type?.issue
-                                                        ?? selectedEmployee.stats.total_issues
-                                                        ?? 0}
+                                                    {selectedEmployee.stats.transactions_by_type?.issue ??
+                                                        selectedEmployee.stats.total_issues ??
+                                                        0}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">Issues</Typography>
+                                                <Typography variant="small" color="gray">
+                                                    {t("employees.profile.issues")}
+                                                </Typography>
                                             </div>
 
                                             <div className="text-center">
                                                 <Typography variant="h4" color="orange">
-                                                    {selectedEmployee.stats.transactions_by_type?.return
-                                                        ?? selectedEmployee.stats.total_returns
-                                                        ?? 0}
+                                                    {selectedEmployee.stats.transactions_by_type?.return ??
+                                                        selectedEmployee.stats.total_returns ??
+                                                        0}
                                                 </Typography>
-                                                <Typography variant="small" color="gray">Returns</Typography>
+                                                <Typography variant="small" color="gray">
+                                                    {t("employees.profile.returns")}
+                                                </Typography>
                                             </div>
                                         </div>
                                     </CardBody>
@@ -918,15 +909,7 @@ export function Employees() {
                         </DialogBody>
 
                         <DialogFooter>
-                            {/* <Button
-                                variant="text"
-                                color="blue"
-                                onClick={() => handleProfile(selectedEmployee)}
-                                className="mr-2"
-                            >
-                                View Full Profile
-                            </Button> */}
-                            <Button onClick={handleModalClose}>Close</Button>
+                            <Button onClick={handleModalClose}>{t("employees.close")}</Button>
                         </DialogFooter>
                     </>
                 )}
@@ -935,7 +918,7 @@ export function Employees() {
             {/* Face Registration Modal */}
             <FaceRecognitionComponent
                 open={showFaceModal}
-                mode="register"
+                mode={faceRegistrationMode}
                 employeeId={selectedEmployee?.id}
                 employeeName={selectedEmployee?.name}
                 onClose={handleFaceModalClose}

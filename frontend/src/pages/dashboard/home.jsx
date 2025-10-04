@@ -257,7 +257,7 @@ export function Home() {
   };
 
   const getAssetName = (t) => t.asset_name ?? t.asset?.name ?? "N/A";
-  const getAssetSerial = (t) => t.asset_serial ?? t.asset?.serial_number ?? "N/A";
+  const getAssetSerial = (t) => t.asset_serial_number ?? t.asset?.serial_number ?? "N/A";
   const getEmployeeName = (t) =>
     t.employee_name ?? t.employee?.name ?? (t.employee?.user ? `${t.employee.user.first_name} ${t.employee.user.last_name}` : null) ?? "N/A";
   const getDashboardClasses = () => {

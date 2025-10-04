@@ -1,4 +1,4 @@
-// frontend/src/components/FaceRecognitionComponent.jsx (Fixed version)
+// frontend/src/components/FaceRecognitionComponent.jsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     Dialog,
@@ -20,6 +20,7 @@ import {
     XCircleIcon
 } from "@heroicons/react/24/outline";
 import { faceRecognitionAPI, cameraUtils } from "@/lib/assetApi";
+import { useTranslation } from "react-i18next";
 
 const FaceRecognitionComponent = ({
     open,
@@ -30,6 +31,8 @@ const FaceRecognitionComponent = ({
     onSuccess,
     onError
 }) => {
+    const { t } = useTranslation();
+
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -121,13 +124,13 @@ const FaceRecognitionComponent = ({
                 };
                 videoRef.current.onerror = (err) => {
                     console.error('Video error:', err);
-                    setError('Failed to display camera feed');
+                    setError(t('faceComponent.errors.displayFeedFailed', 'Failed to display camera feed'));
                     setIsLoading(false);
                 };
             }
         } catch (err) {
             console.error('Camera initialization error:', err);
-            setError(err.message || 'Failed to access camera');
+            setError(err.message || t('faceComponent.errors.accessCameraFailed', 'Failed to access camera'));
             setIsLoading(false);
             cleanupCamera();
         }
@@ -136,7 +139,7 @@ const FaceRecognitionComponent = ({
     const captureImage = async () => {
         try {
             if (!videoRef.current || !cameraReady) {
-                throw new Error('Camera not ready');
+                throw new Error(t('faceComponent.errors.cameraNotReady', 'Camera not ready'));
             }
 
             setIsLoading(true);
@@ -164,7 +167,7 @@ const FaceRecognitionComponent = ({
             }
         } catch (err) {
             console.error('Capture error:', err);
-            setError(err.message || 'Failed to capture image');
+            setError(err.message || t('faceComponent.errors.captureFailed', 'Failed to capture image'));
             setStep('capture');
             setIsLoading(false);
         }
@@ -181,7 +184,7 @@ const FaceRecognitionComponent = ({
             }
         } catch (err) {
             console.error('Registration error:', err);
-            setError(err.message || 'Face registration failed');
+            setError(err.message || t('employees.profile.errors.faceFailed', 'Face registration failed'));
             if (onError) onError(err);
         } finally {
             setIsLoading(false);
@@ -209,7 +212,7 @@ const FaceRecognitionComponent = ({
             }
         } catch (err) {
             console.error('Verification error:', err);
-            setError(err.message || 'Face verification failed');
+            setError(err.message || t('transactionsPage.errors.faceFailed', 'Face verification failed'));
             if (onError) onError(err);
         } finally {
             setIsLoading(false);
@@ -252,7 +255,7 @@ const FaceRecognitionComponent = ({
                         <div className="text-center">
                             <CameraIcon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
                             <Typography className="text-gray-600">
-                                {isLoading ? 'Starting camera...' : 'Camera not ready'}
+                                {isLoading ? t('faceComponent.startingCamera', 'Starting camera...') : t('faceComponent.cameraNotReady', 'Camera not ready')}
                             </Typography>
                         </div>
                     </div>
@@ -267,7 +270,7 @@ const FaceRecognitionComponent = ({
             </div>
 
             <Typography className="text-center text-sm text-gray-600">
-                Position your face within the circle and click capture
+                {t('faceComponent.positionFace', 'Position your face within the circle and click capture')}
             </Typography>
         </div>
     );
@@ -277,13 +280,17 @@ const FaceRecognitionComponent = ({
             <Alert color="amber" className="mb-4">
                 <ExclamationTriangleIcon className="h-5 w-5" />
                 <div>
-                    <Typography variant="h6" className="mb-1">Image Quality Issues:</Typography>
+                    <Typography variant="h6" className="mb-1">
+                        {t('faceComponent.imageQualityIssues', 'Image Quality Issues:')}
+                    </Typography>
                     <ul className="list-disc list-inside text-sm">
                         {validationResult.issues.map((issue, index) => (
                             <li key={index}>{issue}</li>
                         ))}
                     </ul>
-                    <Typography variant="small" className="mt-2 font-semibold">Recommendations:</Typography>
+                    <Typography variant="small" className="mt-2 font-semibold">
+                        {t('faceComponent.recommendations', 'Recommendations:')}
+                    </Typography>
                     <ul className="list-disc list-inside text-sm">
                         {validationResult.recommendations.map((rec, index) => (
                             <li key={index}>{rec}</li>
@@ -312,13 +319,15 @@ const FaceRecognitionComponent = ({
                             <div className="space-y-3">
                                 <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto" />
                                 <Typography variant="h5" color="green">
-                                    {mode === 'register' ? 'Registration Successful!' : 'Verification Successful!'}
+                                    {mode === 'register'
+                                        ? t('faceComponent.registrationSuccessful', 'Registration Successful!')
+                                        : t('faceComponent.verificationSuccessful', 'Verification Successful!')}
                                 </Typography>
 
                                 {mode === 'verify' && result.confidence && (
                                     <div className="space-y-2">
                                         <Typography variant="small" color="gray">
-                                            Confidence Score
+                                            {t('faceComponent.confidenceScore', 'Confidence Score')}
                                         </Typography>
                                         <Progress
                                             value={result.confidence * 100}
@@ -334,7 +343,7 @@ const FaceRecognitionComponent = ({
                                 {mode === 'register' && result.quality_score && (
                                     <div>
                                         <Typography variant="small" color="gray">
-                                            Image Quality Score: {(result.quality_score * 100).toFixed(1)}%
+                                            {t('faceComponent.imageQualityScore', 'Image Quality Score')}: {(result.quality_score * 100).toFixed(1)}%
                                         </Typography>
                                     </div>
                                 )}
@@ -343,7 +352,9 @@ const FaceRecognitionComponent = ({
                             <div className="space-y-3">
                                 <XCircleIcon className="h-16 w-16 text-red-500 mx-auto" />
                                 <Typography variant="h5" color="red">
-                                    {mode === 'register' ? 'Registration Failed' : 'Verification Failed'}
+                                    {mode === 'register'
+                                        ? t('faceComponent.registrationFailed', 'Registration Failed')
+                                        : t('faceComponent.verificationFailed', 'Verification Failed')}
                                 </Typography>
 
                                 {result.error && (
@@ -355,7 +366,7 @@ const FaceRecognitionComponent = ({
                                 {mode === 'verify' && result.confidence && (
                                     <div className="space-y-2">
                                         <Typography variant="small" color="gray">
-                                            Confidence Score
+                                            {t('faceComponent.confidenceScore', 'Confidence Score')}
                                         </Typography>
                                         <Progress
                                             value={result.confidence * 100}
@@ -363,14 +374,16 @@ const FaceRecognitionComponent = ({
                                             className="w-full"
                                         />
                                         <Typography variant="small">
-                                            {(result.confidence * 100).toFixed(1)}% (Threshold: {((result.threshold || 0.6) * 100).toFixed(0)}%)
+                                            {(result.confidence * 100).toFixed(1)}% ({t('faceComponent.threshold', 'Threshold')}: {((result.threshold || 0.6) * 100).toFixed(0)}%)
                                         </Typography>
                                     </div>
                                 )}
 
                                 {result.issues && result.issues.length > 0 && (
                                     <div>
-                                        <Typography variant="small" className="font-semibold mb-1">Issues:</Typography>
+                                        <Typography variant="small" className="font-semibold mb-1">
+                                            {t('faceComponent.issues', 'Issues:')}
+                                        </Typography>
                                         <ul className="list-disc list-inside text-xs text-left">
                                             {result.issues.map((issue, index) => (
                                                 <li key={index}>{issue}</li>
@@ -401,7 +414,9 @@ const FaceRecognitionComponent = ({
         >
             <DialogHeader className="flex items-center gap-2">
                 <CameraIcon className="h-6 w-6" />
-                Face {mode === 'register' ? 'Registration' : 'Verification'}
+                {mode === 'register'
+                    ? t('faceComponent.titleRegister', 'Face Registration')
+                    : t('faceComponent.titleVerify', 'Face Verification')}
                 {employeeName && (
                     <Chip variant="outlined" value={employeeName} className="ml-2" />
                 )}
@@ -432,7 +447,11 @@ const FaceRecognitionComponent = ({
                 {step === 'processing' && (
                     <div className="text-center space-y-4">
                         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 mx-auto"></div>
-                        <Typography>Processing {mode === 'register' ? 'registration' : 'verification'}...</Typography>
+                        <Typography>
+                            {mode === 'register'
+                                ? t('faceComponent.processingRegistration', 'Processing registration...')
+                                : t('faceComponent.processingVerification', 'Processing verification...')}
+                        </Typography>
                     </div>
                 )}
                 {step === 'result' && renderResult()}
@@ -440,7 +459,7 @@ const FaceRecognitionComponent = ({
 
             <DialogFooter className="flex justify-between">
                 <Button variant="text" color="red" onClick={handleClose}>
-                    Close
+                    {t('actions.close')}
                 </Button>
 
                 <div className="flex gap-2">
@@ -450,18 +469,18 @@ const FaceRecognitionComponent = ({
                             disabled={!cameraReady || isLoading}
                             loading={isLoading}
                         >
-                            Capture Photo
+                            {t('faceComponent.capturePhoto', 'Capture Photo')}
                         </Button>
                     )}
 
                     {step === 'capture' && (
                         <>
                             <Button variant="outlined" onClick={retakePhoto}>
-                                Retake
+                                {t('faceComponent.retake', 'Retake')}
                             </Button>
                             {validationResult?.is_valid && (
                                 <Button onClick={() => setStep('processing')}>
-                                    Continue
+                                    {t('faceComponent.continue', 'Continue')}
                                 </Button>
                             )}
                         </>
@@ -469,7 +488,7 @@ const FaceRecognitionComponent = ({
 
                     {step === 'result' && !result?.success && (
                         <Button variant="outlined" onClick={retakePhoto}>
-                            Try Again
+                            {t('actions.tryAgain')}
                         </Button>
                     )}
                 </div>

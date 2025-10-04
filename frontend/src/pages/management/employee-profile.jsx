@@ -15,7 +15,6 @@ import {
     TabsBody,
     Tab,
     TabPanel,
-    // Avatar,
 } from "@material-tailwind/react";
 import {
     ArrowLeftIcon,
@@ -35,10 +34,14 @@ import {
 } from "@/lib/assetApi";
 import FaceRecognitionComponent from "../../components/FaceRecognitionComponent";
 import AssetReturnComponent from "../../components/AssetReturnComponent";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function EmployeeProfile() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { t } = useTranslation();
+    const { isRTL } = useLanguage();
 
     const [employee, setEmployee] = useState(null);
     const [stats, setStats] = useState(null);
@@ -72,25 +75,22 @@ export function EmployeeProfile() {
                 setEmployee(response.employee);
                 setStats(response.stats);
 
-                // Prefill data (so tabs show immediately on first click)
                 if (Array.isArray(response.current_assets)) {
                     setCurrentAssets(response.current_assets);
                 }
                 if (Array.isArray(response.transaction_history)) {
                     setTransactionHistory(response.transaction_history);
                     setHistoryPage(1);
-                    // If the profile endpoint doesn’t return pagination, we’ll fetch it when switching tab
                 }
-
                 setError("");
             } catch (err) {
                 console.error(err);
-                setError("Failed to fetch employee profile");
+                setError(t("employees.profile.errors.fetchProfile"));
             } finally {
                 setLoading(false);
             }
         })();
-    }, [id]);
+    }, [id, t]);
 
     // Fetch current assets
     const fetchCurrentAssets = useCallback(async () => {
@@ -101,11 +101,11 @@ export function EmployeeProfile() {
             setError("");
         } catch (err) {
             console.error("Error fetching current assets:", err);
-            setError("Failed to fetch current assets");
+            setError(t("employees.profile.errors.fetchAssets"));
         } finally {
             setAssetsLoading(false);
         }
-    }, [id]);
+    }, [id, t]);
 
     // Fetch transaction history (paginated)
     const fetchTransactionHistory = useCallback(
@@ -120,10 +120,7 @@ export function EmployeeProfile() {
                 if (page === 1) {
                     setTransactionHistory(response.transactions ?? []);
                 } else {
-                    setTransactionHistory((prev) => [
-                        ...prev,
-                        ...(response.transactions ?? []),
-                    ]);
+                    setTransactionHistory((prev) => [...prev, ...(response.transactions ?? [])]);
                 }
 
                 setHistoryTotalPages(response.pagination?.total_pages ?? 1);
@@ -131,29 +128,22 @@ export function EmployeeProfile() {
                 setError("");
             } catch (err) {
                 console.error("Failed to fetch transaction history:", err);
-                setError("Failed to fetch transaction history");
+                setError(t("employees.profile.errors.fetchHistory"));
             } finally {
                 setHistoryLoading(false);
             }
         },
-        [id]
+        [id, t]
     );
 
-    // 👉 Load data when active tab changes
+    // Load data when active tab changes
     useEffect(() => {
         if (!id) return;
 
-        if (
-            activeTab === PROFILE_CONSTANTS.TABS.ASSETS &&
-            currentAssets.length === 0
-        ) {
+        if (activeTab === PROFILE_CONSTANTS.TABS.ASSETS && currentAssets.length === 0) {
             fetchCurrentAssets();
         }
-
-        if (
-            activeTab === PROFILE_CONSTANTS.TABS.HISTORY &&
-            transactionHistory.length === 0
-        ) {
+        if (activeTab === PROFILE_CONSTANTS.TABS.HISTORY && transactionHistory.length === 0) {
             fetchTransactionHistory(1);
         }
     }, [
@@ -172,7 +162,6 @@ export function EmployeeProfile() {
 
     const handleFaceRegistrationSuccess = useCallback(async () => {
         setShowFaceModal(false);
-        // refresh profile (will update stats + flags)
         try {
             const response = await employeeAPI.getProfile(id);
             setEmployee(response.employee);
@@ -185,8 +174,8 @@ export function EmployeeProfile() {
 
     const handleFaceRegistrationError = useCallback((err) => {
         setShowFaceModal(false);
-        setError(err?.error || "Face registration failed");
-    }, []);
+        setError(err?.error || t("employees.profile.errors.faceFailed"));
+    }, [t]);
 
     // Asset return handlers
     const handleAssetReturn = useCallback((asset) => {
@@ -199,12 +188,17 @@ export function EmployeeProfile() {
         setSelectedAsset(null);
 
         // Refresh profile stats and the assets list
-        await Promise.all([employeeAPI.getProfile(id).then((res) => {
-            setEmployee(res.employee);
-            setStats(res.stats);
-        }).catch(() => { }), fetchCurrentAssets()]);
+        await Promise.all([
+            employeeAPI
+                .getProfile(id)
+                .then((res) => {
+                    setEmployee(res.employee);
+                    setStats(res.stats);
+                })
+                .catch(() => { }),
+            fetchCurrentAssets(),
+        ]);
 
-        // If on history tab, refresh it too
         if (activeTab === PROFILE_CONSTANTS.TABS.HISTORY) {
             fetchTransactionHistory(1);
         }
@@ -214,8 +208,8 @@ export function EmployeeProfile() {
     const handleReturnError = useCallback((err) => {
         setShowReturnModal(false);
         setSelectedAsset(null);
-        setError(err?.error || "Asset return failed");
-    }, []);
+        setError(err?.error || t("employees.profile.errors.returnFailed"));
+    }, [t]);
 
     const handleLoadMoreHistory = () => {
         if (historyPage < historyTotalPages && !historyLoading) {
@@ -234,7 +228,7 @@ export function EmployeeProfile() {
     if (!employee) {
         return (
             <div className="mt-12 mb-8">
-                <Alert color="red">Employee not found</Alert>
+                <Alert color="red">{t("employees.profile.errors.notFound")}</Alert>
             </div>
         );
     }
@@ -254,56 +248,45 @@ export function EmployeeProfile() {
                                 variant="text"
                                 color="white"
                                 onClick={() => navigate("/dashboard/employees")}
+                                aria-label={t("actions.back")}
                             >
                                 <ArrowLeftIcon className="h-5 w-5" />
                             </IconButton>
                             <Typography variant="h6" color="white">
-                                Employee Profile
+                                {t("employees.profile.pageTitle")}
                             </Typography>
                         </div>
                     </div>
                 </CardHeader>
 
                 <CardBody>
-                    {error && (
-                        <Alert color="red" className="mb-6">
-                            {error}
-                        </Alert>
-                    )}
+                    {error && <Alert color="red" className="mb-6">{error}</Alert>}
 
                     {/* Employee Header Info */}
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
                         <div className="flex items-center gap-4">
-                            {/* <Avatar
-                src={formattedEmployee.avatar}
-                alt={formattedEmployee.displayName || employee.name}
-                size="xl"
-                className="ring-2 ring-blue-500"
-              /> */}
                             <div>
                                 <Typography variant="h4" color="blue-gray">
                                     {formattedEmployee.displayName || employee.name}
                                 </Typography>
                                 <Typography variant="small" color="gray">
-                                    ID: {employee.employee_id} • {employee.department_name}
+                                    {t("employees.profile.employeeId")}: {employee.employee_id} • {employee.department_name}
                                 </Typography>
-                                <Typography variant="small" color="gray">
-                                    {employee.email}
-                                </Typography>
+                                <Typography variant="small" color="gray">{employee.email}</Typography>
                             </div>
                         </div>
 
-                        <div className="flex flex-col md:flex-row gap-2 md:ml-auto">
+                        <div className={`flex flex-col md:flex-row gap-2 ${isRTL ? "md:mr-auto" : "md:ml-auto"}`}>
                             <div className="flex items-center gap-2">
                                 <Chip
                                     color={employee.is_active ? "green" : "red"}
-                                    value={employee.is_active ? "ACTIVE" : "INACTIVE"}
+                                    value={employee.is_active ? t("employees.active") : t("employees.inactive")}
                                     className="text-xs"
                                 />
                                 {employee.has_face_data ? (
-                                    <Chip color="green" value="FACE REGISTERED" className="text-xs" />
+                                    <Chip color="green" value={t("employees.face.registeredChip")} className="text-xs" />
                                 ) : (
-                                    <Chip color="red" value="NO FACE DATA" className="text-xs" />
+                                    <Chip color="red" value={t("employees.face.noDataChip")} className="text-xs" />
                                 )}
                             </div>
                             <Button
@@ -313,7 +296,7 @@ export function EmployeeProfile() {
                                 className="flex items-center gap-2"
                             >
                                 <CameraIcon className="h-4 w-4" />
-                                {employee.has_face_data ? "Update Face" : "Register Face"}
+                                {employee.has_face_data ? t("employees.face.update") : t("employees.face.register")}
                             </Button>
                         </div>
                     </div>
@@ -321,27 +304,18 @@ export function EmployeeProfile() {
                     <Tabs value={activeTab} onChange={(val) => setActiveTab(val)}>
                         <TabsHeader>
                             <Tab value={PROFILE_CONSTANTS.TABS.OVERVIEW}>
-                                <UserCircleIcon className="w-5 h-5 mr-2" />
-                                Overview
+                                <UserCircleIcon className={`w-5 h-5 ${isRTL ? "ml-2" : "mr-2"}`} />
+                                {t("employees.profile.tabs.overview")}
                             </Tab>
                             <Tab value={PROFILE_CONSTANTS.TABS.ASSETS}>
-                                <CubeIcon className="w-5 h-5 mr-2" />
-                                Current Assets ({stats?.current_assets_count || 0})
+                                <CubeIcon className={`w-5 h-5 ${isRTL ? "ml-2" : "mr-2"}`} />
+                                {t("employees.profile.tabs.assets")} ({stats?.current_assets_count || 0})
                             </Tab>
                             <Tab value={PROFILE_CONSTANTS.TABS.HISTORY}>
-                                <ClockIcon className="w-5 h-5 mr-2" />
-                                Transaction History
+                                <ClockIcon className={`w-5 h-5 ${isRTL ? "ml-2" : "mr-2"}`} />
+                                {t("employees.profile.tabs.history")}
                             </Tab>
                         </TabsHeader>
-
-                        {/* Debug box – keep OUTSIDE TabsBody */}
-                        {/* {process.env.NODE_ENV === "development" && (
-                            <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                                <strong>Debug:</strong> Active Tab: {activeTab}, Current Assets:{" "}
-                                {currentAssets.length}, Transaction History:{" "}
-                                {transactionHistory.length}, Employee ID: {id}
-                            </div>
-                        )} */}
 
                         <TabsBody>
                             {/* Overview */}
@@ -349,88 +323,56 @@ export function EmployeeProfile() {
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     {/* Employee Details */}
                                     <Card className="lg:col-span-2">
-                                        <CardHeader
-                                            floated={false}
-                                            shadow={false}
-                                            className="bg-blue-50 p-4"
-                                        >
+                                        <CardHeader floated={false} shadow={false} className="bg-blue-50 p-4">
                                             <Typography variant="h6" color="blue-gray">
-                                                Employee Details
+                                                {t("employees.profile.employeeDetails")}
                                             </Typography>
                                         </CardHeader>
                                         <CardBody>
                                             <dl className="divide-y divide-gray-100">
                                                 <div className="py-3 grid grid-cols-3 gap-4">
-                                                    <dt className="text-sm font-medium text-gray-500">
-                                                        Full Name
-                                                    </dt>
-                                                    <dd className="text-sm text-gray-900 col-span-2">
-                                                        {employee.name}
-                                                    </dd>
+                                                    <dt className="text-sm font-medium text-gray-500">{t("employees.profile.name")}</dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">{employee.name}</dd>
                                                 </div>
                                                 <div className="py-3 grid grid-cols-3 gap-4">
-                                                    <dt className="text-sm font-medium text-gray-500">
-                                                        Employee ID
-                                                    </dt>
-                                                    <dd className="text-sm text-gray-900 col-span-2">
-                                                        {employee.employee_id}
-                                                    </dd>
+                                                    <dt className="text-sm font-medium text-gray-500">{t("employees.profile.employeeId")}</dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">{employee.employee_id}</dd>
                                                 </div>
                                                 <div className="py-3 grid grid-cols-3 gap-4">
-                                                    <dt className="text-sm font-medium text-gray-500">
-                                                        Email
-                                                    </dt>
-                                                    <dd className="text-sm text-gray-900 col-span-2">
-                                                        {employee.email}
-                                                    </dd>
+                                                    <dt className="text-sm font-medium text-gray-500">{t("employees.profile.email")}</dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">{employee.email}</dd>
                                                 </div>
                                                 <div className="py-3 grid grid-cols-3 gap-4">
-                                                    <dt className="text-sm font-medium text-gray-500">
-                                                        Phone
-                                                    </dt>
-                                                    <dd className="text-sm text-gray-900 col-span-2">
-                                                        {employee.phone_number}
-                                                    </dd>
+                                                    <dt className="text-sm font-medium text-gray-500">{t("employees.profile.phone")}</dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">{employee.phone_number}</dd>
                                                 </div>
                                                 <div className="py-3 grid grid-cols-3 gap-4">
-                                                    <dt className="text-sm font-medium text-gray-500">
-                                                        Department
-                                                    </dt>
-                                                    <dd className="text-sm text-gray-900 col-span-2">
-                                                        {employee.department_name}
-                                                    </dd>
+                                                    <dt className="text-sm font-medium text-gray-500">{t("employees.profile.department")}</dt>
+                                                    <dd className="text-sm text-gray-900 col-span-2">{employee.department_name}</dd>
                                                 </div>
                                                 <div className="py-3 grid grid-cols-3 gap-4">
-                                                    <dt className="text-sm font-medium text-gray-500">
-                                                        Status
-                                                    </dt>
+                                                    <dt className="text-sm font-medium text-gray-500">{t("employees.profile.status")}</dt>
                                                     <dd className="text-sm text-gray-900 col-span-2">
                                                         <Chip
                                                             size="sm"
                                                             color={employee.is_active ? "green" : "red"}
-                                                            value={employee.is_active ? "Active" : "Inactive"}
+                                                            value={employee.is_active ? t("employees.active") : t("employees.inactive")}
                                                         />
                                                     </dd>
                                                 </div>
                                                 <div className="py-3 grid grid-cols-3 gap-4">
-                                                    <dt className="text-sm font-medium text-gray-500">
-                                                        Face Recognition
-                                                    </dt>
+                                                    <dt className="text-sm font-medium text-gray-500">{t("employees.face.sectionHeader")}</dt>
                                                     <dd className="text-sm text-gray-900 col-span-2">
                                                         <div className="flex items-center gap-2">
                                                             {employee.has_face_data ? (
                                                                 <>
                                                                     <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                                                                    <span className="text-green-600">
-                                                                        Registered
-                                                                    </span>
+                                                                    <span className="text-green-600">{t("employees.registered")}</span>
                                                                 </>
                                                             ) : (
                                                                 <>
                                                                     <XCircleIcon className="h-4 w-4 text-red-500" />
-                                                                    <span className="text-red-600">
-                                                                        Not Registered
-                                                                    </span>
+                                                                    <span className="text-red-600">{t("employees.notRegistered")}</span>
                                                                 </>
                                                             )}
                                                         </div>
@@ -442,13 +384,9 @@ export function EmployeeProfile() {
 
                                     {/* Statistics */}
                                     <Card>
-                                        <CardHeader
-                                            floated={false}
-                                            shadow={false}
-                                            className="bg-green-50 p-4"
-                                        >
+                                        <CardHeader floated={false} shadow={false} className="bg-green-50 p-4">
                                             <Typography variant="h6" color="blue-gray">
-                                                Activity Statistics
+                                                {t("employees.profile.activityStats")}
                                             </Typography>
                                         </CardHeader>
                                         <CardBody className="space-y-4">
@@ -459,7 +397,7 @@ export function EmployeeProfile() {
                                                             {stats.current_assets_count || 0}
                                                         </Typography>
                                                         <Typography variant="small" color="gray">
-                                                            Current Assets
+                                                            {t("employees.profile.currentAssets")}
                                                         </Typography>
                                                     </div>
                                                     <div className="text-center">
@@ -467,39 +405,31 @@ export function EmployeeProfile() {
                                                             {stats.total_transactions || 0}
                                                         </Typography>
                                                         <Typography variant="small" color="gray">
-                                                            Total Transactions
+                                                            {t("employees.profile.totalTransactions")}
                                                         </Typography>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4 text-center">
                                                         <div>
                                                             <Typography variant="h5" color="blue">
-                                                                {stats.transactions_by_type?.issue ||
-                                                                    stats.total_issues ||
-                                                                    0}
+                                                                {stats.transactions_by_type?.issue ?? stats.total_issues ?? 0}
                                                             </Typography>
                                                             <Typography variant="small" color="gray">
-                                                                Issues
+                                                                {t("employees.profile.issues")}
                                                             </Typography>
                                                         </div>
                                                         <div>
                                                             <Typography variant="h5" color="orange">
-                                                                {stats.transactions_by_type?.return ||
-                                                                    stats.total_returns ||
-                                                                    0}
+                                                                {stats.transactions_by_type?.return ?? stats.total_returns ?? 0}
                                                             </Typography>
                                                             <Typography variant="small" color="gray">
-                                                                Returns
+                                                                {t("employees.profile.returns")}
                                                             </Typography>
                                                         </div>
                                                     </div>
                                                 </>
                                             ) : (
-                                                <Typography
-                                                    variant="small"
-                                                    color="gray"
-                                                    className="text-center"
-                                                >
-                                                    No statistics available
+                                                <Typography variant="small" color="gray" className="text-center">
+                                                    {t("common.noData")}
                                                 </Typography>
                                             )}
                                         </CardBody>
@@ -516,65 +446,41 @@ export function EmployeeProfile() {
                                 ) : currentAssets.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {currentAssets.map((asset) => (
-                                            <Card
-                                                key={asset.id}
-                                                className="hover:shadow-lg transition-shadow"
-                                            >
+                                            <Card key={asset.id} className="hover:shadow-lg transition-shadow">
                                                 <CardBody>
                                                     <div className="flex justify-between items-start mb-4">
                                                         <div className="flex-1">
-                                                            <Typography
-                                                                variant="h6"
-                                                                color="blue-gray"
-                                                                className="mb-1"
-                                                            >
+                                                            <Typography variant="h6" color="blue-gray" className="mb-1">
                                                                 {asset.name}
                                                             </Typography>
-                                                            <Typography
-                                                                variant="small"
-                                                                color="gray"
-                                                                className="mb-2"
-                                                            >
-                                                                Serial: {asset.serial_number}
+                                                            <Typography variant="small" color="gray" className="mb-2">
+                                                                <strong>{t("assets.serialNumber")}:</strong> {asset.serial_number}
                                                             </Typography>
-                                                            <Chip
-                                                                size="sm"
-                                                                color="blue"
-                                                                value={asset.status || "assigned"}
-                                                                className="mb-2"
-                                                            />
+                                                            <Chip size="sm" color="blue" value={asset.status || "assigned"} className="mb-2" />
                                                         </div>
                                                     </div>
 
                                                     <div className="space-y-2 mb-4">
                                                         {asset.department_name && (
                                                             <Typography variant="small" color="gray">
-                                                                <strong>Department:</strong>{" "}
-                                                                {asset.department_name}
+                                                                <strong>{t("assets.department")}:</strong> {asset.department_name}
                                                             </Typography>
                                                         )}
                                                         {asset.description && (
-                                                            <Typography
-                                                                variant="small"
-                                                                color="gray"
-                                                                className="line-clamp-2"
-                                                            >
-                                                                <strong>Description:</strong>{" "}
-                                                                {asset.description}
+                                                            <Typography variant="small" color="gray" className="line-clamp-2">
+                                                                <strong>{t("assets.description")}:</strong> {asset.description}
                                                             </Typography>
                                                         )}
                                                         {asset.purchase_date && (
                                                             <Typography variant="small" color="gray">
-                                                                <strong>Purchase Date:</strong>{" "}
+                                                                <strong>{t("assets.purchaseDate")}:</strong>{" "}
                                                                 {formatters.formatDate(asset.purchase_date)}
                                                             </Typography>
                                                         )}
                                                         {asset.purchase_cost && (
                                                             <Typography variant="small" color="gray">
-                                                                <strong>Purchase Cost:</strong>{" "}
-                                                                {formatters.formatCurrency(
-                                                                    asset.purchase_cost
-                                                                )}
+                                                                <strong>{t("assets.purchaseCost")}:</strong>{" "}
+                                                                {formatters.formatCurrency(asset.purchase_cost)}
                                                             </Typography>
                                                         )}
                                                     </div>
@@ -587,7 +493,7 @@ export function EmployeeProfile() {
                                                         variant="filled"
                                                     >
                                                         <ArrowPathIcon className="h-4 w-4" />
-                                                        Return Asset
+                                                        {t("employees.profile.returnAsset")}
                                                     </Button>
                                                 </CardBody>
                                             </Card>
@@ -597,10 +503,10 @@ export function EmployeeProfile() {
                                     <div className="text-center py-12">
                                         <CubeIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
                                         <Typography variant="h6" color="gray">
-                                            No Current Assets
+                                            {t("employees.profile.noCurrentAssets")}
                                         </Typography>
                                         <Typography variant="small" color="gray">
-                                            This employee doesn't have any assets assigned currently.
+                                            {t("employees.profile.noCurrentAssetsHelp")}
                                         </Typography>
                                     </div>
                                 )}
@@ -615,10 +521,7 @@ export function EmployeeProfile() {
                                 ) : transactionHistory.length > 0 ? (
                                     <div className="space-y-4">
                                         {transactionHistory.map((transaction) => (
-                                            <Card
-                                                key={transaction.id}
-                                                className="hover:shadow-lg transition-shadow"
-                                            >
+                                            <Card key={transaction.id} className="hover:shadow-lg transition-shadow">
                                                 <CardBody>
                                                     <div className="flex justify-between items-start mb-3">
                                                         <div className="flex-1">
@@ -628,26 +531,23 @@ export function EmployeeProfile() {
                                                                 </Typography>
                                                                 <Chip
                                                                     size="sm"
-                                                                    color={
+                                                                    color={transaction.transaction_type === "issue" ? "green" : "blue"}
+                                                                    value={
                                                                         transaction.transaction_type === "issue"
-                                                                            ? "green"
-                                                                            : "blue"
+                                                                            ? t("transactions.issue")
+                                                                            : t("transactions.return")
                                                                     }
-                                                                    value={transaction.transaction_type?.toUpperCase()}
                                                                 />
                                                             </div>
 
                                                             <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
                                                                 <span>
-                                                                    <strong>Date:</strong>{" "}
-                                                                    {formatters.formatDate(
-                                                                        transaction.transaction_date
-                                                                    )}
+                                                                    <strong>{t("common.date")}:</strong>{" "}
+                                                                    {formatters.formatDate(transaction.transaction_date)}
                                                                 </span>
                                                                 {transaction.asset_serial_number && (
                                                                     <span>
-                                                                        <strong>Serial:</strong>{" "}
-                                                                        {transaction.asset_serial_number}
+                                                                        <strong>{t("assets.serial")}:</strong> {transaction.asset_serial_number}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -655,16 +555,15 @@ export function EmployeeProfile() {
                                                             {transaction.return_condition && (
                                                                 <div className="flex items-center gap-2 mb-2">
                                                                     <Typography variant="small" color="gray">
-                                                                        <strong>Return Condition:</strong>
+                                                                        <strong>{t("employees.profile.returnCondition")}:</strong>
                                                                     </Typography>
                                                                     <Chip
                                                                         size="sm"
                                                                         color={
                                                                             profileFormatters.formatAssetCondition
-                                                                                ? profileFormatters
-                                                                                    .formatAssetCondition(
-                                                                                        transaction.return_condition
-                                                                                    ).color
+                                                                                ? profileFormatters.formatAssetCondition(
+                                                                                    transaction.return_condition
+                                                                                ).color
                                                                                 : "gray"
                                                                         }
                                                                         value={transaction.return_condition}
@@ -674,7 +573,7 @@ export function EmployeeProfile() {
 
                                                             {transaction.processed_by_name && (
                                                                 <Typography variant="small" color="gray">
-                                                                    <strong>Processed by:</strong>{" "}
+                                                                    <strong>{t("employees.profile.processedBy")}:</strong>{" "}
                                                                     {transaction.processed_by_name}
                                                                 </Typography>
                                                             )}
@@ -685,20 +584,15 @@ export function EmployeeProfile() {
                                                                 <div className="flex items-center gap-1 text-green-600">
                                                                     <CheckCircleIcon className="h-4 w-4" />
                                                                     <Typography variant="small">
-                                                                        Verified
+                                                                        {t("common.verified")}
                                                                         {transaction.face_verification_confidence &&
-                                                                            ` (${(
-                                                                                transaction.face_verification_confidence *
-                                                                                100
-                                                                            ).toFixed(1)}%)`}
+                                                                            ` (${(transaction.face_verification_confidence * 100).toFixed(1)}%)`}
                                                                     </Typography>
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex items-center gap-1 text-red-600">
                                                                     <XCircleIcon className="h-4 w-4" />
-                                                                    <Typography variant="small">
-                                                                        Not Verified
-                                                                    </Typography>
+                                                                    <Typography variant="small">{t("common.notVerified")}</Typography>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -708,12 +602,8 @@ export function EmployeeProfile() {
                                                         <div className="mt-4 p-3 bg-gray-50 rounded border-l-4 border-blue-500">
                                                             {transaction.damage_notes && (
                                                                 <div className="mb-2">
-                                                                    <Typography
-                                                                        variant="small"
-                                                                        color="red"
-                                                                        className="font-semibold mb-1"
-                                                                    >
-                                                                        Damage Notes:
+                                                                    <Typography variant="small" color="red" className="font-semibold mb-1">
+                                                                        {t("employees.profile.damageNotes")}:
                                                                     </Typography>
                                                                     <Typography variant="small" color="gray">
                                                                         {transaction.damage_notes}
@@ -727,7 +617,7 @@ export function EmployeeProfile() {
                                                                         color="blue-gray"
                                                                         className="font-semibold mb-1"
                                                                     >
-                                                                        Notes:
+                                                                        {t("employees.profile.notes")}:
                                                                     </Typography>
                                                                     <Typography variant="small" color="gray">
                                                                         {transaction.notes}
@@ -749,7 +639,7 @@ export function EmployeeProfile() {
                                                     className="flex items-center gap-2"
                                                 >
                                                     <ClockIcon className="h-4 w-4" />
-                                                    Load More History
+                                                    {t("employees.profile.loadMoreHistory")}
                                                 </Button>
                                             </div>
                                         )}
@@ -758,10 +648,10 @@ export function EmployeeProfile() {
                                     <div className="text-center py-12">
                                         <ClockIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
                                         <Typography variant="h6" color="gray">
-                                            No Transaction History
+                                            {t("employees.profile.noHistory")}
                                         </Typography>
                                         <Typography variant="small" color="gray">
-                                            This employee hasn't completed any transactions yet.
+                                            {t("employees.profile.noHistoryHelp")}
                                         </Typography>
                                     </div>
                                 )}
@@ -796,4 +686,3 @@ export function EmployeeProfile() {
 }
 
 export default EmployeeProfile;
-

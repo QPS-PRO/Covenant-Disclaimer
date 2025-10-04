@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// frontend/src/pages/management/assets.jsx
+import React, { useState, useEffect, useMemo } from "react";
 import {
     Card,
     CardHeader,
@@ -26,6 +27,8 @@ import {
     ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { assetAPI, departmentAPI, employeeAPI } from "@/lib/assetApi";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Assets() {
     const [assets, setAssets] = useState([]);
@@ -66,13 +69,21 @@ export function Assets() {
     // Prevent double loading
     const [mounted, setMounted] = useState(false);
 
-    // Status options
-    const statusOptions = [
-        { value: "available", label: "Available", color: "green" },
-        { value: "assigned", label: "Assigned", color: "blue" },
-        { value: "maintenance", label: "Under Maintenance", color: "orange" },
-        { value: "retired", label: "Retired", color: "red" },
-    ];
+    const { t } = useTranslation();
+    const { isRTL } = useLanguage();
+    const locale = isRTL ? "ar-SA" : "en-US";
+    const currencyLocale = isRTL ? "ar-SA" : "en-SA";
+
+    // Status options (translated)
+    const statusOptions = useMemo(
+        () => [
+            { value: "available", label: t("status.available"), color: "green" },
+            { value: "assigned", label: t("status.assigned"), color: "blue" },
+            { value: "maintenance", label: t("status.maintenance"), color: "orange" },
+            { value: "retired", label: t("status.retired"), color: "red" },
+        ],
+        [t]
+    );
 
     useEffect(() => {
         if (!mounted) {
@@ -98,7 +109,7 @@ export function Assets() {
             if (searchTerm) params.search = searchTerm;
 
             const response = await assetAPI.getAll(params);
-            const dataArray = Array.isArray(response) ? response : (response.results || []);
+            const dataArray = Array.isArray(response) ? response : response.results || [];
             setAssets(dataArray);
 
             setTotalPages(Number(response?.total_pages || 1));
@@ -118,22 +129,20 @@ export function Assets() {
                         ...(selectedStatus ? { status: selectedStatus } : {}),
                         ...(searchTerm ? { search: searchTerm } : {}),
                     });
-                    const dataArray = Array.isArray(fallback) ? fallback : (fallback.results || []);
+                    const dataArray = Array.isArray(fallback) ? fallback : fallback.results || [];
                     setAssets(dataArray);
                     setTotalPages(Number(fallback?.total_pages || 1));
                     setTotalCount(Number(fallback?.count || dataArray.length));
                     setPage(Number(fallback?.current_page || 1));
-                    setError(""); 
+                    setError("");
                     return;
-                } catch (e2) {
-                }
+                } catch { }
             }
 
-            setError("Failed to fetch assets");
+            setError(`${t("errors.failedToFetch")} ${t("nav.assets")}`);
             console.error(err);
         }
     };
-
 
     const fetchDepartments = async () => {
         try {
@@ -155,24 +164,17 @@ export function Assets() {
 
     useEffect(() => {
         if (!mounted) return;
-
         const timer = setTimeout(() => {
-            if (page !== 1) {
-                setPage(1);      
-            } else {
-                fetchAssets();   
-            }
+            if (page !== 1) setPage(1);
+            else fetchAssets();
         }, 300);
-
         return () => clearTimeout(timer);
     }, [searchTerm, selectedDepartment, selectedStatus, mounted]);
-
 
     useEffect(() => {
         if (!mounted) return;
         fetchAssets();
     }, [page]);
-
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -227,7 +229,7 @@ export function Assets() {
                     setError(errorMessages);
                 }
             } else {
-                setError(err.message || "Failed to save asset");
+                setError(err.message || t("errors.unexpectedError"));
             }
         } finally {
             setFormLoading(false);
@@ -253,7 +255,6 @@ export function Assets() {
         if (!selectedAsset) return;
         setFormLoading(true);
         setError("");
-
         try {
             await assetAPI.delete(selectedAsset.id);
             setShowDeleteModal(false);
@@ -267,7 +268,7 @@ export function Assets() {
                 else if (typeof err.response.data === "string") setError(err.response.data);
                 else setError(JSON.stringify(err.response.data));
             } else {
-                setError(err.message || "Failed to delete asset");
+                setError(err.message || t("errors.unexpectedError"));
             }
         } finally {
             setFormLoading(false);
@@ -307,8 +308,29 @@ export function Assets() {
         return statusOption ? statusOption.color : "gray";
     };
 
-    const formatCurrency = (amount) => (amount ? `$${parseFloat(amount).toLocaleString()}` : "N/A");
-    const formatDate = (dateString) => (dateString ? new Date(dateString).toLocaleDateString() : "N/A");
+    const getStatusLabel = (status) => {
+        const opt = statusOptions.find((o) => o.value === status);
+        const label = opt ? opt.label : status;
+        return isRTL ? label : String(label).toUpperCase();
+    };
+
+    // put this near the top of the component (after isRTL/locale)
+    const formatCurrency = (amount) => {
+        if (amount === null || amount === undefined || amount === "") return t("common.noData");
+        const num = Number(amount);
+        if (Number.isNaN(num)) return t("common.noData");
+
+        return new Intl.NumberFormat(currencyLocale, {
+            style: "currency",
+            currency: "SAR",
+            currencyDisplay: "symbol", // ar-SA shows "ر.س", en-SA shows "SAR"
+            maximumFractionDigits: 2,
+        }).format(num);
+    };
+
+
+    const formatDate = (dateString) =>
+        dateString ? new Date(dateString).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" }) : "N/A";
 
     const getDepartmentEmployees = () => {
         if (!formData.department) return employees;
@@ -339,11 +361,11 @@ export function Assets() {
                 <CardHeader variant="gradient" color="gray" className="mb-8 p-6">
                     <div className="flex items-center justify-between">
                         <Typography variant="h6" color="white">
-                            Assets Management
+                            {t("assets.title")}
                         </Typography>
                         <Button className="flex items-center gap-3" size="sm" onClick={() => setShowAddModal(true)}>
                             <PlusIcon strokeWidth={2} className="h-4 w-4" />
-                            Add Asset
+                            {t("assets.addAsset")}
                         </Button>
                     </div>
                 </CardHeader>
@@ -359,7 +381,7 @@ export function Assets() {
                     <div className="flex flex-col lg:flex-row gap-4 mb-6 px-6">
                         <div className="w-full lg:w-72">
                             <Input
-                                label="Search assets..."
+                                label={t("assets.searchAssets")}
                                 icon={<MagnifyingGlassIcon className="h-5 w-5" />}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -369,26 +391,22 @@ export function Assets() {
                         {/* Department filter */}
                         <div className="w-full lg:w-60">
                             <Select
-                                label="Filter by Department"
+                                label={t("assets.filterByDepartment")}
                                 value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
-                                menuProps={{
-                                    className: "select-menu-in-dialog",
-                                    placement: "bottom-start",
-                                }}
+                                menuProps={{ className: "select-menu-in-dialog", placement: "bottom-start" }}
                                 selected={(element) => {
-                                    if (React.isValidElement(element) && element.props?.children != null) {
-                                        return element.props.children;
-                                    }
-                                    const raw = typeof element === "string" || typeof element === "number"
-                                        ? String(element)
-                                        : (selectedDepartment ?? "");
-                                    if (!raw) return "All Departments";
-                                    const d = departments.find(dep => dep.id.toString() === raw);
-                                    return d ? d.name : "All Departments";
+                                    if (React.isValidElement(element) && element.props?.children != null) return element.props.children;
+                                    const raw =
+                                        typeof element === "string" || typeof element === "number"
+                                            ? String(element)
+                                            : selectedDepartment ?? "";
+                                    if (!raw) return t("assets.allDepartments");
+                                    const d = departments.find((dep) => dep.id.toString() === raw);
+                                    return d ? d.name : t("assets.allDepartments");
                                 }}
                             >
-                                <Option value="">All Departments</Option>
+                                <Option value="">{t("assets.allDepartments")}</Option>
                                 {departments.map((dept) => (
                                     <Option key={dept.id} value={dept.id.toString()}>
                                         {dept.name}
@@ -400,22 +418,21 @@ export function Assets() {
                         {/* Status filter */}
                         <div className="w-full lg:w-60">
                             <Select
-                                label="Filter by Status"
+                                label={t("assets.filterByStatus")}
                                 value={selectedStatus ?? ""}
                                 onChange={(value) => setSelectedStatus(value ?? "")}
                                 selected={(element) => {
-                                    if (React.isValidElement(element) && element.props?.children != null) {
-                                        return element.props.children;
-                                    }
-                                    const raw = typeof element === "string" || typeof element === "number"
-                                        ? String(element)
-                                        : (selectedStatus ?? "");
-                                    if (!raw) return "All Statuses";
-                                    const opt = statusOptions.find(s => String(s.value) === raw);
-                                    return opt ? opt.label : "All Statuses";
+                                    if (React.isValidElement(element) && element.props?.children != null) return element.props.children;
+                                    const raw =
+                                        typeof element === "string" || typeof element === "number"
+                                            ? String(element)
+                                            : selectedStatus ?? "";
+                                    if (!raw) return t("assets.allStatuses");
+                                    const opt = statusOptions.find((s) => String(s.value) === raw);
+                                    return opt ? opt.label : t("assets.allStatuses");
                                 }}
                             >
-                                <Option value="">All Statuses</Option>
+                                <Option value="">{t("assets.allStatuses")}</Option>
                                 {statusOptions.map((status) => (
                                     <Option key={status.value} value={String(status.value)}>
                                         {status.label}
@@ -430,7 +447,15 @@ export function Assets() {
                         <table className="w-full min-w-[640px] table-auto">
                             <thead>
                                 <tr>
-                                    {["Asset", "Serial Number", "Department", "Status", "Current Holder", "Purchase Cost", "Actions"].map((el) => (
+                                    {[
+                                        t("assets.assetName"),
+                                        t("assets.serialNumber"),
+                                        t("assets.department"),
+                                        t("assets.status"),
+                                        t("assets.currentHolder"),
+                                        t("assets.purchaseCost"),
+                                        t("departments.table.actions"),
+                                    ].map((el) => (
                                         <th key={el} className="border-b border-blue-gray-50 py-3 px-5 text-left">
                                             <Typography variant="small" className="text-[11px] font-bold uppercase text-blue-gray-400">
                                                 {el}
@@ -475,13 +500,13 @@ export function Assets() {
                                                 <Chip
                                                     variant="gradient"
                                                     color={getStatusColor(asset.status)}
-                                                    value={asset.status?.toUpperCase()}
+                                                    value={getStatusLabel(asset.status)}
                                                     className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                 />
                                             </td>
                                             <td className={className}>
                                                 <Typography className="text-xs font-normal text-blue-gray-500">
-                                                    {asset.current_holder_name || "Unassigned"}
+                                                    {asset.current_holder_name || t("assets.unassigned")}
                                                 </Typography>
                                                 {asset.current_holder_employee_id && (
                                                     <Typography className="text-xs font-normal text-blue-gray-400">
@@ -526,23 +551,32 @@ export function Assets() {
                     {assets.length === 0 && !loading && (
                         <div className="text-center py-8">
                             <Typography color="blue-gray" className="font-normal">
-                                No assets found.
+                                {t("assets.noAssetsFound")}
                             </Typography>
                         </div>
                     )}
+
                     {/* pager */}
                     <div className="flex items-center justify-between px-6 py-4 text-sm text-blue-gray-600">
                         <span>
-                            Showing <b>{rangeStart}</b>–<b>{rangeEnd}</b> of <b>{totalCount}</b>
+                            {t("common.showing")} <b>{rangeStart}</b>–<b>{rangeEnd}</b> {t("common.of")} <b>{totalCount}</b>
                         </span>
                         <div className="flex items-center gap-2">
-                            <Button variant="text" size="sm" onClick={() => setPage(1)} disabled={!canPrev}>First</Button>
-                            <Button variant="text" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!canPrev}>Prev</Button>
+                            <Button variant="text" size="sm" onClick={goFirst} disabled={!canPrev}>
+                                {t("actions.first")}
+                            </Button>
+                            <Button variant="text" size="sm" onClick={goPrev} disabled={!canPrev}>
+                                {t("actions.previous")}
+                            </Button>
                             <span className="px-2">
-                                Page <b>{page}</b> of <b>{totalPages}</b>
+                                {t("common.page")} <b>{page}</b> {t("common.of")} <b>{totalPages}</b>
                             </span>
-                            <Button variant="text" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={!canNext}>Next</Button>
-                            <Button variant="text" size="sm" onClick={() => setPage(totalPages)} disabled={!canNext}>Last</Button>
+                            <Button variant="text" size="sm" onClick={goNext} disabled={!canNext}>
+                                {t("actions.next")}
+                            </Button>
+                            <Button variant="text" size="sm" onClick={goLast} disabled={!canNext}>
+                                {t("actions.last")}
+                            </Button>
                         </div>
                     </div>
                 </CardBody>
@@ -550,25 +584,23 @@ export function Assets() {
 
             {/* Add/Edit Asset Modal */}
             <Dialog open={showAddModal || showEditModal} handler={handleModalClose} size="lg">
-                <DialogHeader>{selectedAsset && showEditModal ? "Edit Asset" : "Add New Asset"}</DialogHeader>
+                <DialogHeader>
+                    {selectedAsset && showEditModal ? t("assets.editAsset") : t("assets.addAsset")}
+                </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="flex flex-col gap-4">
-                        {error && (
-                            <Alert color="red" className="mb-4">
-                                {error}
-                            </Alert>
-                        )}
+                        {error && <Alert color="red" className="mb-4">{error}</Alert>}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
-                                label="Asset Name"
+                                label={t("assets.assetName")}
                                 name="name"
                                 value={formData.name}
                                 onChange={handleInputChange}
                                 required
                             />
                             <Input
-                                label="Serial Number"
+                                label={t("assets.serialNumber")}
                                 name="serial_number"
                                 value={formData.serial_number}
                                 onChange={handleInputChange}
@@ -578,14 +610,11 @@ export function Assets() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Select
-                                label="Department"
+                                label={t("assets.department")}
                                 value={formData.department}
                                 onChange={(value) => setFormData((prev) => ({ ...prev, department: value }))}
                                 required
-                                menuProps={{
-                                    className: "select-menu-in-dialog",
-                                    placement: "bottom-start",
-                                }}
+                                menuProps={{ className: "select-menu-in-dialog", placement: "bottom-start" }}
                             >
                                 {departments.map((dept) => (
                                     <Option key={dept.id} value={dept.id.toString()}>
@@ -595,14 +624,11 @@ export function Assets() {
                             </Select>
 
                             <Select
-                                label="Status"
+                                label={t("assets.status")}
                                 value={formData.status}
                                 onChange={handleStatusChange}
                                 required
-                                menuProps={{
-                                    className: "select-menu-in-dialog",
-                                    placement: "bottom-start",
-                                }}
+                                menuProps={{ className: "select-menu-in-dialog", placement: "bottom-start" }}
                             >
                                 {statusOptions.map((status) => (
                                     <Option key={status.value} value={status.value}>
@@ -613,55 +639,41 @@ export function Assets() {
                         </div>
 
                         {/* Current Holder field - only show if status is 'assigned' */}
-                        {formData.status === 'assigned' && (
+                        {formData.status === "assigned" && (
                             <Select
-                                label="Current Holder"
-                                value={formData.current_holder ?? ""}                // keep it a string
-                                onChange={(value) =>
-                                    setFormData((prev) => ({ ...prev, current_holder: value ?? "" }))
-                                }
+                                label={t("assets.currentHolder")}
+                                value={formData.current_holder ?? ""} // keep it a string
+                                onChange={(value) => setFormData((prev) => ({ ...prev, current_holder: value ?? "" }))}
                                 required
-                                menuProps={{
-                                    className: "select-menu-in-dialog max-h-48 overflow-y-auto",
-                                    placement: "bottom-start",
-                                }}
+                                menuProps={{ className: "select-menu-in-dialog max-h-48 overflow-y-auto", placement: "bottom-start" }}
                                 selected={(element) => {
-                                    // If MTW gives us the selected <Option/>, show its children
                                     if (React.isValidElement(element) && element.props?.children != null) {
                                         return element.props.children;
                                     }
-
-                                    // Fallback: map the stored id -> "Name (EMPID)"
                                     const id =
                                         typeof element === "string" || typeof element === "number"
                                             ? String(element)
                                             : formData.current_holder ?? "";
-
-                                    if (!id) return "Select Employee";
-
+                                    if (!id) return t("assets.selectEmployee");
                                     const e =
                                         (getDepartmentEmployees?.() || []).find((emp) => emp.id.toString() === id) ||
-                                        (employees || []).find((emp) => emp.id.toString() === id); // extra fallback
-
-                                    return e ? `${e.name} (${e.employee_id})` : "Select Employee";
+                                        (employees || []).find((emp) => emp.id.toString() === id);
+                                    return e ? `${e.name} (${e.employee_id})` : t("assets.selectEmployee");
                                 }}
                             >
-                                {/* Make placeholder non-selectable */}
                                 <Option value="" disabled>
-                                    Select Employee
+                                    {t("assets.selectEmployee")}
                                 </Option>
-
                                 {getDepartmentEmployees().map((employee) => (
                                     <Option key={employee.id} value={employee.id.toString()}>
                                         {employee.name} ({employee.employee_id})
                                     </Option>
                                 ))}
                             </Select>
-
                         )}
 
                         <Textarea
-                            label="Description"
+                            label={t("assets.description")}
                             name="description"
                             value={formData.description}
                             onChange={handleInputChange}
@@ -670,14 +682,14 @@ export function Assets() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
-                                label="Purchase Date"
+                                label={t("assets.purchaseDate")}
                                 name="purchase_date"
                                 type="date"
                                 value={formData.purchase_date}
                                 onChange={handleInputChange}
                             />
                             <Input
-                                label="Purchase Cost"
+                                label={t("assets.purchaseCost")}
                                 name="purchase_cost"
                                 type="number"
                                 step="0.01"
@@ -688,10 +700,10 @@ export function Assets() {
                     </DialogBody>
                     <DialogFooter>
                         <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
-                            Cancel
+                            {t("actions.cancel")}
                         </Button>
                         <Button type="submit" loading={formLoading}>
-                            {selectedAsset && showEditModal ? "Update Asset" : "Create Asset"}
+                            {selectedAsset && showEditModal ? t("assets.updateAsset") : t("assets.createAsset")}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -701,7 +713,9 @@ export function Assets() {
             <Dialog open={showViewModal} handler={() => setShowViewModal(false)} size="lg">
                 {showViewModal && selectedAsset && (
                     <>
-                        <DialogHeader>Asset Details - {selectedAsset.name}</DialogHeader>
+                        <DialogHeader>
+                            {t("assets.assetDetails")} - {selectedAsset.name}
+                        </DialogHeader>
 
                         <DialogBody className="max-h-[70vh] overflow-y-auto">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -709,38 +723,38 @@ export function Assets() {
                                 <Card className="shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-blue-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Basic Information
+                                            {t("assets.basicInformation")}
                                         </Typography>
                                     </CardHeader>
                                     <CardBody className="p-6">
                                         <dl className="divide-y divide-gray-100">
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Name</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.name")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedAsset.name}</dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Serial Number</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.serialNumber")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedAsset.serial_number}</dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Department</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.department")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedAsset.department_name}</dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Status</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.status")}</dt>
                                                 <dd className="col-span-3 flex justify-end">
                                                     <Chip
                                                         variant="gradient"
                                                         color={getStatusColor(selectedAsset.status)}
-                                                        value={selectedAsset.status?.toUpperCase()}
+                                                        value={getStatusLabel(selectedAsset.status)}
                                                         className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                     />
                                                 </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Current Holder</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.currentHolder")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">
-                                                    {selectedAsset.current_holder_name || "Unassigned"}
+                                                    {selectedAsset.current_holder_name || t("assets.unassigned")}
                                                 </dd>
                                             </div>
                                         </dl>
@@ -751,26 +765,34 @@ export function Assets() {
                                 <Card className="shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-green-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Purchase Information
+                                            {t("assets.purchaseInformation")}
                                         </Typography>
                                     </CardHeader>
                                     <CardBody className="p-6">
                                         <dl className="divide-y divide-gray-100">
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Purchase Date</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{formatDate(selectedAsset.purchase_date)}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.purchaseDate")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {formatDate(selectedAsset.purchase_date)}
+                                                </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Purchase Cost</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{formatCurrency(selectedAsset.purchase_cost)}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.purchaseCost")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {formatCurrency(selectedAsset.purchase_cost)}
+                                                </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Created</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{formatDate(selectedAsset.created_at)}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.created")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {formatDate(selectedAsset.created_at)}
+                                                </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Last Updated</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{formatDate(selectedAsset.updated_at)}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.lastUpdated")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">
+                                                    {formatDate(selectedAsset.updated_at)}
+                                                </dd>
                                             </div>
                                         </dl>
                                     </CardBody>
@@ -782,7 +804,7 @@ export function Assets() {
                                 <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-orange-500 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Description
+                                            {t("assets.description")}
                                         </Typography>
                                     </CardHeader>
                                     <CardBody className="p-6">
@@ -793,7 +815,7 @@ export function Assets() {
                         </DialogBody>
 
                         <DialogFooter>
-                            <Button onClick={() => setShowViewModal(false)}>Close</Button>
+                            <Button onClick={() => setShowViewModal(false)}>{t("actions.close")}</Button>
                         </DialogFooter>
                     </>
                 )}
@@ -803,47 +825,47 @@ export function Assets() {
             <Dialog open={showDeleteModal} handler={() => setShowDeleteModal(false)} size="sm">
                 <DialogHeader className="flex items-center gap-2">
                     <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
-                    Confirm Delete
+                    {t("assets.confirmDelete")}
                 </DialogHeader>
                 <DialogBody>
-                    {error && (
-                        <Alert color="red" className="mb-4">
-                            {error}
-                        </Alert>
-                    )}
+                    {error && <Alert color="red" className="mb-4">{error}</Alert>}
 
                     {selectedAsset?.can_be_deleted === false ? (
                         <div className="space-y-4">
                             <Alert color="amber" className="flex items-center gap-2">
                                 <ExclamationTriangleIcon className="h-5 w-5" />
-                                <Typography variant="small">
-                                    This asset cannot be deleted because it is currently assigned to an employee.
-                                </Typography>
+                                <Typography variant="small">{t("assets.cannotDelete")}</Typography>
                             </Alert>
 
                             {selectedAsset && (
                                 <div className="p-4 bg-gray-50 rounded-lg">
                                     <Typography variant="small" className="font-semibold text-gray-800 mb-2">
-                                        Asset Details:
+                                        {t("assets.assetDetailsLabel")}
                                     </Typography>
                                     <div className="space-y-1 text-sm text-gray-600">
-                                        <div><strong>Name:</strong> {selectedAsset.name}</div>
-                                        <div><strong>Serial:</strong> {selectedAsset.serial_number}</div>
-                                        <div><strong>Status:</strong> {selectedAsset.status?.toUpperCase()}</div>
-                                        <div><strong>Assigned to:</strong> {selectedAsset.current_holder_name}</div>
+                                        <div>
+                                            <strong>{t("assets.name")}:</strong> {selectedAsset.name}
+                                        </div>
+                                        <div>
+                                            <strong>{t("assets.serial")}:</strong> {selectedAsset.serial_number}
+                                        </div>
+                                        <div>
+                                            <strong>{t("assets.status")}:</strong> {getStatusLabel(selectedAsset.status)}
+                                        </div>
+                                        <div>
+                                            <strong>{t("assets.assignedTo")}:</strong> {selectedAsset.current_holder_name}
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
                             <Typography variant="small" className="text-gray-700">
-                                To delete this asset, please return it first by creating a return transaction.
+                                {t("assets.returnAssetFirst")}
                             </Typography>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <Typography variant="paragraph">
-                                Are you sure you want to delete this asset? This action cannot be undone.
-                            </Typography>
+                            <Typography variant="paragraph">{t("assets.deleteConfirmation")}</Typography>
 
                             {selectedAsset && (
                                 <div className="p-3 bg-gray-100 rounded-lg">
@@ -851,10 +873,10 @@ export function Assets() {
                                         {selectedAsset.name}
                                     </Typography>
                                     <Typography variant="small" className="text-gray-600">
-                                        Serial: {selectedAsset.serial_number}
+                                        {t("assets.serial")}: {selectedAsset.serial_number}
                                     </Typography>
                                     <Typography variant="small" className="text-gray-600">
-                                        Status: {selectedAsset.status?.toUpperCase()}
+                                        {t("assets.status")}: {getStatusLabel(selectedAsset.status)}
                                     </Typography>
                                 </div>
                             )}
@@ -871,16 +893,12 @@ export function Assets() {
                         }}
                         className="mr-1"
                     >
-                        {selectedAsset?.can_be_deleted === false ? "Close" : "Cancel"}
+                        {selectedAsset?.can_be_deleted === false ? t("actions.close") : t("actions.cancel")}
                     </Button>
 
                     {selectedAsset?.can_be_deleted !== false && (
-                        <Button
-                            color="red"
-                            onClick={handleDelete}
-                            loading={formLoading}
-                        >
-                            Delete Asset
+                        <Button color="red" onClick={handleDelete} loading={formLoading}>
+                            {t("assets.deleteAsset")}
                         </Button>
                     )}
                 </DialogFooter>

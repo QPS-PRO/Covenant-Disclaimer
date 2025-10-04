@@ -29,8 +29,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { transactionAPI, assetAPI, employeeAPI, departmentAPI, formatters } from "@/lib/assetApi";
 import FaceRecognitionComponent from "../../components/FaceRecognitionComponent";
+import { useTranslation } from "react-i18next";
 
 export function Transactions() {
+    const { t } = useTranslation();
+
     const [transactions, setTransactions] = useState([]);
     const [assets, setAssets] = useState([]);
     const [employees, setEmployees] = useState([]);
@@ -76,18 +79,20 @@ export function Transactions() {
         issue: "green",
         return: "orange",
     };
+
+    // Labels localized
     const transactionTypeLabels = {
-        issue: "Assign",
-        return: "Return",
+        issue: t("transactions.assign"),
+        return: t("transactions.return"),
     };
 
-    // Return condition options
+    // Return condition options (localized)
     const returnConditionOptions = [
-        { value: "excellent", label: "Excellent" },
-        { value: "good", label: "Good" },
-        { value: "fair", label: "Fair" },
-        { value: "poor", label: "Poor" },
-        { value: "damaged", label: "Damaged" },
+        { value: "excellent", label: t("conditions.excellent") },
+        { value: "good", label: t("conditions.good") },
+        { value: "fair", label: t("conditions.fair") },
+        { value: "poor", label: t("conditions.poor") },
+        { value: "damaged", label: t("conditions.damaged") },
     ];
 
     // Initialize data
@@ -96,6 +101,7 @@ export function Transactions() {
             setMounted(true);
             initializeData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mounted]);
 
     const initializeData = async () => {
@@ -126,7 +132,7 @@ export function Transactions() {
             setTotalPages(Number(response?.total_pages || 1));
             setTotalCount(Number(response?.count || dataArray.length));
             setPage(Number(response?.current_page || 1));
-            setError(""); 
+            setError("");
         } catch (err) {
             const status = err?.response?.status ?? err?.status;
 
@@ -145,17 +151,17 @@ export function Transactions() {
                     setTotalPages(Number(fallback?.total_pages || 1));
                     setTotalCount(Number(fallback?.count || dataArray.length));
                     setPage(Number(fallback?.current_page || 1));
-                    setError(""); 
+                    setError("");
                     return;
                 } catch (e2) {
+                    /* ignore */
                 }
             }
 
-            setError("Failed to fetch transactions");
+            setError(t("transactionsPage.errors.fetchTransactions"));
             console.error(err);
         }
     };
-
 
     const fetchAssets = async () => {
         try {
@@ -196,13 +202,14 @@ export function Transactions() {
         }, 300);
 
         return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm, selectedDepartment, selectedType, mounted]);
 
     useEffect(() => {
         if (!mounted) return;
         fetchTransactions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page]);
-
 
     //Pager helpers
     const canPrev = page > 1;
@@ -218,7 +225,7 @@ export function Transactions() {
         }));
 
         // Reset face verification when employee changes
-        if (name === 'employee') {
+        if (name === "employee") {
             setFormData(prev => ({
                 ...prev,
                 face_verification_success: false
@@ -228,10 +235,8 @@ export function Transactions() {
         }
     };
 
-    // Face verification handlers with proper modal management (FIXED LOGIC)
+    // Face verification handlers with proper modal management
     const handleFaceVerificationSuccess = useCallback(async (result) => {
-        console.log('Face verification success:', result);
-
         setVerificationResult(result);
         // Store the actual face image data that was used for verification
         setCapturedFaceData(result.face_image_data || result.capturedImage || null);
@@ -242,45 +247,35 @@ export function Transactions() {
         setShowFaceModal(false);
         setSelectedEmployeeForVerification(null);
         setError("");
-
-        // Show success message
-        // setTimeout(() => {
-        //     alert(`Face verification successful! Confidence: ${formatters.formatConfidence(result.confidence)}`);
-        // }, 100);
     }, []);
 
-    const handleFaceVerificationError = useCallback((error) => {
-        console.log('Face verification error:', error);
-
-        setVerificationResult(error);
+    const handleFaceVerificationError = useCallback((err) => {
+        setVerificationResult(err);
         setFormData(prev => ({
             ...prev,
             face_verification_success: false
         }));
         setShowFaceModal(false);
         setSelectedEmployeeForVerification(null);
-        setError(error.error || "Face verification failed");
-    }, []);
+        setError(err?.error || t("transactionsPage.errors.faceFailed"));
+    }, [t]);
 
     const handleFaceModalClose = useCallback(() => {
-        console.log('Face modal close called');
         setShowFaceModal(false);
         setSelectedEmployeeForVerification(null);
     }, []);
 
     const startFaceVerification = useCallback(() => {
         if (!formData.employee) {
-            setError("Please select an employee first");
+            setError(t("transactionsPage.errors.selectEmployeeFirst"));
             return;
         }
 
         const selectedEmployee = employees.find(emp => emp.id.toString() === formData.employee);
         if (!selectedEmployee?.has_face_data) {
-            setError("Employee does not have face recognition data registered. Please register face data first.");
+            setError(t("transactionsPage.face.employeeNeedsRegistration"));
             return;
         }
-
-        console.log('Starting face verification for:', selectedEmployee.name);
 
         // Store the employee for verification but DON'T close the transaction modal
         setSelectedEmployeeForVerification(selectedEmployee);
@@ -290,20 +285,20 @@ export function Transactions() {
         setTimeout(() => {
             setShowFaceModal(true);
         }, 100);
-    }, [formData.employee, employees]);
+    }, [formData.employee, employees, t]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Validate face verification requirement
         if (formData.employee && !formData.face_verification_success) {
-            setError("Face verification is required and must be successful before creating a transaction.");
+            setError(t("transactionsPage.face.mustBeSuccessful"));
             return;
         }
 
         // Ensure we have face verification data if verification was successful
         if (formData.face_verification_success && !capturedFaceData) {
-            setError("Face verification data is missing. Please verify face again.");
+            setError(t("transactionsPage.face.missingData"));
             return;
         }
 
@@ -314,31 +309,20 @@ export function Transactions() {
             // Create transaction with face verification data
             const transactionData = {
                 ...formData,
-                face_verification_data: capturedFaceData // This should contain the base64 image data
+                face_verification_data: capturedFaceData // base64 image data
             };
-
-            console.log('Creating transaction with data:', {
-                ...transactionData,
-                face_verification_data: capturedFaceData ? 'IMAGE_DATA_PRESENT' : null
-            });
 
             await transactionAPI.create(transactionData);
 
             resetForm();
             handleModalClose();
             await fetchTransactions();
-
-            // Show success message
-            // setTimeout(() => {
-            //     alert('Transaction created successfully!');
-            // }, 100);
-
         } catch (err) {
-            console.error('Transaction creation error:', err);
+            console.error("Transaction creation error:", err);
 
-            let errorMessage = "Failed to create transaction";
+            let errorMessage = t("transactionsPage.errors.createFailed");
             if (err.response?.data) {
-                if (typeof err.response.data === 'string') {
+                if (typeof err.response.data === "string") {
                     errorMessage = err.response.data;
                 } else if (err.response.data.detail) {
                     errorMessage = err.response.data.detail;
@@ -349,12 +333,12 @@ export function Transactions() {
                     const errors = [];
                     Object.keys(err.response.data).forEach(field => {
                         if (Array.isArray(err.response.data[field])) {
-                            errors.push(`${field}: ${err.response.data[field].join(', ')}`);
+                            errors.push(`${field}: ${err.response.data[field].join(", ")}`);
                         } else {
                             errors.push(`${field}: ${err.response.data[field]}`);
                         }
                     });
-                    errorMessage = errors.join('; ') || errorMessage;
+                    errorMessage = errors.join("; ") || errorMessage;
                 }
             }
 
@@ -386,7 +370,7 @@ export function Transactions() {
             setSelectedTransaction(response);
             setShowViewModal(true);
         } catch (err) {
-            setError("Failed to fetch transaction details");
+            setError(t("transactionsPage.errors.fetchDetails"));
         }
     };
 
@@ -465,7 +449,7 @@ export function Transactions() {
                 <CardHeader variant="gradient" color="gray" className="mb-8 p-6">
                     <div className="flex items-center justify-between">
                         <Typography variant="h6" color="white">
-                            Asset Transactions
+                            {t("transactionsPage.title")}
                         </Typography>
                         <Button
                             className="flex items-center gap-3"
@@ -473,7 +457,7 @@ export function Transactions() {
                             onClick={() => setShowAddModal(true)}
                         >
                             <PlusIcon strokeWidth={2} className="h-4 w-4" />
-                            New Transaction
+                            {t("transactionsPage.newTransaction")}
                         </Button>
                     </div>
                 </CardHeader>
@@ -489,7 +473,7 @@ export function Transactions() {
                     <div className="flex flex-col md:flex-row gap-4 mb-6 px-6">
                         <div className="w-full md:w-72">
                             <Input
-                                label="Search transactions..."
+                                label={t("transactionsPage.searchPlaceholder")}
                                 icon={<MagnifyingGlassIcon className="h-5 w-5" />}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -497,7 +481,7 @@ export function Transactions() {
                         </div>
                         <div className="w-full md:w-48">
                             <Select
-                                label="Filter by Department"
+                                label={t("assets.filterByDepartment")}
                                 value={selectedDepartment ?? ""}
                                 onChange={(value) => setSelectedDepartment(value ?? "")}
                                 menuProps={{
@@ -514,13 +498,13 @@ export function Transactions() {
                                             ? String(element)
                                             : (selectedDepartment ?? "");
 
-                                    if (!rawValue) return "All Departments";
+                                    if (!rawValue) return t("assets.allDepartments");
 
                                     const d = departments.find(dep => dep.id.toString() === rawValue);
-                                    return d ? d.name : "All Departments";
+                                    return d ? d.name : t("assets.allDepartments");
                                 }}
                             >
-                                <Option value="">All Departments</Option>
+                                <Option value="">{t("assets.allDepartments")}</Option>
                                 {departments.map((dept) => (
                                     <Option key={dept.id} value={dept.id.toString()}>
                                         {dept.name}
@@ -530,13 +514,13 @@ export function Transactions() {
                         </div>
                         <div className="w-full md:w-48">
                             <Select
-                                label="Filter by Type"
+                                label={t("transactionsPage.filterByType")}
                                 value={selectedType}
                                 onChange={(value) => setSelectedType(value)}
                             >
-                                <Option value="">All Types</Option>
-                                <Option value="issue">Assign</Option>
-                                <Option value="return">Return</Option>
+                                <Option value="">{t("transactionsPage.allTypes")}</Option>
+                                <Option value="issue">{t("transactions.assign")}</Option>
+                                <Option value="return">{t("transactions.return")}</Option>
                             </Select>
                         </div>
                     </div>
@@ -546,7 +530,13 @@ export function Transactions() {
                         <table className="w-full min-w-[640px] table-auto">
                             <thead>
                                 <tr>
-                                    {["Type", "Asset", "Employee", "Date", "Processed By", "Verification", "Actions"].map((el) => (
+                                    {[t("transactionsPage.table.type"),
+                                      t("transactionsPage.table.asset"),
+                                      t("transactionsPage.table.employee"),
+                                      t("transactionsPage.table.date"),
+                                      t("transactionsPage.table.processedBy"),
+                                      t("transactionsPage.table.verification"),
+                                      t("transactionsPage.table.actions")].map((el) => (
                                         <th key={el} className="border-b border-blue-gray-50 py-3 px-5 text-left">
                                             <Typography variant="small" className="text-[11px] font-bold uppercase text-blue-gray-400">
                                                 {el}
@@ -582,7 +572,7 @@ export function Transactions() {
                                                         {transaction.asset_name}
                                                     </Typography>
                                                     <Typography className="text-xs font-normal text-blue-gray-500">
-                                                        SN: {transaction.asset_serial}
+                                                        {t("assets.serial")}: {transaction.asset_serial_number}
                                                     </Typography>
                                                 </div>
                                             </td>
@@ -592,7 +582,7 @@ export function Transactions() {
                                                         {transaction.employee_name}
                                                     </Typography>
                                                     <Typography className="text-xs font-normal text-blue-gray-500">
-                                                        ID: {transaction.employee_id}
+                                                        {t("employees.table.id")}: {transaction.employee_id}
                                                     </Typography>
                                                 </div>
                                             </td>
@@ -603,7 +593,7 @@ export function Transactions() {
                                             </td>
                                             <td className={className}>
                                                 <Typography className="text-xs font-normal text-blue-gray-500">
-                                                    {transaction.processed_by_name || "System"}
+                                                    {transaction.processed_by_name || t("transactionsPage.system")}
                                                 </Typography>
                                             </td>
                                             <td className={className}>
@@ -616,7 +606,7 @@ export function Transactions() {
                                                     <Chip
                                                         variant="gradient"
                                                         color={transaction.face_verification_success ? "blue" : "red"}
-                                                        value={transaction.face_verification_success ? "VERIFIED" : "NOT VERIFIED"}
+                                                        value={transaction.face_verification_success ? t("common.verified") : t("common.notVerified")}
                                                         className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                     />
                                                 </div>
@@ -639,14 +629,14 @@ export function Transactions() {
                     {/* Pager */}
                     <div className="flex items-center justify-between px-6 pb-2 text-sm text-blue-gray-600">
                         <span>
-                            Showing <b>{rangeStart}</b>–<b>{rangeEnd}</b> of <b>{totalCount}</b>
+                            {t("common.showing")} <b>{rangeStart}</b>–<b>{rangeEnd}</b> {t("common.of")} <b>{totalCount}</b>
                         </span>
                         <div className="flex items-center gap-2">
-                            <Button variant="text" size="sm" onClick={() => setPage(1)} disabled={!canPrev}>First</Button>
-                            <Button variant="text" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev}>Prev</Button>
-                            <span className="px-2">Page <b>{page}</b> of <b>{totalPages}</b></span>
-                            <Button variant="text" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext}>Next</Button>
-                            <Button variant="text" size="sm" onClick={() => setPage(totalPages)} disabled={!canNext}>Last</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage(1)} disabled={!canPrev}>{t("actions.first")}</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!canPrev}>{t("actions.previous")}</Button>
+                            <span className="px-2">{t("common.page")} <b>{page}</b> {t("common.of")} <b>{totalPages}</b></span>
+                            <Button variant="text" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={!canNext}>{t("actions.next")}</Button>
+                            <Button variant="text" size="sm" onClick={() => setPage(totalPages)} disabled={!canNext}>{t("actions.last")}</Button>
                         </div>
                     </div>
                 </CardBody>
@@ -654,11 +644,11 @@ export function Transactions() {
 
             {/* Add Transaction Modal */}
             <Dialog open={showAddModal && !showFaceModal} handler={handleModalClose} size="md">
-                <DialogHeader>Create New Transaction</DialogHeader>
+                <DialogHeader>{t("transactionsPage.createTitle")}</DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <DialogBody className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
                         <Select
-                            label="Transaction Type"
+                            label={t("transactionsPage.typeLabel")}
                             value={formData.transaction_type}
                             onChange={(value) => setFormData(prev => ({
                                 ...prev,
@@ -669,14 +659,14 @@ export function Transactions() {
                             }))}
                             required
                         >
-                            <Option value="issue">Assign Asset</Option>
-                            <Option value="return">Return Asset</Option>
+                            <Option value="issue">{t("transactionsPage.issueAsset")}</Option>
+                            <Option value="return">{t("transactionsPage.returnAsset")}</Option>
                         </Select>
 
                         {/* Searchable Asset Select */}
                         <div>
                             <Select
-                                label={`Asset (${formData.transaction_type === 'issue' ? 'Available Only' : 'Assigned Only'})`}
+                                label={`${t("transactionsPage.selectAsset")} (${formData.transaction_type === "issue" ? t("transactionsPage.availableOnly") : t("transactionsPage.assignedOnly")})`}
                                 value={formData.asset ?? ""}
                                 onChange={(value) =>
                                     setFormData((prev) => ({
@@ -699,18 +689,18 @@ export function Transactions() {
                                         typeof element === "string" || typeof element === "number"
                                             ? String(element)
                                             : formData.asset ?? "";
-                                    if (!raw) return "Select Asset";
+                                    if (!raw) return t("transactionsPage.selectAsset");
 
                                     const list = getFilteredAssets();
                                     const a =
                                         list.find((as) => as.id.toString() === raw) ||
                                         assets.find((as) => as.id.toString() === raw);
-                                    if (!a) return "Select Asset";
+                                    if (!a) return t("transactionsPage.selectAsset");
 
                                     let label = `${a.name} (${a.serial_number})`;
                                     if (formData.transaction_type === "return" && a.current_holder) {
                                         const holder = employees.find((emp) => emp.id === a.current_holder);
-                                        label += ` - ${holder?.name || "Unknown"}`;
+                                        label += ` - ${t("transactionsPage.currentlyWith")}: ${holder?.name || t("common.noData")}`;
                                     }
                                     return label;
                                 }}
@@ -726,7 +716,7 @@ export function Transactions() {
                                         onKeyDown={(e) => e.stopPropagation()}
                                     >
                                         <Input
-                                            placeholder="Search assets..."
+                                            placeholder={t("assets.searchAssets")}
                                             value={assetSearchTerm}
                                             onChange={(e) => setAssetSearchTerm(e.target.value)}
                                             icon={<MagnifyingGlassIcon className="h-4 w-4" />}
@@ -737,7 +727,7 @@ export function Transactions() {
                                     </div>
                                 </Option>
 
-                                <Option value="">Select Asset</Option>
+                                <Option value="">{t("transactionsPage.selectAsset")}</Option>
                                 {getFilteredAssets().map((asset) => (
                                     <Option key={asset.id} value={asset.id.toString()}>
                                         <div>
@@ -747,7 +737,7 @@ export function Transactions() {
                                             <div className="text-xs text-gray-500">
                                                 {asset.department_name}
                                                 {formData.transaction_type === "return" && asset.current_holder && (
-                                                    <> • Currently with: {employees.find((emp) => emp.id === asset.current_holder)?.name || "Unknown"}</>
+                                                    <> • {t("transactionsPage.currentlyWith")}: {employees.find((emp) => emp.id === asset.current_holder)?.name || t("common.noData")}</>
                                                 )}
                                             </div>
                                         </div>
@@ -755,9 +745,9 @@ export function Transactions() {
                                 ))}
                             </Select>
                             <Typography variant="small" color="gray" className="mt-1">
-                                {formData.transaction_type === 'issue'
-                                    ? `${getFilteredAssets().length} available assets found`
-                                    : `${getFilteredAssets().length} assigned assets found`
+                                {formData.transaction_type === "issue"
+                                    ? t("transactionsPage.foundAvailable", { count: getFilteredAssets().length })
+                                    : t("transactionsPage.foundAssigned", { count: getFilteredAssets().length })
                                 }
                             </Typography>
                         </div>
@@ -765,7 +755,7 @@ export function Transactions() {
                         {/* Searchable Employee Select */}
                         <div>
                             <Select
-                                label="Employee"
+                                label={t("transactionsPage.selectEmployee")}
                                 value={formData.employee ?? ""}
                                 onChange={(value) =>
                                     setFormData((prev) => ({
@@ -787,13 +777,13 @@ export function Transactions() {
                                         typeof element === "string" || typeof element === "number"
                                             ? String(element)
                                             : formData.employee ?? "";
-                                    if (!raw) return "Select Employee";
+                                    if (!raw) return t("transactionsPage.selectEmployee");
 
                                     const list = getFilteredEmployees();
                                     const e =
                                         list.find((emp) => emp.id.toString() === raw) ||
                                         employees.find((emp) => emp.id.toString() === raw);
-                                    if (!e) return "Select Employee";
+                                    if (!e) return t("transactionsPage.selectEmployee");
 
                                     return `${e.name} (${e.employee_id}) ${e.has_face_data ? " 🔒" : " ⚠️"}`;
                                 }}
@@ -810,7 +800,7 @@ export function Transactions() {
                                         onKeyDown={(e) => e.stopPropagation()}
                                     >
                                         <Input
-                                            placeholder="Search employees..."
+                                            placeholder={t("employees.searchPlaceholder")}
                                             value={employeeSearchTerm}
                                             onChange={(e) => setEmployeeSearchTerm(e.target.value)}
                                             icon={<MagnifyingGlassIcon className="h-4 w-4" />}
@@ -821,7 +811,7 @@ export function Transactions() {
                                     </div>
                                 </Option>
 
-                                <Option value="">Select Employee</Option>
+                                <Option value="">{t("transactionsPage.selectEmployee")}</Option>
                                 {getFilteredEmployees().map((employee) => (
                                     <Option key={employee.id} value={employee.id.toString()}>
                                         <div>
@@ -836,9 +826,9 @@ export function Transactions() {
                             </Select>
 
                             <Typography variant="small" color="gray" className="mt-1">
-                                {formData.transaction_type === 'return' && formData.asset
-                                    ? "Showing employee currently assigned to this asset"
-                                    : `${getFilteredEmployees().length} active employees found`
+                                {formData.transaction_type === "return" && formData.asset
+                                    ? t("transactionsPage.showingEmployeeForAsset")
+                                    : t("transactionsPage.foundEmployees", { count: getFilteredEmployees().length })
                                 }
                             </Typography>
                         </div>
@@ -850,18 +840,18 @@ export function Transactions() {
                                     <div className="flex items-center gap-2">
                                         <CameraIcon className="h-5 w-5 text-blue-500" />
                                         <Typography variant="h6" color="blue-gray">
-                                            Face Verification
+                                            {t("transactionsPage.face.section")}
                                         </Typography>
                                         <Chip
                                             color="red"
-                                            value="REQUIRED"
+                                            value={t("transactionsPage.face.required")}
                                             className="text-xs"
                                         />
                                     </div>
                                     {formData.face_verification_success && (
                                         <Chip
                                             color="green"
-                                            value="VERIFIED"
+                                            value={t("transactionsPage.face.verified")}
                                             icon={<CheckCircleIcon className="h-4 w-4" />}
                                         />
                                     )}
@@ -870,10 +860,10 @@ export function Transactions() {
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
                                         <Typography variant="small" color="gray">
-                                            Employee: {getSelectedEmployee()?.name}
+                                            {t("employees.profile.name")}: {getSelectedEmployee()?.name}
                                         </Typography>
                                         <Typography variant="small" color={getSelectedEmployee()?.has_face_data ? "green" : "red"}>
-                                            {getSelectedEmployee()?.has_face_data ? "Face data available ✓" : "No face data ⚠️"}
+                                            {getSelectedEmployee()?.has_face_data ? t("transactionsPage.face.faceDataAvailable") : t("transactionsPage.face.noFaceData")}
                                         </Typography>
                                     </div>
 
@@ -887,14 +877,14 @@ export function Transactions() {
                                                     className="flex items-center gap-2"
                                                 >
                                                     <CameraIcon className="h-4 w-4" />
-                                                    {formData.face_verification_success ? "Re-verify Face" : "Verify Face"}
+                                                    {formData.face_verification_success ? t("transactionsPage.face.reverify") : t("transactionsPage.face.verify")}
                                                 </Button>
 
                                                 {verificationResult && (
                                                     <Typography variant="small" color={verificationResult.success ? "green" : "red"}>
-                                                        {verificationResult.success ?
-                                                            `Confidence: ${formatters.formatConfidence(verificationResult.confidence)}` :
-                                                            "Verification failed"
+                                                        {verificationResult.success
+                                                            ? `${t("transactionsPage.confidence")}: ${formatters.formatConfidence(verificationResult.confidence)}`
+                                                            : t("transactionsPage.errors.faceFailed")
                                                         }
                                                     </Typography>
                                                 )}
@@ -903,8 +893,7 @@ export function Transactions() {
                                             {!formData.face_verification_success && (
                                                 <Alert color="orange">
                                                     <Typography variant="small">
-                                                        Face verification is required before creating the transaction.
-                                                        Click the "Verify Face" button above to proceed.
+                                                        {t("transactionsPage.face.requiredMsg")}
                                                     </Typography>
                                                 </Alert>
                                             )}
@@ -912,9 +901,9 @@ export function Transactions() {
                                             {verificationResult && !verificationResult.success && (
                                                 <Alert color="red">
                                                     <Typography variant="small">
-                                                        Face verification failed: {verificationResult.error}
+                                                        {t("transactionsPage.errors.faceFailed")}
                                                         {verificationResult.confidence && (
-                                                            ` (Confidence: ${formatters.formatConfidence(verificationResult.confidence)}, Required: ${((verificationResult.threshold || 0.6) * 100).toFixed(0)}%)`
+                                                            ` (${t("transactionsPage.confidence")}: ${formatters.formatConfidence(verificationResult.confidence)}, ${t("transactionsPage.face.required")}: ${((verificationResult.threshold || 0.6) * 100).toFixed(0)}%)`
                                                         )}
                                                     </Typography>
                                                 </Alert>
@@ -923,8 +912,7 @@ export function Transactions() {
                                     ) : (
                                         <Alert color="amber">
                                             <Typography variant="small">
-                                                This employee doesn't have face recognition data registered.
-                                                Please register face data in the employee management section first.
+                                                {t("transactionsPage.face.employeeNeedsRegistration")}
                                             </Typography>
                                         </Alert>
                                     )}
@@ -933,7 +921,7 @@ export function Transactions() {
                         )}
 
                         <Textarea
-                            label="Notes (Optional)"
+                            label={t("transactionsPage.notesOptional")}
                             name="notes"
                             value={formData.notes}
                             onChange={handleInputChange}
@@ -941,7 +929,7 @@ export function Transactions() {
 
                         {formData.transaction_type === "return" && (
                             <Select
-                                label="Return Condition"
+                                label={t("transactionsPage.returnCondition")}
                                 value={formData.return_condition ?? ""}
                                 onChange={(value) =>
                                     setFormData((prev) => ({
@@ -964,16 +952,16 @@ export function Transactions() {
                                         typeof element === "string" || typeof element === "number"
                                             ? String(element)
                                             : formData.return_condition ?? "";
-                                    if (!v) return "Select Condition";
+                                    if (!v) return t("transactionsPage.selectCondition");
                                     return (
                                         returnConditionOptions.find((o) => o.value === v)?.label ||
-                                        "Select Condition"
+                                        t("transactionsPage.selectCondition")
                                     );
                                 }}
                             >
                                 {/* Make placeholder non-selectable to avoid “sticking” */}
                                 <Option value="" disabled>
-                                    Select Condition
+                                    {t("transactionsPage.selectCondition")}
                                 </Option>
 
                                 {returnConditionOptions.map((option) => (
@@ -987,7 +975,7 @@ export function Transactions() {
                     </DialogBody>
                     <DialogFooter>
                         <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
-                            Cancel
+                            {t("actions.cancel")}
                         </Button>
                         <Button
                             type="submit"
@@ -995,7 +983,7 @@ export function Transactions() {
                             disabled={formData.employee && !formData.face_verification_success}
                             color={formData.face_verification_success ? "green" : "gray"}
                         >
-                            {formData.face_verification_success ? "Create Transaction" : "Verification Required"}
+                            {formData.face_verification_success ? t("transactionsPage.createBtn") : t("transactionsPage.verificationRequiredBtn")}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -1019,7 +1007,7 @@ export function Transactions() {
                 {selectedTransaction && (
                     <>
                         <DialogHeader>
-                            Transaction Details - {transactionTypeLabels[selectedTransaction.transaction_type] ?? "—"}
+                            {t("transactionsPage.detailsTitle")} - {transactionTypeLabels[selectedTransaction.transaction_type] ?? "—"}
                         </DialogHeader>
 
                         <DialogBody className="max-h-[70vh] overflow-y-auto">
@@ -1028,13 +1016,13 @@ export function Transactions() {
                                 <Card className="shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-blue-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Transaction Information
+                                            {t("transactionsPage.infoCard")}
                                         </Typography>
                                     </CardHeader>
                                     <CardBody className="p-6">
                                         <dl className="divide-y divide-gray-100">
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Type</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("transactionsPage.table.type")}</dt>
                                                 <dd className="col-span-3 flex justify-end">
                                                     <Chip
                                                         variant="gradient"
@@ -1045,19 +1033,19 @@ export function Transactions() {
                                                 </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Date</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("transactionsPage.table.date")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">
                                                     {formatters.formatDate(selectedTransaction.transaction_date)}
                                                 </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Processed By</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("transactionsPage.table.processedBy")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">
-                                                    {selectedTransaction.processed_by_name || "System"}
+                                                    {selectedTransaction.processed_by_name || t("transactionsPage.system")}
                                                 </dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Face Verification</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("transactionsPage.table.verification")}</dt>
                                                 <dd className="col-span-3 flex items-center justify-end gap-1">
                                                     {selectedTransaction.face_verification_success ? (
                                                         <CheckCircleIcon className="h-4 w-4 text-green-500" />
@@ -1067,14 +1055,14 @@ export function Transactions() {
                                                     <Chip
                                                         variant="gradient"
                                                         color={selectedTransaction.face_verification_success ? "green" : "red"}
-                                                        value={selectedTransaction.face_verification_success ? "VERIFIED" : "NOT VERIFIED"}
+                                                        value={selectedTransaction.face_verification_success ? t("common.verified") : t("common.notVerified")}
                                                         className="py-0.5 px-2 text-[11px] font-medium w-fit"
                                                     />
                                                 </dd>
                                             </div>
                                             {selectedTransaction.face_verification_confidence > 0 && (
                                                 <div className="grid grid-cols-5 items-center py-2">
-                                                    <dt className="col-span-2 text-sm font-medium text-gray-600">Confidence</dt>
+                                                    <dt className="col-span-2 text-sm font-medium text-gray-600">{t("transactionsPage.confidence")}</dt>
                                                     <dd className="col-span-3 text-sm text-gray-900 text-right">
                                                         {formatters.formatConfidence(selectedTransaction.face_verification_confidence)}
                                                     </dd>
@@ -1088,25 +1076,25 @@ export function Transactions() {
                                 <Card className="shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-green-600 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Asset & Employee Details
+                                            {t("transactionsPage.assetEmployeeCard")}
                                         </Typography>
                                     </CardHeader>
                                     <CardBody className="p-6">
                                         <dl className="divide-y divide-gray-100">
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Asset</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("transactionsPage.table.asset")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.asset_name}</dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Serial Number</dt>
-                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.asset_serial}</dd>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("assets.serialNumber")}</dt>
+                                                <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.asset_serial_number}</dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Employee</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("transactionsPage.table.employee")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.employee_name}</dd>
                                             </div>
                                             <div className="grid grid-cols-5 items-center py-2">
-                                                <dt className="col-span-2 text-sm font-medium text-gray-600">Employee ID</dt>
+                                                <dt className="col-span-2 text-sm font-medium text-gray-600">{t("employees.profile.employeeId")}</dt>
                                                 <dd className="col-span-3 text-sm text-gray-900 text-right">{selectedTransaction.employee_id}</dd>
                                             </div>
                                         </dl>
@@ -1118,28 +1106,31 @@ export function Transactions() {
                                 <Card className="mt-6 shadow-sm rounded-xl overflow-hidden">
                                     <CardHeader floated={false} shadow={false} className="bg-orange-500 px-5 py-3">
                                         <Typography variant="h6" color="white" className="text-center">
-                                            Additional Information
+                                            {t("transactionsPage.additionalInfo")}
                                         </Typography>
                                     </CardHeader>
                                     <CardBody className="p-6">
                                         <div className="space-y-3">
                                             {selectedTransaction.notes && (
                                                 <div>
-                                                    <span className="font-semibold">Notes:</span>
+                                                    <span className="font-semibold">{t("employees.profile.notes")}:</span>
                                                     <p className="mt-1 text-sm text-gray-700">{selectedTransaction.notes}</p>
                                                 </div>
                                             )}
                                             {selectedTransaction.return_condition && (
                                                 <div className="flex justify-between">
-                                                    <span className="font-semibold">Return Condition:</span>
+                                                    <span className="font-semibold">{t("transactionsPage.returnCondition")}:</span>
                                                     <Chip
                                                         color={
                                                             selectedTransaction.return_condition === "excellent" ? "green" :
-                                                                selectedTransaction.return_condition === "good" ? "blue" :
-                                                                    selectedTransaction.return_condition === "fair" ? "orange" :
-                                                                        selectedTransaction.return_condition === "poor" ? "amber" : "red"
+                                                            selectedTransaction.return_condition === "good" ? "blue" :
+                                                            selectedTransaction.return_condition === "fair" ? "orange" :
+                                                            selectedTransaction.return_condition === "poor" ? "amber" : "red"
                                                         }
-                                                        value={selectedTransaction.return_condition.toUpperCase()}
+                                                        value={
+                                                            returnConditionOptions.find(o => o.value === selectedTransaction.return_condition)?.label ??
+                                                            selectedTransaction.return_condition.toUpperCase()
+                                                        }
                                                         className="text-xs"
                                                     />
                                                 </div>
@@ -1151,7 +1142,7 @@ export function Transactions() {
                         </DialogBody>
 
                         <DialogFooter>
-                            <Button onClick={() => setShowViewModal(false)}>Close</Button>
+                            <Button onClick={() => setShowViewModal(false)}>{t("transactionsPage.viewClose")}</Button>
                         </DialogFooter>
                     </>
                 )}
