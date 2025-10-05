@@ -1,3 +1,4 @@
+// frontend/src/routes.jsx
 import {
   HomeIcon,
   ServerStackIcon,
@@ -10,6 +11,7 @@ import {
   Cog6ToothIcon,
   DocumentCheckIcon,
   ClipboardDocumentCheckIcon,
+  ClockIcon,
 } from "@heroicons/react/24/solid";
 import { Home } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
@@ -17,8 +19,10 @@ import { Employees, Assets, Departments, Transactions, EmployeeProfile } from "@
 
 // Disclaimer components
 import EmployeeDisclaimerPage from "@/pages/dashboard/employee-disclaimer";
+import EmployeeDisclaimerHistory from "@/pages/dashboard/manager-disclaimer-history";
 import ManagerDisclaimerConfiguration from "@/pages/dashboard/manager-disclaimer-config";
 import ManagerPendingRequests from "@/pages/dashboard/manager-pending-requests";
+import ManagerDisclaimerHistory from "@/pages/dashboard/manager-disclaimer-history";
 import AdminDisclaimerConfig from "@/pages/dashboard/admin-disclaimer-config";
 
 // Import auth helpers
@@ -91,6 +95,13 @@ export const routes = [
         element: <ManagerDisclaimerConfiguration />,
         hideFromSidebar: (user) => !isDepartmentManager(user),
       },
+      {
+        icon: <ClockIcon {...icon} />,
+        name: "Request History",
+        path: "/disclaimer-history",
+        element: <ManagerDisclaimerHistory />,
+        hideFromSidebar: (user) => !isDepartmentManager(user),
+      },
 
       // EMPLOYEE ONLY PAGES
       {
@@ -98,6 +109,13 @@ export const routes = [
         name: "My Disclaimer",
         path: "/my-disclaimer",
         element: <EmployeeDisclaimerPage />,
+        hideFromSidebar: (user) => !isRegularEmployee(user),
+      },
+      {
+        icon: <ClockIcon {...icon} />,
+        name: "My History",
+        path: "/my-disclaimer-history",
+        element: <EmployeeDisclaimerHistory />,
         hideFromSidebar: (user) => !isRegularEmployee(user),
       },
 
