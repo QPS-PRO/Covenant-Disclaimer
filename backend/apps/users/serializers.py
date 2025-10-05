@@ -1,4 +1,3 @@
-# backend/apps/users/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from dj_rest_auth.registration.serializers import RegisterSerializer
@@ -10,9 +9,11 @@ class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for the User model with permission flags.
     """
+
     is_department_manager = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
     department_id = serializers.SerializerMethodField()
+    employee_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -26,6 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_department_manager",
             "department",
             "department_id",
+            "employee_profile",
         )
         read_only_fields = ("email", "is_staff", "is_superuser")
 
@@ -51,6 +53,23 @@ class UserSerializer(serializers.ModelSerializer):
             employee = obj.employee_profile
             return employee.department.id
         except:
+            return None
+
+    def get_employee_profile(self, obj):
+        """Get complete employee profile data"""
+        try:
+            employee = obj.employee_profile
+            return {
+                "id": employee.id,
+                "employee_id": employee.employee_id,
+                "name": employee.name,
+                "department_id": employee.department.id,
+                "department_name": employee.department.name,
+                "is_active": employee.is_active,
+                "has_face_data": employee.has_face_data,
+                "is_department_manager": employee.department.manager == obj,
+            }
+        except Exception as e:
             return None
 
 

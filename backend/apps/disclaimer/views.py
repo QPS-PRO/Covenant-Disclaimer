@@ -81,6 +81,7 @@ def disclaimer_department_config_detail_view(request, pk):
 # ============ DEPARTMENT MANAGER VIEWS ============
 
 
+#
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsDepartmentManager])
 def department_disclaimer_orders_view(request):
@@ -103,14 +104,14 @@ def department_disclaimer_orders_view(request):
 
         # Get available departments for adding
         configured_dept_ids = orders.values_list("target_department_id", flat=True)
+        
+        # Get all departments that require disclaimer (including own department)
         available_departments = (
             DisclaimerDepartmentConfig.objects.filter(
                 requires_disclaimer=True, is_active=True
             )
             .exclude(department_id__in=configured_dept_ids)
-            .exclude(
-                department=department  # Can't add own department
-            )
+            # REMOVED: .exclude(department=department)  # Now managers CAN add their own department
             .select_related("department")
         )
 
@@ -131,8 +132,8 @@ def department_disclaimer_orders_view(request):
         return Response(
             {"error": "Employee profile not found"}, status=status.HTTP_404_NOT_FOUND
         )
-
-
+        
+        
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsDepartmentManager])
 def department_disclaimer_order_create_view(request):

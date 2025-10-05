@@ -1,35 +1,55 @@
-// src/App.jsx
+// frontend/src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Dashboard, Auth } from "./layouts";
-import { AuthProvider } from "./lib/api";
+import { AuthProvider, useAuth } from "./lib/api";
 import { LanguageProvider } from "./context/LanguageContext";
 import { RequireAuth } from "./utils/RequireAuth";
 import { RequireGuest } from "./utils/RequireGuest";
-import './lib/i18n'; // Initialize i18n
+import { getDefaultRoute } from "./utils/authHelpers";
+import './lib/i18n';
+
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  const defaultRoute = getDefaultRoute(user);
+
+  return (
+    <Routes>
+      <Route
+        path="/auth/*"
+        element={
+          <RequireGuest>
+            <Auth />
+          </RequireGuest>
+        }
+      />
+      <Route
+        path="/dashboard/*"
+        element={
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        }
+      />
+      <Route path="/" element={<Navigate to={defaultRoute} replace />} />
+      <Route path="*" element={<Navigate to={defaultRoute} replace />} />
+    </Routes>
+  );
+}
 
 function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <Routes>
-          <Route
-            path="/auth/*"
-            element={
-              <RequireGuest>
-                <Auth />
-              </RequireGuest>
-            }
-          />
-          <Route
-            path="/dashboard/*"
-            element={
-              <RequireAuth>
-                <Dashboard />
-              </RequireAuth>
-            }
-          />
-          <Route path="*" element={<Navigate to="/dashboard/home" replace />} />
-        </Routes>
+        <AppRoutes />
       </AuthProvider>
     </LanguageProvider>
   );
