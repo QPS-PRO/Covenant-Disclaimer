@@ -1,4 +1,5 @@
 // frontend/src/pages/dashboard/manager-disclaimer-history.jsx
+
 import React, { useState, useEffect } from 'react';
 import {
     Card,
@@ -42,11 +43,12 @@ export default function ManagerDisclaimerHistory() {
             const stats = await disclaimerManagerAPI.getStatistics();
             setStatistics(stats);
 
-            // Load all requests (we'll need to create this endpoint)
-            // For now, we'll use pending requests as a placeholder
-            const pending = await disclaimerManagerAPI.getPendingRequests();
-            setAllRequests(pending || []);
+            // FIXED: Load ALL requests, not just pending
+            const allRequestsData = await disclaimerManagerAPI.getAllRequests();
+            setAllRequests(allRequestsData || []);
+
         } catch (err) {
+            console.error('Error loading data:', err);
             setError(err.message || 'Failed to load data');
         } finally {
             setLoading(false);
@@ -136,18 +138,18 @@ export default function ManagerDisclaimerHistory() {
                         </Alert>
                     )}
 
-                    <Tabs value={activeTab} onChange={setActiveTab}>
+                    <Tabs value={activeTab}>
                         <TabsHeader>
-                            <Tab value="all">
+                            <Tab value="all" onClick={() => setActiveTab('all')}>
                                 All ({allRequests.length})
                             </Tab>
-                            <Tab value="pending">
+                            <Tab value="pending" onClick={() => setActiveTab('pending')}>
                                 Pending ({filterRequests('pending').length})
                             </Tab>
-                            <Tab value="approved">
+                            <Tab value="approved" onClick={() => setActiveTab('approved')}>
                                 Approved ({filterRequests('approved').length})
                             </Tab>
-                            <Tab value="rejected">
+                            <Tab value="rejected" onClick={() => setActiveTab('rejected')}>
                                 Rejected ({filterRequests('rejected').length})
                             </Tab>
                         </TabsHeader>

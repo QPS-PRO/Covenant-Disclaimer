@@ -588,3 +588,31 @@ def disclaimer_statistics_view(request):
         return Response(
             {"error": "Employee profile not found"}, status=status.HTTP_404_NOT_FOUND
         )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsDepartmentManager])
+def manager_all_requests_view(request):
+    """
+    GET: Get all disclaimer requests for manager's department (not just pending)
+    """
+    try:
+        employee = request.user.employee_profile
+        department = employee.department
+
+        # Get ALL requests for this department, not just pending
+        requests = (
+            DisclaimerRequest.objects.filter(
+                target_department=department
+            )
+            .select_related("employee__user", "employee__department", "reviewed_by")
+            .order_by("-created_at")
+        )
+
+        serializer = DisclaimerRequestSerializer(requests, many=True)
+        return Response(serializer.data)
+
+    except Employee.DoesNotExist:
+        return Response(
+            {"error": "Employee profile not found"}, status=status.HTTP_404_NOT_FOUND
+        )

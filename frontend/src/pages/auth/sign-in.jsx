@@ -1,4 +1,3 @@
-// frontend/src/pages/auth/sign-in.jsx
 import { useState } from "react";
 import {
   Card,
@@ -12,6 +11,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../lib/api";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/context/LanguageContext";
+import { getDefaultRoute } from "@/utils/authHelpers";
 
 export function SignIn() {
   const [formData, setFormData] = useState({
@@ -29,7 +29,7 @@ export function SignIn() {
   const { isRTL } = useLanguage();
 
   // Get the page user was trying to access
-  const from = location.state?.from?.pathname || "/dashboard/home";
+  // const from = location.state?.from?.pathname || "/dashboard/home";
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -51,8 +51,8 @@ export function SignIn() {
       });
 
       if (result.success) {
-        // Redirect to intended page or dashboard
-        navigate(from, { replace: true });
+        const redirectTo = location.state?.from?.pathname || getDefaultRoute(result.user);
+        navigate(redirectTo, { replace: true });
       } else {
         setError(result.error || t('auth.loginFailed'));
       }
@@ -74,14 +74,14 @@ export function SignIn() {
             {t('auth.enterEmailPassword')}
           </Typography>
         </div>
-        
+
         <form className="mt-8 mb-2 mx-auto w-80 max-w-screen-lg lg:w-1/2" onSubmit={handleSubmit}>
           {error && (
             <Alert color="red" className="mb-6">
               {error}
             </Alert>
           )}
-          
+
           <div className="mb-1 flex flex-col gap-6">
             <Typography variant="small" color="blue-gray" className="-mb-3 font-medium">
               {t('auth.email')}
@@ -116,7 +116,7 @@ export function SignIn() {
               required
             />
           </div>
-          
+
           <Checkbox
             name="remember"
             checked={formData.remember}
@@ -132,7 +132,7 @@ export function SignIn() {
             }
             containerProps={{ className: `${isRTL ? '-mr-2.5' : '-ml-2.5'}` }}
           />
-          
+
           <Button className="mt-6" fullWidth type="submit" disabled={loading}>
             {loading ? t('auth.signingIn') : t('auth.signIn')}
           </Button>
@@ -145,7 +145,7 @@ export function SignIn() {
               </Link>
             </Typography>
           </div>
-          
+
           <Typography variant="paragraph" className={`text-center text-blue-gray-500 font-medium mt-4 ${isRTL ? 'text-right' : ''}`}>
             {t('auth.notRegistered')}
             <Link to="/auth/sign-up" className={`text-gray-900 ${isRTL ? 'mr-1' : 'ml-1'}`}>
@@ -154,7 +154,7 @@ export function SignIn() {
           </Typography>
         </form>
       </div>
-      
+
       <div className={`w-2/5 h-full hidden lg:block ${isRTL ? 'order-first' : ''}`}>
         <img
           src="/img/pattern.png"

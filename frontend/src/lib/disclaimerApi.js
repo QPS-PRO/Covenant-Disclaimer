@@ -23,6 +23,17 @@ export const disclaimerManagerAPI = {
 
     // Statistics
     getStatistics: () => apiGet('/api/disclaimers/statistics/'),
+
+    // FIXED: use apiGet and the /api/disclaimers/... base path
+    getAllRequests: async () => {
+        try {
+            const data = await apiGet('/api/disclaimers/manager/all-requests/');
+            return data;
+        } catch (error) {
+            console.error('Error fetching all requests:', error);
+            throw error;
+        }
+    },
 };
 
 // ============ EMPLOYEE API ============

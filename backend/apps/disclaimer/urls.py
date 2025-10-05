@@ -71,4 +71,9 @@ urlpatterns = [
     ),
     # ============ GENERAL ENDPOINTS ============
     path("statistics/", views.disclaimer_statistics_view, name="disclaimer-statistics"),
+    path(
+        "manager/all-requests/",
+        views.manager_all_requests_view,
+        name="manager-all-requests",
+    ),
 ]
