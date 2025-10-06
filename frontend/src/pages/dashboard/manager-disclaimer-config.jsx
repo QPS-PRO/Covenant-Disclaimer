@@ -22,9 +22,11 @@ import {
     ArrowDownIcon,
     Bars3Icon
 } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 import { disclaimerManagerAPI } from '@/lib/disclaimerApi';
 
 export default function ManagerDisclaimerConfiguration() {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [orders, setOrders] = useState([]);
     const [availableDepartments, setAvailableDepartments] = useState([]);
@@ -48,7 +50,7 @@ export default function ManagerDisclaimerConfiguration() {
             setAvailableDepartments(data.available_departments || []);
             setDepartment(data.department);
         } catch (err) {
-            setError(err.message || 'Failed to load disclaimer configuration');
+            setError(err.message || t('managerDisclaimerConfig.errors.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -63,53 +65,45 @@ export default function ManagerDisclaimerConfiguration() {
             await disclaimerManagerAPI.createDisclaimerOrder({
                 target_department: parseInt(selectedDepartment)
             });
-            setSuccess('Department added successfully!');
+            setSuccess(t('managerDisclaimerConfig.success.added'));
             setShowAddDialog(false);
             setSelectedDepartment('');
             await loadOrders();
         } catch (err) {
-            setError(err.message || 'Failed to add department');
+            setError(err.message || t('managerDisclaimerConfig.errors.addFailed'));
         } finally {
             setSubmitting(false);
         }
     };
 
     const handleDeleteDepartment = async (orderId) => {
-        if (!window.confirm('Are you sure you want to remove this department from the disclaimer flow?')) {
+        if (!window.confirm(t('managerDisclaimerConfig.confirmRemove'))) {
             return;
         }
 
         try {
             setError(null);
             await disclaimerManagerAPI.deleteDisclaimerOrder(orderId);
-            setSuccess('Department removed successfully!');
+            setSuccess(t('managerDisclaimerConfig.success.removed'));
             await loadOrders();
         } catch (err) {
-            setError(err.message || 'Failed to remove department');
+            setError(err.message || t('managerDisclaimerConfig.errors.removeFailed'));
         }
     };
 
-    const handleMoveUp = async (index) => {
-        if (index === 0) return;
+    // const handleMoveUp = async (index) => {
+    //     if (index === 0) return;
+    //     const newOrders = [...orders];
+    //     [newOrders[index - 1], newOrders[index]] = [newOrders[index], newOrders[index - 1]];
+    //     await updateOrdersOnServer(newOrders);
+    // };
 
-        const newOrders = [...orders];
-        const temp = newOrders[index];
-        newOrders[index] = newOrders[index - 1];
-        newOrders[index - 1] = temp;
-
-        await updateOrdersOnServer(newOrders);
-    };
-
-    const handleMoveDown = async (index) => {
-        if (index === orders.length - 1) return;
-
-        const newOrders = [...orders];
-        const temp = newOrders[index];
-        newOrders[index] = newOrders[index + 1];
-        newOrders[index + 1] = temp;
-
-        await updateOrdersOnServer(newOrders);
-    };
+    // const handleMoveDown = async (index) => {
+    //     if (index === orders.length - 1) return;
+    //     const newOrders = [...orders];
+    //     [newOrders[index + 1], newOrders[index]] = [newOrders[index], newOrders[index + 1]];
+    //     await updateOrdersOnServer(newOrders);
+    // };
 
     const updateOrdersOnServer = async (newOrders) => {
         try {
@@ -118,13 +112,12 @@ export default function ManagerDisclaimerConfiguration() {
                 id: order.id,
                 order: idx + 1
             }));
-
             const updatedOrders = await disclaimerManagerAPI.reorderDisclaimerOrders(ordersData);
             setOrders(updatedOrders);
-            setSuccess('Order updated successfully!');
+            setSuccess(t('managerDisclaimerConfig.success.reordered'));
         } catch (err) {
-            setError(err.message || 'Failed to update order');
-            await loadOrders(); // Reload to reset state
+            setError(err.message || t('managerDisclaimerConfig.errors.reorderFailed'));
+            await loadOrders();
         }
     };
 
@@ -143,14 +136,14 @@ export default function ManagerDisclaimerConfiguration() {
                     <div className="mb-6 flex justify-between items-center">
                         <div>
                             <Typography variant="h4" color="blue-gray" className="mb-2">
-                                Disclaimer Flow Configuration
+                                {t('managerDisclaimerConfig.title')}
                             </Typography>
                             <Typography color="gray" className="font-normal">
-                                Configure the order of departments for disclaimer clearance
+                                {t('managerDisclaimerConfig.subtitle')}
                             </Typography>
                             {department && (
                                 <Chip
-                                    value={`Managing: ${department.name}`}
+                                    value={t('managerDisclaimerConfig.managing', { name: department.name })}
                                     color="blue"
                                     className="mt-2"
                                 />
@@ -163,7 +156,7 @@ export default function ManagerDisclaimerConfiguration() {
                             disabled={availableDepartments.length === 0}
                         >
                             <PlusIcon className="h-5 w-5" />
-                            Add Department
+                            {t('managerDisclaimerConfig.addDept')}
                         </Button>
                     </div>
 
@@ -183,10 +176,10 @@ export default function ManagerDisclaimerConfiguration() {
                         <div className="text-center py-12">
                             <Bars3Icon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                             <Typography color="gray" className="mb-4">
-                                No departments configured yet
+                                {t('managerDisclaimerConfig.empty.title')}
                             </Typography>
                             <Typography variant="small" color="gray">
-                                Add departments to create the disclaimer flow for your employees
+                                {t('managerDisclaimerConfig.empty.body')}
                             </Typography>
                         </div>
                     ) : (
@@ -208,13 +201,13 @@ export default function ManagerDisclaimerConfiguration() {
                                                     {order.target_department_name}
                                                 </Typography>
                                                 <Typography variant="small" color="gray">
-                                                    Step {order.order} in the disclaimer flow
+                                                    {t('managerDisclaimerConfig.stepBadge', { order: order.order })}
                                                 </Typography>
                                             </div>
 
                                             {/* Actions */}
                                             <div className="flex items-center gap-2">
-                                                <IconButton
+                                                {/* <IconButton
                                                     variant="text"
                                                     color="blue-gray"
                                                     onClick={() => handleMoveUp(index)}
@@ -229,7 +222,7 @@ export default function ManagerDisclaimerConfiguration() {
                                                     disabled={index === orders.length - 1}
                                                 >
                                                     <ArrowDownIcon className="h-5 w-5" />
-                                                </IconButton>
+                                                </IconButton> */}
                                                 <IconButton
                                                     variant="text"
                                                     color="red"
@@ -247,7 +240,7 @@ export default function ManagerDisclaimerConfiguration() {
 
                     {availableDepartments.length === 0 && orders.length > 0 && (
                         <Alert color="blue" className="mt-4">
-                            All available disclaimer departments have been added to the flow.
+                            {t('managerDisclaimerConfig.allAdded')}
                         </Alert>
                     )}
                 </CardBody>
@@ -255,14 +248,14 @@ export default function ManagerDisclaimerConfiguration() {
 
             {/* Add Department Dialog */}
             <Dialog open={showAddDialog} handler={() => setShowAddDialog(false)} size="sm">
-                <DialogHeader>Add Department to Disclaimer Flow</DialogHeader>
+                <DialogHeader>{t('managerDisclaimerConfig.dialog.title')}</DialogHeader>
                 <DialogBody divider>
                     <div className="space-y-4">
                         <Typography>
-                            Select a department to add to the disclaimer flow:
+                            {t('managerDisclaimerConfig.dialog.help')}
                         </Typography>
                         <Select
-                            label="Select Department"
+                            label={t('managerDisclaimerConfig.dialog.selectLabel')}
                             value={selectedDepartment}
                             onChange={(val) => setSelectedDepartment(val)}
                         >
@@ -274,7 +267,7 @@ export default function ManagerDisclaimerConfiguration() {
                         </Select>
                         {availableDepartments.length === 0 && (
                             <Alert color="amber">
-                                No more departments available to add. All configured departments are already in the flow.
+                                {t('managerDisclaimerConfig.dialog.noneLeft')}
                             </Alert>
                         )}
                     </div>
@@ -289,14 +282,14 @@ export default function ManagerDisclaimerConfiguration() {
                         }}
                         disabled={submitting}
                     >
-                        Cancel
+                        {t('managerDisclaimerConfig.dialog.cancel')}
                     </Button>
                     <Button
                         color="blue"
                         onClick={handleAddDepartment}
                         disabled={submitting || !selectedDepartment}
                     >
-                        {submitting ? 'Adding...' : 'Add Department'}
+                        {submitting ? t('managerDisclaimerConfig.dialog.adding') : t('managerDisclaimerConfig.dialog.add')}
                     </Button>
                 </DialogFooter>
             </Dialog>

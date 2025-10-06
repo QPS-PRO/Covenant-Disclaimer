@@ -23,10 +23,12 @@ import {
     CheckCircleIcon,
     XCircleIcon,
 } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 import { disclaimerAdminAPI } from '@/lib/disclaimerApi';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 export default function AdminDisclaimerSetup() {
+    const { t } = useTranslation();
     const [departments, setDepartments] = useState([]);
     const [selectedDepartment, setSelectedDepartment] = useState(null);
     const [orders, setOrders] = useState([]);
@@ -52,7 +54,7 @@ export default function AdminDisclaimerSetup() {
             setDepartments(data || []);
         } catch (err) {
             console.error('Error loading departments:', err);
-            setError(err.message || 'Failed to load departments');
+            setError(err.message || t('adminDisclaimerSetup.errors.loadDepartments'));
         } finally {
             setLoading(false);
         }
@@ -68,7 +70,7 @@ export default function AdminDisclaimerSetup() {
             setSelectedDepartment(data.department);
         } catch (err) {
             console.error('Error loading department orders:', err);
-            setError(err.message || 'Failed to load department configuration');
+            setError(err.message || t('adminDisclaimerSetup.errors.loadDepartment'));
         } finally {
             setLoading(false);
         }
@@ -90,16 +92,15 @@ export default function AdminDisclaimerSetup() {
                 { target_department: selectedTargetDept }
             );
 
-            setSuccess('Department added to disclaimer flow successfully');
+            setSuccess(t('adminDisclaimerSetup.success.added'));
             setAddDialogOpen(false);
             setSelectedTargetDept(null);
 
-            // Reload orders
             await loadDepartmentOrders(selectedDepartment.id);
             await loadDepartmentsSummary();
         } catch (err) {
             console.error('Error adding order:', err);
-            setError(err.message || 'Failed to add department');
+            setError(err.message || t('adminDisclaimerSetup.errors.addFailed'));
         } finally {
             setSaving(false);
         }
@@ -108,7 +109,7 @@ export default function AdminDisclaimerSetup() {
     const handleDeleteOrder = async (orderId) => {
         if (!selectedDepartment) return;
 
-        if (!confirm('Are you sure you want to remove this department from the flow?')) {
+        if (!confirm(t('adminDisclaimerSetup.confirmRemove'))) {
             return;
         }
 
@@ -121,14 +122,13 @@ export default function AdminDisclaimerSetup() {
                 orderId
             );
 
-            setSuccess('Department removed from disclaimer flow');
+            setSuccess(t('adminDisclaimerSetup.success.removed'));
 
-            // Reload orders
             await loadDepartmentOrders(selectedDepartment.id);
             await loadDepartmentsSummary();
         } catch (err) {
             console.error('Error deleting order:', err);
-            setError(err.message || 'Failed to remove department');
+            setError(err.message || t('adminDisclaimerSetup.errors.deleteFailed'));
         } finally {
             setSaving(false);
         }
@@ -141,10 +141,8 @@ export default function AdminDisclaimerSetup() {
         const [reorderedItem] = items.splice(result.source.index, 1);
         items.splice(result.destination.index, 0, reorderedItem);
 
-        // Update local state optimistically
         setOrders(items);
 
-        // Prepare data for API
         const reorderedData = items.map((item, index) => ({
             id: item.id,
             order: index + 1,
@@ -159,11 +157,10 @@ export default function AdminDisclaimerSetup() {
                 reorderedData
             );
 
-            setSuccess('Order updated successfully');
+            setSuccess(t('adminDisclaimerSetup.success.reordered'));
         } catch (err) {
             console.error('Error reordering:', err);
-            setError(err.message || 'Failed to update order');
-            // Reload to revert changes
+            setError(err.message || t('adminDisclaimerSetup.errors.reorderFailed'));
             await loadDepartmentOrders(selectedDepartment.id);
         } finally {
             setSaving(false);
@@ -183,7 +180,7 @@ export default function AdminDisclaimerSetup() {
             <Card>
                 <CardHeader variant="gradient" color="gray" className="mb-8 p-6">
                     <Typography variant="h6" color="white">
-                        Admin Disclaimer Setup Management
+                        {t('adminDisclaimerSetup.header')}
                     </Typography>
                 </CardHeader>
 
@@ -204,7 +201,7 @@ export default function AdminDisclaimerSetup() {
                         {/* Department List */}
                         <div className="lg:col-span-1">
                             <Typography variant="h6" color="blue-gray" className="mb-4">
-                                Departments
+                                {t('adminDisclaimerSetup.departments')}
                             </Typography>
 
                             <div className="space-y-2 max-h-[600px] overflow-y-auto">
@@ -212,8 +209,8 @@ export default function AdminDisclaimerSetup() {
                                     <Card
                                         key={dept.id}
                                         className={`cursor-pointer transition-all ${selectedDepartment?.id === dept.id
-                                                ? 'ring-2 ring-blue-500'
-                                                : 'hover:shadow-md'
+                                            ? 'ring-2 ring-blue-500'
+                                            : 'hover:shadow-md'
                                             }`}
                                         onClick={() => handleDepartmentSelect(dept)}
                                     >
@@ -228,23 +225,24 @@ export default function AdminDisclaimerSetup() {
                                                             <Chip
                                                                 size="sm"
                                                                 color="green"
-                                                                value="Requires Disclaimer"
+                                                                value={t('adminDisclaimerSetup.chipRequires')}
                                                                 icon={<CheckCircleIcon className="h-4 w-4" />}
                                                             />
                                                         ) : (
                                                             <Chip
                                                                 size="sm"
                                                                 color="gray"
-                                                                value="No Disclaimer"
+                                                                value={t('adminDisclaimerSetup.chipNone')}
                                                                 icon={<XCircleIcon className="h-4 w-4" />}
                                                             />
                                                         )}
                                                     </div>
                                                     <Typography variant="small" color="gray" className="mt-1">
-                                                        {dept.disclaimer_steps_count} step{dept.disclaimer_steps_count !== 1 ? 's' : ''} configured
+                                                        {t('adminDisclaimerSetup.stepsCount_other', {
+                                                            count: dept.disclaimer_steps_count ?? 0
+                                                        })}
                                                     </Typography>
                                                 </div>
-                                                <Cog6ToothIcon className="h-5 w-5 text-gray-500" />
                                             </div>
                                         </CardBody>
                                     </Card>
@@ -258,7 +256,7 @@ export default function AdminDisclaimerSetup() {
                                 <>
                                     <div className="flex items-center justify-between mb-4">
                                         <Typography variant="h6" color="blue-gray">
-                                            Disclaimer Flow for {selectedDepartment.name}
+                                            {t('adminDisclaimerSetup.flowFor', { name: selectedDepartment.name })}
                                         </Typography>
                                         <Button
                                             color="blue"
@@ -268,7 +266,7 @@ export default function AdminDisclaimerSetup() {
                                             disabled={availableDepartments.length === 0}
                                         >
                                             <PlusIcon className="h-4 w-4" />
-                                            Add Department
+                                            {t('adminDisclaimerSetup.addDepartment')}
                                         </Button>
                                     </div>
 
@@ -276,10 +274,10 @@ export default function AdminDisclaimerSetup() {
                                         <Card className="border-2 border-dashed border-gray-300">
                                             <CardBody className="text-center py-12">
                                                 <Typography variant="h6" color="gray" className="mb-2">
-                                                    No disclaimer flow configured
+                                                    {t('adminDisclaimerSetup.emptyTitle')}
                                                 </Typography>
                                                 <Typography variant="small" color="gray">
-                                                    Add departments to create the disclaimer flow
+                                                    {t('adminDisclaimerSetup.emptyHelp')}
                                                 </Typography>
                                             </CardBody>
                                         </Card>
@@ -304,8 +302,8 @@ export default function AdminDisclaimerSetup() {
                                                                         {...provided.draggableProps}
                                                                         {...provided.dragHandleProps}
                                                                         className={`${snapshot.isDragging
-                                                                                ? 'shadow-lg ring-2 ring-blue-500'
-                                                                                : ''
+                                                                            ? 'shadow-lg ring-2 ring-blue-500'
+                                                                            : ''
                                                                             }`}
                                                                     >
                                                                         <CardBody className="p-4">
@@ -319,7 +317,7 @@ export default function AdminDisclaimerSetup() {
                                                                                             {order.target_department_name}
                                                                                         </Typography>
                                                                                         <Typography variant="small" color="gray">
-                                                                                            Step {order.order} in disclaimer process
+                                                                                            {t('adminDisclaimerSetup.stepBadge', { order: order.order })}
                                                                                         </Typography>
                                                                                     </div>
                                                                                 </div>
@@ -348,7 +346,7 @@ export default function AdminDisclaimerSetup() {
                                 <Card className="border-2 border-dashed border-gray-300">
                                     <CardBody className="text-center py-12">
                                         <Typography variant="h6" color="gray">
-                                            Select a department to configure its disclaimer flow
+                                            {t('adminDisclaimerSetup.selectPrompt')}
                                         </Typography>
                                     </CardBody>
                                 </Card>
@@ -360,15 +358,15 @@ export default function AdminDisclaimerSetup() {
 
             {/* Add Department Dialog */}
             <Dialog open={addDialogOpen} handler={() => setAddDialogOpen(false)}>
-                <DialogHeader>Add Department to Disclaimer Flow</DialogHeader>
+                <DialogHeader>{t('adminDisclaimerSetup.dialog.title')}</DialogHeader>
                 <DialogBody>
                     <div className="space-y-4">
                         <Typography variant="small" color="gray">
-                            Select a department to add to the disclaimer flow for {selectedDepartment?.name}
+                            {t('adminDisclaimerSetup.dialog.help', { name: selectedDepartment?.name })}
                         </Typography>
 
                         <Select
-                            label="Select Department"
+                            label={t('adminDisclaimerSetup.dialog.selectLabel')}
                             value={selectedTargetDept}
                             onChange={(value) => setSelectedTargetDept(value)}
                         >
@@ -390,14 +388,14 @@ export default function AdminDisclaimerSetup() {
                         }}
                         className="mr-2"
                     >
-                        Cancel
+                        {t('adminDisclaimerSetup.dialog.cancel')}
                     </Button>
                     <Button
                         color="blue"
                         onClick={handleAddOrder}
                         disabled={!selectedTargetDept || saving}
                     >
-                        {saving ? 'Adding...' : 'Add Department'}
+                        {saving ? t('adminDisclaimerSetup.dialog.adding') : t('adminDisclaimerSetup.dialog.add')}
                     </Button>
                 </DialogFooter>
             </Dialog>

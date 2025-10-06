@@ -117,7 +117,7 @@ export function SignIn() {
             />
           </div>
 
-          <Checkbox
+          {/* <Checkbox
             name="remember"
             checked={formData.remember}
             onChange={handleInputChange}
@@ -131,20 +131,20 @@ export function SignIn() {
               </Typography>
             }
             containerProps={{ className: `${isRTL ? '-mr-2.5' : '-ml-2.5'}` }}
-          />
+          /> */}
 
           <Button className="mt-6" fullWidth type="submit" disabled={loading}>
             {loading ? t('auth.signingIn') : t('auth.signIn')}
           </Button>
 
-          <div className={`flex items-center justify-between gap-2 mt-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          {/* <div className={`flex items-center justify-between gap-2 mt-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <div />
             <Typography variant="small" className="font-medium text-gray-900">
               <Link to="/auth/forgot-password">
                 {t('auth.forgotPassword')}
               </Link>
             </Typography>
-          </div>
+          </div> */}
 
           <Typography variant="paragraph" className={`text-center text-blue-gray-500 font-medium mt-4 ${isRTL ? 'text-right' : ''}`}>
             {t('auth.notRegistered')}

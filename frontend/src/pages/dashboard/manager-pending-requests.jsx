@@ -12,12 +12,14 @@ import {
     Radio,
     Alert,
     Spinner,
-    Chip
+    Chip,
 } from '@material-tailwind/react';
 import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/solid';
+import { useTranslation } from 'react-i18next';
 import { disclaimerManagerAPI, disclaimerUtils } from '@/lib/disclaimerApi';
 
 export default function ManagerPendingRequests() {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [requests, setRequests] = useState([]);
     const [selectedRequest, setSelectedRequest] = useState(null);
@@ -40,7 +42,7 @@ export default function ManagerPendingRequests() {
             const data = await disclaimerManagerAPI.getPendingRequests();
             setRequests(data);
         } catch (err) {
-            setError(err.message || 'Failed to load pending requests');
+            setError('loadFailed');
         } finally {
             setLoading(false);
         }
@@ -58,7 +60,7 @@ export default function ManagerPendingRequests() {
         if (!selectedRequest) return;
 
         if (reviewStatus === 'rejected' && !rejectionReason.trim()) {
-            setError('Rejection reason is required when rejecting a request');
+            setError('needReason');
             return;
         }
 
@@ -68,13 +70,17 @@ export default function ManagerPendingRequests() {
             await disclaimerManagerAPI.reviewRequest(selectedRequest.id, {
                 status: reviewStatus,
                 manager_notes: managerNotes,
-                rejection_reason: rejectionReason
+                rejection_reason: rejectionReason,
             });
-            setSuccess(`Request ${reviewStatus === 'approved' ? 'approved' : 'rejected'} successfully!`);
+            setSuccess(
+                reviewStatus === 'approved'
+                    ? 'successApprove'
+                    : 'successReject'
+            );
             setShowReviewDialog(false);
             await loadRequests();
         } catch (err) {
-            setError(err.message || 'Failed to submit review');
+            setError('submitFailed');
         } finally {
             setSubmitting(false);
         }
@@ -94,22 +100,26 @@ export default function ManagerPendingRequests() {
                 <CardBody>
                     <div className="mb-6">
                         <Typography variant="h4" color="blue-gray" className="mb-2">
-                            Pending Disclaimer Requests
+                            {t('managerPendingRequests.title')}
                         </Typography>
                         <Typography color="gray" className="font-normal">
-                            Review and approve or reject disclaimer clearance requests
+                            {t('managerPendingRequests.subtitle')}
                         </Typography>
                     </div>
 
                     {error && (
                         <Alert color="red" className="mb-4" onClose={() => setError(null)}>
-                            {error}
+                            {t(
+                                `managerPendingRequests.toasts.${error}`,
+                                // fallback to generic loadFailed if unknown key
+                                { defaultValue: t('managerPendingRequests.toasts.loadFailed') }
+                            )}
                         </Alert>
                     )}
 
                     {success && (
                         <Alert color="green" className="mb-4" onClose={() => setSuccess(null)}>
-                            {success}
+                            {t(`managerPendingRequests.toasts.${success}`)}
                         </Alert>
                     )}
 
@@ -117,10 +127,10 @@ export default function ManagerPendingRequests() {
                         <div className="text-center py-12">
                             <ClockIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                             <Typography color="gray" className="mb-2">
-                                No pending requests
+                                {t('managerPendingRequests.empty.title')}
                             </Typography>
                             <Typography variant="small" color="gray">
-                                All disclaimer requests have been reviewed
+                                {t('managerPendingRequests.empty.body')}
                             </Typography>
                         </div>
                     ) : (
@@ -136,7 +146,9 @@ export default function ManagerPendingRequests() {
                                                     </Typography>
                                                     <Chip
                                                         size="sm"
-                                                        value={`Step ${request.step_number}`}
+                                                        value={t('managerPendingRequests.chips.step', {
+                                                            num: request.step_number,
+                                                        })}
                                                         color="blue"
                                                     />
                                                     <Chip
@@ -146,24 +158,32 @@ export default function ManagerPendingRequests() {
                                                     />
                                                 </div>
                                                 <div className="space-y-1 text-sm text-gray-600">
-                                                    <div>Employee ID: {request.employee_id_number}</div>
-                                                    <div>Department: {request.employee_department}</div>
-                                                    <div>Submitted: {disclaimerUtils.formatDate(request.created_at)}</div>
+                                                    <div>
+                                                        {t('managerPendingRequests.fields.employeeId', {
+                                                            id: request.employee_id_number,
+                                                        })}
+                                                    </div>
+                                                    <div>
+                                                        {t('managerPendingRequests.fields.department', {
+                                                            dept: request.employee_department,
+                                                        })}
+                                                    </div>
+                                                    <div>
+                                                        {t('managerPendingRequests.fields.submitted', {
+                                                            date: disclaimerUtils.formatDate(request.created_at),
+                                                        })}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <Button
-                                                size="sm"
-                                                color="blue"
-                                                onClick={() => handleReviewClick(request)}
-                                            >
-                                                Review
+                                            <Button size="sm" color="blue" onClick={() => handleReviewClick(request)}>
+                                                {t('managerPendingRequests.review')}
                                             </Button>
                                         </div>
 
                                         {request.employee_notes && (
                                             <div className="bg-gray-50 p-3 rounded mt-3">
                                                 <Typography variant="small" className="font-semibold mb-1">
-                                                    Employee Notes:
+                                                    {t('managerDisclaimerHistory.employeeNotes')}
                                                 </Typography>
                                                 <Typography variant="small" color="gray">
                                                     {request.employee_notes}
@@ -180,9 +200,7 @@ export default function ManagerPendingRequests() {
 
             {/* Review Dialog */}
             <Dialog open={showReviewDialog} handler={() => setShowReviewDialog(false)} size="md">
-                <DialogHeader>
-                    Review Disclaimer Request
-                </DialogHeader>
+                <DialogHeader>{t('managerPendingRequests.dialog.title')}</DialogHeader>
                 <DialogBody divider className="space-y-4 max-h-[70vh] overflow-y-auto">
                     {selectedRequest && (
                         <>
@@ -191,29 +209,43 @@ export default function ManagerPendingRequests() {
                                     {selectedRequest.employee_name}
                                 </Typography>
                                 <div className="space-y-1 text-sm">
-                                    <div>Employee ID: {selectedRequest.employee_id_number}</div>
-                                    <div>Department: {selectedRequest.employee_department}</div>
-                                    <div>Step: {selectedRequest.step_number}</div>
-                                    <div>Submitted: {disclaimerUtils.formatDate(selectedRequest.created_at)}</div>
+                                    <div>
+                                        {t('managerPendingRequests.fields.employeeId', {
+                                            id: selectedRequest.employee_id_number,
+                                        })}
+                                    </div>
+                                    <div>
+                                        {t('managerPendingRequests.fields.department', {
+                                            dept: selectedRequest.employee_department,
+                                        })}
+                                    </div>
+                                    <div>
+                                        {t('managerPendingRequests.chips.step', {
+                                            num: selectedRequest.step_number,
+                                        })}
+                                    </div>
+                                    <div>
+                                        {t('managerPendingRequests.fields.submitted', {
+                                            date: disclaimerUtils.formatDate(selectedRequest.created_at),
+                                        })}
+                                    </div>
                                 </div>
                             </div>
 
                             {selectedRequest.employee_notes && (
                                 <div>
                                     <Typography variant="small" className="font-semibold mb-2">
-                                        Employee Notes:
+                                        {t('managerDisclaimerHistory.employeeNotes')}
                                     </Typography>
                                     <div className="bg-gray-50 p-3 rounded">
-                                        <Typography variant="small">
-                                            {selectedRequest.employee_notes}
-                                        </Typography>
+                                        <Typography variant="small">{selectedRequest.employee_notes}</Typography>
                                     </div>
                                 </div>
                             )}
 
                             <div>
                                 <Typography variant="small" className="font-semibold mb-2">
-                                    Decision *
+                                    {t('managerPendingRequests.dialog.decision')}
                                 </Typography>
                                 <div className="flex gap-4">
                                     <Radio
@@ -221,7 +253,7 @@ export default function ManagerPendingRequests() {
                                         label={
                                             <div className="flex items-center gap-2">
                                                 <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                                                <span>Approve</span>
+                                                <span>{t('managerPendingRequests.dialog.approve')}</span>
                                             </div>
                                         }
                                         checked={reviewStatus === 'approved'}
@@ -232,7 +264,7 @@ export default function ManagerPendingRequests() {
                                         label={
                                             <div className="flex items-center gap-2">
                                                 <XCircleIcon className="h-5 w-5 text-red-500" />
-                                                <span>Reject</span>
+                                                <span>{t('managerPendingRequests.dialog.reject')}</span>
                                             </div>
                                         }
                                         checked={reviewStatus === 'rejected'}
@@ -242,19 +274,19 @@ export default function ManagerPendingRequests() {
                             </div>
 
                             <Textarea
-                                label="Manager Notes (Optional)"
+                                label={t('managerPendingRequests.dialog.notesLabel')}
                                 value={managerNotes}
                                 onChange={(e) => setManagerNotes(e.target.value)}
-                                placeholder="Add any comments or feedback..."
+                                placeholder={t('managerPendingRequests.dialog.notesPlaceholder')}
                                 rows={3}
                             />
 
                             {reviewStatus === 'rejected' && (
                                 <Textarea
-                                    label="Rejection Reason *"
+                                    label={t('managerPendingRequests.dialog.reasonLabel')}
                                     value={rejectionReason}
                                     onChange={(e) => setRejectionReason(e.target.value)}
-                                    placeholder="Please provide a clear reason for rejection..."
+                                    placeholder={t('managerPendingRequests.dialog.reasonPlaceholder')}
                                     rows={3}
                                     error={reviewStatus === 'rejected' && !rejectionReason.trim()}
                                 />
@@ -269,14 +301,18 @@ export default function ManagerPendingRequests() {
                         onClick={() => setShowReviewDialog(false)}
                         disabled={submitting}
                     >
-                        Cancel
+                        {t('managerPendingRequests.dialog.cancel')}
                     </Button>
                     <Button
                         color={reviewStatus === 'approved' ? 'green' : 'red'}
                         onClick={handleSubmitReview}
                         disabled={submitting || (reviewStatus === 'rejected' && !rejectionReason.trim())}
                     >
-                        {submitting ? 'Submitting...' : reviewStatus === 'approved' ? 'Approve' : 'Reject'}
+                        {submitting
+                            ? t('managerPendingRequests.dialog.submitting')
+                            : reviewStatus === 'approved'
+                                ? t('managerPendingRequests.dialog.submitApprove')
+                                : t('managerPendingRequests.dialog.submitReject')}
                     </Button>
                 </DialogFooter>
             </Dialog>

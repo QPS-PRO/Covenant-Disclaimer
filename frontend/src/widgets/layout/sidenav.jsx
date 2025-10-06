@@ -33,10 +33,13 @@ export function Sidenav({ brandImg, brandName, routes, user }) {
       reports: t("nav.reports"),
       settings: t("nav.settings"),
       dashboard: t("nav.dashboard"),
+      "my profile": t("nav.myProfile", { defaultValue: "My Profile" }),
       "my disclaimer": t("nav.myDisclaimer", { defaultValue: "My Disclaimer" }),
       "disclaimer requests": t("nav.disclaimerRequests", { defaultValue: "Disclaimer Requests" }),
       "disclaimer setup": t("nav.disclaimerSetup", { defaultValue: "Disclaimer Setup" }),
-      "admin disclaimer config": t("nav.adminDisclaimerConfig", { defaultValue: "Admin Config" }),
+      "admin config": t("nav.adminDisclaimerConfig", { defaultValue: "Disclaimer Departments" }),
+      "disclaimer history": t("nav.disclaimerHistory", { defaultValue: "Disclaimer History" }),
+      "request history": t("nav.disclaimerHistory", { defaultValue: "Request History" }),
     };
     return navTranslations[name.toLowerCase()] || name;
   };

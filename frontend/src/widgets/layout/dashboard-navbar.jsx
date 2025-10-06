@@ -55,7 +55,14 @@ export function DashboardNavbar() {
       employees: t('nav.employees'),
       transactions: t('nav.transactions'),
       reports: t('nav.reports'),
-      settings: t('nav.settings'),
+      "my-disclaimer": t("nav.myDisclaimer", { defaultValue: "My Disclaimer" }),
+      "disclaimer-requests": t("nav.disclaimerRequests", { defaultValue: "Disclaimer Requests" }),
+      "admin-disclaimer-setup": t("nav.disclaimerSetup", { defaultValue: "Disclaimer Setup" }),
+      "disclaimer-setup": t("nav.disclaimerSetup", { defaultValue: "Disclaimer Setup" }),
+      "admin-disclaimer-config": t("nav.adminDisclaimerConfig", { defaultValue: "Disclaimer Departments" }),
+      "disclaimer-history": t("nav.disclaimerHistory", { defaultValue: "Disclaimer History" }),
+      "my-disclaimer-history": t("nav.disclaimerHistory", { defaultValue: "Disclaimer History" }),
+      "request history": t("nav.disclaimerHistory", { defaultValue: "Request History" }),
     };
     return pageTranslations[page] || page;
   };
@@ -77,7 +84,7 @@ export function DashboardNavbar() {
               }`}
             separator={isRTL ? "›" : "‹"}
           >
-            <Link to={`/${layout}`}>
+            <Link>
               <Typography
                 variant="small"
                 color="blue-gray"
@@ -125,10 +132,10 @@ export function DashboardNavbar() {
               </Button>
             </MenuHandler>
             <MenuList className="w-max border-0">
-              <MenuItem className="flex items-center gap-2">
+              {/* <MenuItem className="flex items-center gap-2">
                 <UserCircleIcon className="h-4 w-4" />
                 {t('ui.profile')}
-              </MenuItem>
+              </MenuItem> */}
               <MenuItem
                 className="flex items-center gap-2 text-red-500"
                 onClick={handleLogout}
@@ -149,7 +156,7 @@ export function DashboardNavbar() {
             <ArrowRightOnRectangleIcon className="h-5 w-5 text-blue-gray-500" />
           </IconButton>
 
-          <Menu>
+          {/* <Menu>
             <MenuHandler>
               <IconButton variant="text" color="blue-gray">
                 <BellIcon className="h-5 w-5 text-blue-gray-500" />
@@ -233,7 +240,7 @@ export function DashboardNavbar() {
             onClick={() => setOpenConfigurator(dispatch, true)}
           >
             <Cog6ToothIcon className="h-5 w-5 text-blue-gray-500" />
-          </IconButton>
+          </IconButton> */}
         </div>
       </div>
     </Navbar>

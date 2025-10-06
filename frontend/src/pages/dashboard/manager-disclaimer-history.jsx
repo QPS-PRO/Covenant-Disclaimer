@@ -1,5 +1,3 @@
-// frontend/src/pages/dashboard/manager-disclaimer-history.jsx
-
 import React, { useState, useEffect } from 'react';
 import {
     Card,
@@ -21,9 +19,11 @@ import {
     ClockIcon,
     ChartBarIcon,
 } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 import { disclaimerManagerAPI, disclaimerUtils } from '@/lib/disclaimerApi';
 
 export default function ManagerDisclaimerHistory() {
+    const { t } = useTranslation();
     const [allRequests, setAllRequests] = useState([]);
     const [statistics, setStatistics] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -39,17 +39,14 @@ export default function ManagerDisclaimerHistory() {
             setLoading(true);
             setError(null);
 
-            // Load statistics
             const stats = await disclaimerManagerAPI.getStatistics();
             setStatistics(stats);
 
-            // FIXED: Load ALL requests, not just pending
             const allRequestsData = await disclaimerManagerAPI.getAllRequests();
             setAllRequests(allRequestsData || []);
-
         } catch (err) {
             console.error('Error loading data:', err);
-            setError(err.message || 'Failed to load data');
+            setError('loadFailed');
         } finally {
             setLoading(false);
         }
@@ -57,7 +54,7 @@ export default function ManagerDisclaimerHistory() {
 
     const filterRequests = (status) => {
         if (status === 'all') return allRequests;
-        return allRequests.filter(req => req.status === status);
+        return allRequests.filter((req) => req.status === status);
     };
 
     if (loading) {
@@ -80,7 +77,7 @@ export default function ManagerDisclaimerHistory() {
                                 {statistics.total_requests || 0}
                             </Typography>
                             <Typography variant="small" color="gray">
-                                Total Requests
+                                {t('managerDisclaimerHistory.stats.total')}
                             </Typography>
                         </CardBody>
                     </Card>
@@ -92,7 +89,7 @@ export default function ManagerDisclaimerHistory() {
                                 {statistics.pending_requests || 0}
                             </Typography>
                             <Typography variant="small" color="gray">
-                                Pending
+                                {t('managerDisclaimerHistory.stats.pending')}
                             </Typography>
                         </CardBody>
                     </Card>
@@ -104,7 +101,7 @@ export default function ManagerDisclaimerHistory() {
                                 {statistics.approved_requests || 0}
                             </Typography>
                             <Typography variant="small" color="gray">
-                                Approved
+                                {t('managerDisclaimerHistory.stats.approved')}
                             </Typography>
                         </CardBody>
                     </Card>
@@ -116,7 +113,7 @@ export default function ManagerDisclaimerHistory() {
                                 {statistics.rejected_requests || 0}
                             </Typography>
                             <Typography variant="small" color="gray">
-                                Rejected
+                                {t('managerDisclaimerHistory.stats.rejected')}
                             </Typography>
                         </CardBody>
                     </Card>
@@ -127,30 +124,36 @@ export default function ManagerDisclaimerHistory() {
             <Card>
                 <CardHeader variant="gradient" color="gray" className="mb-8 p-6">
                     <Typography variant="h6" color="white">
-                        Disclaimer Request History
+                        {t('managerDisclaimerHistory.header')}
                     </Typography>
                 </CardHeader>
 
                 <CardBody>
                     {error && (
                         <Alert color="red" className="mb-6">
-                            {error}
+                            {t(`managerDisclaimerHistory.errors.${error}`)}
                         </Alert>
                     )}
 
                     <Tabs value={activeTab}>
                         <TabsHeader>
                             <Tab value="all" onClick={() => setActiveTab('all')}>
-                                All ({allRequests.length})
+                                {t('managerDisclaimerHistory.tabs.all', { count: allRequests.length })}
                             </Tab>
                             <Tab value="pending" onClick={() => setActiveTab('pending')}>
-                                Pending ({filterRequests('pending').length})
+                                {t('managerDisclaimerHistory.tabs.pending', {
+                                    count: filterRequests('pending').length,
+                                })}
                             </Tab>
                             <Tab value="approved" onClick={() => setActiveTab('approved')}>
-                                Approved ({filterRequests('approved').length})
+                                {t('managerDisclaimerHistory.tabs.approved', {
+                                    count: filterRequests('approved').length,
+                                })}
                             </Tab>
                             <Tab value="rejected" onClick={() => setActiveTab('rejected')}>
-                                Rejected ({filterRequests('rejected').length})
+                                {t('managerDisclaimerHistory.tabs.rejected', {
+                                    count: filterRequests('rejected').length,
+                                })}
                             </Tab>
                         </TabsHeader>
 
@@ -161,7 +164,9 @@ export default function ManagerDisclaimerHistory() {
                                         {filterRequests(tabValue).length === 0 ? (
                                             <div className="text-center py-12">
                                                 <Typography variant="h6" color="gray">
-                                                    No {tabValue === 'all' ? '' : tabValue} requests found
+                                                    {t('managerDisclaimerHistory.none', {
+                                                        which: tabValue === 'all' ? '' : `${tabValue} `,
+                                                    })}
                                                 </Typography>
                                             </div>
                                         ) : (
@@ -181,10 +186,15 @@ export default function ManagerDisclaimerHistory() {
                                                                     />
                                                                 </div>
                                                                 <Typography variant="small" color="gray">
-                                                                    Step {request.step_number} • {request.employee_department_name}
+                                                                    {t('managerDisclaimerHistory.stepIn', {
+                                                                        num: request.step_number,
+                                                                        dept: request.employee_department_name,
+                                                                    })}
                                                                 </Typography>
                                                                 <Typography variant="small" color="gray">
-                                                                    {disclaimerUtils.formatDate(request.created_at)}
+                                                                    {t('managerDisclaimerHistory.createdAt', {
+                                                                        date: disclaimerUtils.formatDate(request.created_at),
+                                                                    })}
                                                                 </Typography>
                                                             </div>
                                                         </div>
@@ -192,7 +202,7 @@ export default function ManagerDisclaimerHistory() {
                                                         {request.employee_notes && (
                                                             <div className="mb-3 p-3 bg-blue-50 rounded">
                                                                 <Typography variant="small" className="font-semibold mb-1">
-                                                                    Employee Notes:
+                                                                    {t('managerDisclaimerHistory.employeeNotes')}
                                                                 </Typography>
                                                                 <Typography variant="small" color="gray">
                                                                     {request.employee_notes}
@@ -203,7 +213,7 @@ export default function ManagerDisclaimerHistory() {
                                                         {request.manager_notes && (
                                                             <div className="mb-3 p-3 bg-green-50 rounded">
                                                                 <Typography variant="small" className="font-semibold mb-1">
-                                                                    Your Response:
+                                                                    {t('managerDisclaimerHistory.yourResponse')}
                                                                 </Typography>
                                                                 <Typography variant="small" color="gray">
                                                                     {request.manager_notes}
@@ -213,8 +223,11 @@ export default function ManagerDisclaimerHistory() {
 
                                                         {request.rejection_reason && (
                                                             <div className="p-3 bg-red-50 rounded border-l-4 border-red-500">
-                                                                <Typography variant="small" className="font-semibold mb-1 text-red-700">
-                                                                    Rejection Reason:
+                                                                <Typography
+                                                                    variant="small"
+                                                                    className="font-semibold mb-1 text-red-700"
+                                                                >
+                                                                    {t('managerDisclaimerHistory.rejectionReason')}
                                                                 </Typography>
                                                                 <Typography variant="small" color="gray">
                                                                     {request.rejection_reason}
@@ -225,7 +238,9 @@ export default function ManagerDisclaimerHistory() {
                                                         {request.reviewed_at && (
                                                             <div className="mt-3 pt-3 border-t border-gray-200">
                                                                 <Typography variant="small" color="gray">
-                                                                    Reviewed: {disclaimerUtils.formatDate(request.reviewed_at)}
+                                                                    {t('managerDisclaimerHistory.reviewed', {
+                                                                        date: disclaimerUtils.formatDate(request.reviewed_at),
+                                                                    })}
                                                                 </Typography>
                                                             </div>
                                                         )}

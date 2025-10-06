@@ -17,7 +17,15 @@ const enTranslations = {
             employees: "Employees",
             transactions: "Transactions",
             reports: "Reports",
-            settings: "Settings"
+            settings: "Settings",
+            myProfile: "Profile",
+            myDisclaimer: "My Disclaimer",
+            disclaimerRequests: "Disclaimer Requests",
+            disclaimerSetup: "Disclaimer Setup",
+            adminDisclaimerConfig: "Disclaimer Departments",
+            disclaimerHistory: "Disclaimer Request History",
+
+
         },
 
         // Authentication
@@ -386,6 +394,7 @@ const enTranslations = {
                 createFailed: "Failed to create transaction"
             }
         },
+
         conditions: {
             excellent: "Excellent",
             good: "Good",
@@ -422,7 +431,219 @@ const enTranslations = {
                 cameraNotReady: "Camera not ready",
                 captureFailed: "Failed to capture image"
             }
+        },
+
+        // Admin Disclaimer Config
+        adminDisclaimerConfig: {
+            title: "Disclaimer Department Configuration",
+            subtitle: "Configure which departments require disclaimer clearance",
+            info: "Enable disclaimer requirements for departments. Department managers will then configure the order in which employees must clear these departments.",
+            none: "No departments found. Please create departments first.",
+            requiresChip: "Requires Disclaimer",
+            requiresYes: "This department requires disclaimer clearance",
+            requiresNo: "This department does not require disclaimer clearance",
+            updating: "Updating...",
+            notesTitle: "⚠️ Important Notes:",
+            notes: {
+                a: "Enabling disclaimer for a department allows it to be added to disclaimer flows",
+                b: "Department managers will configure the order of clearance for their employees",
+                c: "Disabling a department will remove it from all existing disclaimer flows"
+            },
+            errors: {
+                loadFailed: "Failed to load configuration",
+                updateFailed: "Failed to update configuration"
+            },
+            success: {
+                updated: "Configuration updated successfully!"
+            }
+        },
+
+        // Admin Disclaimer Setup
+        adminDisclaimerSetup: {
+            header: "Admin Disclaimer Setup Management",
+            departments: "Departments",
+            chipRequires: "Requires Disclaimer",
+            chipNone: "No Disclaimer",
+            stepsCount_one: "{{count}} step configured",
+            stepsCount_other: "{{count}} steps configured",
+            flowFor: "Disclaimer Flow for {{name}}",
+            addDepartment: "Add Department",
+            emptyTitle: "No disclaimer flow configured",
+            emptyHelp: "Add departments to create the disclaimer flow",
+            stepBadge: "Step {{order}} in disclaimer process",
+            selectPrompt: "Select a department to configure its disclaimer flow",
+            confirmRemove: "Are you sure you want to remove this department from the flow?",
+            dialog: {
+                title: "Add Department to Disclaimer Flow",
+                help: "Select a department to add to the disclaimer flow for {{name}}",
+                selectLabel: "Select Department",
+                cancel: "Cancel",
+                add: "Add Department",
+                adding: "Adding..."
+            },
+            errors: {
+                loadDepartments: "Failed to load departments",
+                loadDepartment: "Failed to load department configuration",
+                addFailed: "Failed to add department",
+                deleteFailed: "Failed to remove department",
+                reorderFailed: "Failed to update order"
+            },
+            success: {
+                added: "Department added to disclaimer flow successfully",
+                removed: "Department removed from disclaimer flow",
+                reordered: "Order updated successfully"
+            }
+        },
+
+        // Employee Disclaimer Histpry
+        employeeDisclaimerHistory: {
+            header: "My Disclaimer Request History",
+            none: "No disclaimer requests found",
+            step: "Step {{num}}",
+            createdAt: "{{date}}",
+            myNotes: "My Notes:",
+            managerResponse: "Manager Response:",
+            rejectionReason: "Rejection Reason:",
+            reviewedAt: "Reviewed: {{date}}",
+            errors: { loadFailed: "Failed to load history" }
+        },
+
+        // Employee Disclaimer
+        employeeDisclaimer: {
+            title: "Disclaimer Request Process",
+            subtitle: "Complete all department clearances to finalize your disclaimer",
+            start: {
+                noActive: "You don't have an active disclaimer process.",
+                cta: "Start Disclaimer Process",
+                starting: "Starting..."
+            },
+            noFlow: "No disclaimer flow configured for your department. Please contact your department manager.",
+            progress: "Progress: Step {{current}} of {{total}}",
+            stepTitle: "Step {{num}}: {{name}}",
+            submitRequest: "Submit Request",
+            resubmitRequest: "Resubmit Request",
+            yourNotes: "Your Notes:",
+            lockedMsg: "🔒 Complete previous steps to unlock this department",
+            waitingReview: "⏳ Waiting for department manager review...",
+            completedTitle: "✅ Disclaimer Process Completed!",
+            completedBody: "All departments have approved your disclaimer request.",
+            dialog: {
+                title: "Submit Request to {{name}}",
+                body: "You are submitting a disclaimer clearance request to the {{name}} department.",
+                notesLabel: "Notes (Optional)",
+                notesPlaceholder: "Add any notes or comments for the department manager...",
+                cancel: "Cancel",
+                submit: "Submit Request",
+                submitting: "Submitting..."
+            },
+            alerts: {
+                loadFailed: "Failed to load disclaimer status",
+                startSuccess: "Disclaimer process started successfully!",
+                startFailed: "Failed to start disclaimer process",
+                submitSuccess: "Request submitted to {{name}}",
+                submitFailed: "Failed to submit request"
+            }
+        },
+
+        //Manager Disclaimer Config
+        managerDisclaimerConfig: {
+            title: "Disclaimer Flow Configuration",
+            subtitle: "Configure the order of departments for disclaimer clearance",
+            managing: "Managing: {{name}}",
+            addDept: "Add Department",
+            empty: {
+                title: "No departments configured yet",
+                body: "Add departments to create the disclaimer flow for your employees"
+            },
+            stepBadge: "Step {{order}} in the disclaimer flow",
+            allAdded: "All available disclaimer departments have been added to the flow.",
+            dialog: {
+                title: "Add Department to Disclaimer Flow",
+                help: "Select a department to add to the disclaimer flow:",
+                selectLabel: "Select Department",
+                noneLeft: "No more departments available to add. All configured departments are already in the flow.",
+                cancel: "Cancel",
+                add: "Add Department",
+                adding: "Adding..."
+            },
+            errors: {
+                loadFailed: "Failed to load disclaimer configuration",
+                addFailed: "Failed to add department",
+                removeFailed: "Failed to remove department",
+                reorderFailed: "Failed to update order"
+            },
+            success: {
+                added: "Department added successfully!",
+                removed: "Department removed successfully!",
+                reordered: "Order updated successfully!"
+            },
+            confirmRemove: "Are you sure you want to remove this department from the disclaimer flow?"
+        },
+
+        //Manager Disclaimer History
+        managerDisclaimerHistory: {
+            stats: {
+                total: "Total Requests",
+                pending: "Pending",
+                approved: "Approved",
+                rejected: "Rejected"
+            },
+            header: "Disclaimer Request History",
+            tabs: {
+                all: "All ({{count}})",
+                pending: "Pending ({{count}})",
+                approved: "Approved ({{count}})",
+                rejected: "Rejected ({{count}})"
+            },
+            none: "No {{which}}requests found",
+            stepIn: "Step {{num}} • {{dept}}",
+            createdAt: "{{date}}",
+            employeeNotes: "Employee Notes:",
+            yourResponse: "Your Response:",
+            rejectionReason: "Rejection Reason:",
+            reviewed: "Reviewed: {{date}}",
+            errors: { loadFailed: "Failed to load data" }
+        },
+
+        // Manager pending Requests
+        managerPendingRequests: {
+            title: "Pending Disclaimer Requests",
+            subtitle: "Review and approve or reject disclaimer clearance requests",
+            empty: {
+                title: "No pending requests",
+                body: "All disclaimer requests have been reviewed"
+            },
+            review: "Review",
+            chips: { step: "Step {{num}}" },
+            fields: {
+                employeeId: "Employee ID: {{id}}",
+                department: "Department: {{dept}}",
+                submitted: "Submitted: {{date}}"
+            },
+            dialog: {
+                title: "Review Disclaimer Request",
+                decision: "Decision *",
+                approve: "Approve",
+                reject: "Reject",
+                notesLabel: "Manager Notes (Optional)",
+                notesPlaceholder: "Add any comments or feedback...",
+                reasonLabel: "Rejection Reason *",
+                reasonPlaceholder: "Please provide a clear reason for rejection...",
+                cancel: "Cancel",
+                submitting: "Submitting...",
+                submitApprove: "Approve",
+                submitReject: "Reject"
+            },
+            toasts: {
+                needReason: "Rejection reason is required when rejecting a request",
+                successApprove: "Request approved successfully!",
+                successReject: "Request rejected successfully!",
+                submitFailed: "Failed to submit review",
+                loadFailed: "Failed to load pending requests"
+            }
         }
+
+
     }
 };
 
@@ -439,7 +660,13 @@ const arTranslations = {
             employees: "الموظفون",
             transactions: "المعاملات",
             reports: "التقارير",
-            settings: "الإعدادات"
+            settings: "الإعدادات",
+            myProfile: "الملف الشخصي",
+            myDisclaimer: " إخلاء الطرف",
+            disclaimerRequests: "طلبات إخلاء الطرف",
+            disclaimerSetup: "إدارة مسارات إخلاء الطرف ",
+            adminDisclaimerConfig: "إعداد أقسام إخلاء الطرف",
+            disclaimerHistory: "سجل طلبات إخلاء الطرف ",
         },
 
         // Authentication
@@ -844,7 +1071,219 @@ const arTranslations = {
                 cameraNotReady: "الكاميرا غير جاهزة",
                 captureFailed: "فشل التقاط الصورة"
             }
+        },
+
+        // Admin Disclaimer Config
+        adminDisclaimerConfig: {
+            title: "إعداد أقسام إخلاء الطرف",
+            subtitle: "قم بتحديد الأقسام التي تتطلب إخلاء طرف",
+            info: "تفعيل متطلبات إخلاء الطرف للقسم. سيقوم مديرو الأقسام بعد ذلك بتحديد ترتيب الأقسام التي يجب على الموظفين إخلاؤها.",
+            none: "لا توجد أقسام. يرجى إنشاء الأقسام أولاً.",
+            requiresChip: "يتطلب إخلاء طرف",
+            requiresYes: "هذا القسم يتطلب إخلاء طرف",
+            requiresNo: "هذا القسم لا يتطلب إخلاء طرف",
+            updating: "جاري التحديث...",
+            notesTitle: "⚠️ ملاحظات مهمة:",
+            notes: {
+                a: "تفعيل الإخلاء لقسم يسمح بإضافته إلى مسارات إخلاء الطرف",
+                b: "سيقوم مديرو الأقسام بتحديد ترتيب الإخلاء لموظفيهم",
+                c: "إيقاف القسم سيزيله من جميع مسارات الإخلاء الحالية"
+            },
+            errors: {
+                loadFailed: "فشل في تحميل الإعدادات",
+                updateFailed: "فشل في تحديث الإعداد"
+            },
+            success: {
+                updated: "تم تحديث الإعدادات بنجاح!"
+            }
+        },
+
+        // Admin Disclaimer Setup
+        adminDisclaimerSetup: {
+            header: "إدارة إعداد مسارات إخلاء الطرف",
+            departments: "الأقسام",
+            chipRequires: "يتطلب إخلاء طرف",
+            chipNone: "لا يتطلب إخلاء طرف",
+            stepsCount_one: "{{count}} خطوة مُعدّة",
+            stepsCount_other: "{{count}} خطوات مُعدّة",
+            flowFor: "مسار الإخلاء لقسم {{name}}",
+            addDepartment: "إضافة قسم",
+            emptyTitle: "لا يوجد مسار إخلاء مُعد",
+            emptyHelp: "أضف أقسامًا لإنشاء مسار الإخلاء",
+            stepBadge: "الخطوة {{order}} في عملية الإخلاء",
+            selectPrompt: "اختر قسمًا لضبط مسار الإخلاء الخاص به",
+            confirmRemove: "هل أنت متأكد أنك تريد إزالة هذا القسم من المسار؟",
+            dialog: {
+                title: "إضافة قسم إلى مسار إخلاء الطرف",
+                help: "اختر قسمًا لإضافته إلى مسار الإخلاء لقسم {{name}}",
+                selectLabel: "اختر القسم",
+                cancel: "إلغاء",
+                add: "إضافة قسم",
+                adding: "جاري الإضافة..."
+            },
+            errors: {
+                loadDepartments: "فشل في تحميل الأقسام",
+                loadDepartment: "فشل في تحميل إعدادات القسم",
+                addFailed: "فشل في إضافة القسم",
+                deleteFailed: "فشل في إزالة القسم",
+                reorderFailed: "فشل في تحديث الترتيب"
+            },
+            success: {
+                added: "تمت إضافة القسم إلى مسار الإخلاء بنجاح",
+                removed: "تمت إزالة القسم من مسار الإخلاء",
+                reordered: "تم تحديث الترتيب بنجاح"
+            }
+        },
+
+        // Employee Disclaimer Histpry
+        employeeDisclaimerHistory: {
+            header: "سجل طلبات إخلاء الطرف الخاص بي",
+            none: "لا توجد طلبات إخلاء طرف",
+            step: "الخطوة {{num}}",
+            createdAt: "{{date}}",
+            myNotes: "ملاحظاتي:",
+            managerResponse: "رد المدير:",
+            rejectionReason: "سبب الرفض:",
+            reviewedAt: "تمت المراجعة: {{date}}",
+            errors: { loadFailed: "فشل في تحميل السجل" }
+        },
+
+        // Employee Disclaimer
+        employeeDisclaimer: {
+            title: "عملية طلب إخلاء الطرف",
+            subtitle: "أكمل إخلاء الطرف من جميع الأقسام لإنهاء الإجراء",
+            start: {
+                noActive: "لا يوجد لديك إجراء إخلاء طرف نشط.",
+                cta: "بدء عملية إخلاء الطرف",
+                starting: "جاري البدء..."
+            },
+            noFlow: "لا يوجد مسار إخلاء طرف مُعد لقسمك. يرجى التواصل مع مدير القسم.",
+            progress: "التقدم: الخطوة {{current}} من {{total}}",
+            stepTitle: "الخطوة {{num}}: {{name}}",
+            submitRequest: "تقديم طلب",
+            resubmitRequest: "إعادة تقديم الطلب",
+            yourNotes: "ملاحظاتك:",
+            lockedMsg: "🔒 أكمل الخطوات السابقة لفتح هذا القسم",
+            waitingReview: "⏳ في انتظار مراجعة مدير القسم...",
+            completedTitle: "✅ تم اكتمال عملية إخلاء الطرف!",
+            completedBody: "جميع الأقسام وافقت على طلب إخلاء الطرف الخاص بك.",
+            dialog: {
+                title: "تقديم طلب إلى {{name}}",
+                body: "أنت تقوم بتقديم طلب إخلاء طرف إلى قسم {{name}}.",
+                notesLabel: "ملاحظات (اختياري)",
+                notesPlaceholder: "أضف أي ملاحظات أو تعليقات لمدير القسم...",
+                cancel: "إلغاء",
+                submit: "تقديم الطلب",
+                submitting: "جاري الإرسال..."
+            },
+            alerts: {
+                loadFailed: "فشل في تحميل حالة إخلاء الطرف",
+                startSuccess: "تم بدء عملية إخلاء الطرف بنجاح!",
+                startFailed: "فشل في بدء عملية إخلاء الطرف",
+                submitSuccess: "تم إرسال الطلب إلى {{name}}",
+                submitFailed: "فشل في إرسال الطلب"
+            }
+        },
+
+        //Manager Disclaimer Config
+        managerDisclaimerConfig: {
+            title: "إعداد مسار إخلاء الطرف",
+            subtitle: "اضبط ترتيب الأقسام لإخلاء الطرف",
+            managing: "القسم المُدار: {{name}}",
+            addDept: "إضافة قسم",
+            empty: {
+                title: "لا توجد أقسام مُعدة بعد",
+                body: "أضف أقسامًا لإنشاء مسار إخلاء الطرف للموظفين"
+            },
+            stepBadge: "الخطوة {{order}} في مسار الإخلاء",
+            allAdded: "تمت إضافة جميع أقسام الإخلاء المتاحة إلى المسار.",
+            dialog: {
+                title: "إضافة قسم إلى مسار إخلاء الطرف",
+                help: "اختر قسمًا لإضافته إلى مسار إخلاء الطرف:",
+                selectLabel: "اختر القسم",
+                noneLeft: "لا توجد أقسام أخرى لإضافتها. جميع الأقسام مضافة بالفعل.",
+                cancel: "إلغاء",
+                add: "إضافة قسم",
+                adding: "جاري الإضافة..."
+            },
+            errors: {
+                loadFailed: "فشل في تحميل إعدادات إخلاء الطرف",
+                addFailed: "فشل في إضافة القسم",
+                removeFailed: "فشل في إزالة القسم",
+                reorderFailed: "فشل في تحديث الترتيب"
+            },
+            success: {
+                added: "تمت إضافة القسم بنجاح!",
+                removed: "تمت إزالة القسم بنجاح!",
+                reordered: "تم تحديث الترتيب بنجاح!"
+            },
+            confirmRemove: "هل أنت متأكد من إزالة هذا القسم من المسار؟"
+        },
+
+        //Manager Disclaimer History
+        managerDisclaimerHistory: {
+            stats: {
+                total: "إجمالي الطلبات",
+                pending: "قيد الانتظار",
+                approved: "مقبول",
+                rejected: "مرفوض"
+            },
+            header: "سجل طلبات إخلاء الطرف",
+            tabs: {
+                all: "الكل ({{count}})",
+                pending: "قيد الانتظار ({{count}})",
+                approved: "مقبول ({{count}})",
+                rejected: "مرفوض ({{count}})"
+            },
+            none: "لا توجد {{which}}طلبات",
+            stepIn: "الخطوة {{num}} • {{dept}}",
+            createdAt: "{{date}}",
+            employeeNotes: "ملاحظات الموظف:",
+            yourResponse: "ردك:",
+            rejectionReason: "سبب الرفض:",
+            reviewed: "تمت المراجعة: {{date}}",
+            errors: { loadFailed: "فشل في تحميل البيانات" }
+        },
+
+        // Manager pending Requests
+        managerPendingRequests: {
+            title: "طلبات إخلاء الطرف قيد الانتظار",
+            subtitle: "قم بمراجعة الطلبات بالموافقة أو الرفض",
+            empty: {
+                title: "لا توجد طلبات قيد الانتظار",
+                body: "تمت مراجعة جميع طلبات إخلاء الطرف"
+            },
+            review: "مراجعة",
+            chips: { step: "الخطوة {{num}}" },
+            fields: {
+                employeeId: "رقم الموظف: {{id}}",
+                department: "القسم: {{dept}}",
+                submitted: "التقديم: {{date}}"
+            },
+            dialog: {
+                title: "مراجعة طلب إخلاء الطرف",
+                decision: "القرار *",
+                approve: "قبول",
+                reject: "رفض",
+                notesLabel: "ملاحظات المدير (اختياري)",
+                notesPlaceholder: "أضف أي تعليقات أو ملاحظات...",
+                reasonLabel: "سبب الرفض *",
+                reasonPlaceholder: "يرجى توضيح سبب الرفض...",
+                cancel: "إلغاء",
+                submitting: "جاري الإرسال...",
+                submitApprove: "قبول",
+                submitReject: "رفض"
+            },
+            toasts: {
+                needReason: "سبب الرفض مطلوب عند رفض الطلب",
+                successApprove: "تم قبول الطلب بنجاح!",
+                successReject: "تم رفض الطلب بنجاح!",
+                submitFailed: "فشل في إرسال المراجعة",
+                loadFailed: "فشل في تحميل الطلبات قيد الانتظار"
+            }
         }
+
+
     }
 };
 

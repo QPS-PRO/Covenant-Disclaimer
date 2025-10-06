@@ -8,10 +8,12 @@ import {
     Spinner,
     Chip
 } from '@material-tailwind/react';
+import { useTranslation } from 'react-i18next';
 import { disclaimerAdminAPI } from '@/lib/disclaimerApi';
 import { departmentAPI } from '@/lib/assetApi';
 
 export default function AdminDisclaimerConfiguration() {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [departments, setDepartments] = useState([]);
     const [configs, setConfigs] = useState({});
@@ -41,7 +43,7 @@ export default function AdminDisclaimerConfiguration() {
             });
             setConfigs(configMap);
         } catch (err) {
-            setError(err.message || 'Failed to load configuration');
+            setError(err.message || t('adminDisclaimerConfig.errors.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -55,13 +57,11 @@ export default function AdminDisclaimerConfiguration() {
             const existingConfig = configs[departmentId];
 
             if (existingConfig) {
-                // Update existing config
                 await disclaimerAdminAPI.updateDepartmentConfig(existingConfig.id, {
                     requires_disclaimer: !currentValue,
                     is_active: true
                 });
             } else {
-                // Create new config
                 await disclaimerAdminAPI.createDepartmentConfig({
                     department: departmentId,
                     requires_disclaimer: true,
@@ -69,10 +69,10 @@ export default function AdminDisclaimerConfiguration() {
                 });
             }
 
-            setSuccess('Configuration updated successfully!');
+            setSuccess(t('adminDisclaimerConfig.success.updated'));
             await loadData();
         } catch (err) {
-            setError(err.message || 'Failed to update configuration');
+            setError(err.message || t('adminDisclaimerConfig.errors.updateFailed'));
         } finally {
             setUpdating(prev => ({ ...prev, [departmentId]: false }));
         }
@@ -92,10 +92,10 @@ export default function AdminDisclaimerConfiguration() {
                 <CardBody>
                     <div className="mb-6">
                         <Typography variant="h4" color="blue-gray" className="mb-2">
-                            Disclaimer Department Configuration
+                            {t('adminDisclaimerConfig.title')}
                         </Typography>
                         <Typography color="gray" className="font-normal">
-                            Configure which departments require disclaimer clearance
+                            {t('adminDisclaimerConfig.subtitle')}
                         </Typography>
                     </div>
 
@@ -113,15 +113,14 @@ export default function AdminDisclaimerConfiguration() {
 
                     <Alert color="blue" className="mb-6">
                         <Typography variant="small">
-                            Enable disclaimer requirements for departments. Department managers will then configure
-                            the order in which employees must clear these departments.
+                            {t('adminDisclaimerConfig.info')}
                         </Typography>
                     </Alert>
 
                     {departments.length === 0 ? (
                         <div className="text-center py-12">
                             <Typography color="gray">
-                                No departments found. Please create departments first.
+                                {t('adminDisclaimerConfig.none')}
                             </Typography>
                         </div>
                     ) : (
@@ -143,22 +142,22 @@ export default function AdminDisclaimerConfiguration() {
                                                         {requiresDisclaimer && (
                                                             <Chip
                                                                 size="sm"
-                                                                value="Requires Disclaimer"
+                                                                value={t('adminDisclaimerConfig.requiresChip')}
                                                                 color="green"
                                                             />
                                                         )}
                                                     </div>
                                                     <Typography variant="small" color="gray">
                                                         {requiresDisclaimer
-                                                            ? 'This department requires disclaimer clearance'
-                                                            : 'This department does not require disclaimer clearance'}
+                                                            ? t('adminDisclaimerConfig.requiresYes')
+                                                            : t('adminDisclaimerConfig.requiresNo')}
                                                     </Typography>
                                                 </div>
                                                 <Switch
                                                     checked={requiresDisclaimer}
                                                     onChange={() => handleToggle(dept.id, requiresDisclaimer)}
                                                     disabled={isUpdating}
-                                                    label={isUpdating ? 'Updating...' : ''}
+                                                    label={isUpdating ? t('adminDisclaimerConfig.updating') : ''}
                                                     color="green"
                                                 />
                                             </div>
@@ -171,12 +170,12 @@ export default function AdminDisclaimerConfiguration() {
 
                     <div className="mt-6 bg-amber-50 border border-amber-200 rounded p-4">
                         <Typography variant="small" className="font-semibold mb-2">
-                            ⚠️ Important Notes:
+                            {t('adminDisclaimerConfig.notesTitle')}
                         </Typography>
                         <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                            <li>Enabling disclaimer for a department allows it to be added to disclaimer flows</li>
-                            <li>Department managers will configure the order of clearance for their employees</li>
-                            <li>Disabling a department will remove it from all existing disclaimer flows</li>
+                            <li>{t('adminDisclaimerConfig.notes.a')}</li>
+                            <li>{t('adminDisclaimerConfig.notes.b')}</li>
+                            <li>{t('adminDisclaimerConfig.notes.c')}</li>
                         </ul>
                     </div>
                 </CardBody>

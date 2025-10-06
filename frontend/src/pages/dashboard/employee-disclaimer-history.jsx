@@ -1,5 +1,3 @@
-// frontend/src/pages/dashboard/employee-disclaimer-history.jsx
-
 import React, { useState, useEffect } from 'react';
 import {
     Card,
@@ -10,9 +8,11 @@ import {
     Spinner,
     Alert,
 } from '@material-tailwind/react';
+import { useTranslation } from 'react-i18next';
 import { disclaimerEmployeeAPI, disclaimerUtils } from '@/lib/disclaimerApi';
 
 export default function EmployeeDisclaimerHistory() {
+    const { t } = useTranslation();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -29,7 +29,7 @@ export default function EmployeeDisclaimerHistory() {
             setRequests(data || []);
         } catch (err) {
             console.error('Error loading history:', err);
-            setError(err.message || 'Failed to load history');
+            setError(err.message || t('employeeDisclaimerHistory.errors.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -48,7 +48,7 @@ export default function EmployeeDisclaimerHistory() {
             <Card>
                 <CardHeader variant="gradient" color="gray" className="mb-8 p-6">
                     <Typography variant="h6" color="white">
-                        My Disclaimer Request History
+                        {t('employeeDisclaimerHistory.header')}
                     </Typography>
                 </CardHeader>
 
@@ -63,7 +63,7 @@ export default function EmployeeDisclaimerHistory() {
                         {requests.length === 0 ? (
                             <div className="text-center py-12">
                                 <Typography variant="h6" color="gray">
-                                    No disclaimer requests found
+                                    {t('employeeDisclaimerHistory.none')}
                                 </Typography>
                             </div>
                         ) : (
@@ -83,10 +83,12 @@ export default function EmployeeDisclaimerHistory() {
                                                     />
                                                 </div>
                                                 <Typography variant="small" color="gray">
-                                                    Step {request.step_number}
+                                                    {t('employeeDisclaimerHistory.step', { num: request.step_number })}
                                                 </Typography>
                                                 <Typography variant="small" color="gray">
-                                                    {disclaimerUtils.formatDate(request.created_at)}
+                                                    {t('employeeDisclaimerHistory.createdAt', {
+                                                        date: disclaimerUtils.formatDate(request.created_at),
+                                                    })}
                                                 </Typography>
                                             </div>
                                         </div>
@@ -94,7 +96,7 @@ export default function EmployeeDisclaimerHistory() {
                                         {request.employee_notes && (
                                             <div className="mb-3 p-3 bg-blue-50 rounded">
                                                 <Typography variant="small" className="font-semibold mb-1">
-                                                    My Notes:
+                                                    {t('employeeDisclaimerHistory.myNotes')}
                                                 </Typography>
                                                 <Typography variant="small" color="gray">
                                                     {request.employee_notes}
@@ -105,7 +107,7 @@ export default function EmployeeDisclaimerHistory() {
                                         {request.manager_notes && (
                                             <div className="mb-3 p-3 bg-green-50 rounded">
                                                 <Typography variant="small" className="font-semibold mb-1">
-                                                    Manager Response:
+                                                    {t('employeeDisclaimerHistory.managerResponse')}
                                                 </Typography>
                                                 <Typography variant="small" color="gray">
                                                     {request.manager_notes}
@@ -116,7 +118,7 @@ export default function EmployeeDisclaimerHistory() {
                                         {request.rejection_reason && (
                                             <div className="p-3 bg-red-50 rounded border-l-4 border-red-500">
                                                 <Typography variant="small" className="font-semibold mb-1 text-red-700">
-                                                    Rejection Reason:
+                                                    {t('employeeDisclaimerHistory.rejectionReason')}
                                                 </Typography>
                                                 <Typography variant="small" color="gray">
                                                     {request.rejection_reason}
@@ -127,7 +129,9 @@ export default function EmployeeDisclaimerHistory() {
                                         {request.reviewed_at && (
                                             <div className="mt-3 pt-3 border-t border-gray-200">
                                                 <Typography variant="small" color="gray">
-                                                    Reviewed: {disclaimerUtils.formatDate(request.reviewed_at)}
+                                                    {t('employeeDisclaimerHistory.reviewedAt', {
+                                                        date: disclaimerUtils.formatDate(request.reviewed_at),
+                                                    })}
                                                 </Typography>
                                             </div>
                                         )}

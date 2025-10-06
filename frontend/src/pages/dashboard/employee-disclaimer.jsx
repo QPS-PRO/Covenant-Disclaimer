@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardBody, Typography, Button, Textarea, Dialog, DialogHeader, DialogBody, DialogFooter, Chip, Alert, Spinner } from '@material-tailwind/react';
 import { CheckCircleIcon, XCircleIcon, ClockIcon, LockClosedIcon } from '@heroicons/react/24/solid';
+import { useTranslation } from 'react-i18next';
 import { disclaimerEmployeeAPI, disclaimerUtils } from '@/lib/disclaimerApi';
 
 export default function EmployeeDisclaimerPage() {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState(null);
     const [selectedStep, setSelectedStep] = useState(null);
@@ -24,7 +26,7 @@ export default function EmployeeDisclaimerPage() {
             const data = await disclaimerEmployeeAPI.getStatus();
             setStatus(data);
         } catch (err) {
-            setError(err.message || 'Failed to load disclaimer status');
+            setError(err.message || t('employeeDisclaimer.alerts.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -35,10 +37,10 @@ export default function EmployeeDisclaimerPage() {
             setSubmitting(true);
             setError(null);
             await disclaimerEmployeeAPI.startProcess();
-            setSuccess('Disclaimer process started successfully!');
+            setSuccess(t('employeeDisclaimer.alerts.startSuccess'));
             await loadStatus();
         } catch (err) {
-            setError(err.message || 'Failed to start disclaimer process');
+            setError(err.message || t('employeeDisclaimer.alerts.startFailed'));
         } finally {
             setSubmitting(false);
         }
@@ -61,11 +63,11 @@ export default function EmployeeDisclaimerPage() {
                 target_department: selectedStep.department_id,
                 employee_notes: requestNotes
             });
-            setSuccess(`Request submitted to ${selectedStep.department_name}`);
+            setSuccess(t('employeeDisclaimer.alerts.submitSuccess', { name: selectedStep.department_name }));
             setShowRequestDialog(false);
             await loadStatus();
         } catch (err) {
-            setError(err.message || 'Failed to submit request');
+            setError(err.message || t('employeeDisclaimer.alerts.submitFailed'));
         } finally {
             setSubmitting(false);
         }
@@ -102,7 +104,7 @@ export default function EmployeeDisclaimerPage() {
 
     if (!status) {
         return (
-            <Alert color="red">Failed to load disclaimer status</Alert>
+            <Alert color="red">{t('employeeDisclaimer.alerts.loadFailed')}</Alert>
         );
     }
 
@@ -112,10 +114,10 @@ export default function EmployeeDisclaimerPage() {
                 <CardBody>
                     <div className="mb-6">
                         <Typography variant="h4" color="blue-gray" className="mb-2">
-                            Disclaimer Request Process
+                            {t('employeeDisclaimer.title')}
                         </Typography>
                         <Typography color="gray" className="font-normal">
-                            Complete all department clearances to finalize your disclaimer
+                            {t('employeeDisclaimer.subtitle')}
                         </Typography>
                     </div>
 
@@ -134,21 +136,21 @@ export default function EmployeeDisclaimerPage() {
                     {!status.has_active_process && status.can_start_process && (
                         <div className="text-center py-8">
                             <Typography className="mb-4">
-                                You don't have an active disclaimer process.
+                                {t('employeeDisclaimer.start.noActive')}
                             </Typography>
                             <Button
                                 color="blue"
                                 onClick={handleStartProcess}
                                 disabled={submitting}
                             >
-                                {submitting ? 'Starting...' : 'Start Disclaimer Process'}
+                                {submitting ? t('employeeDisclaimer.start.starting') : t('employeeDisclaimer.start.cta')}
                             </Button>
                         </div>
                     )}
 
                     {!status.can_start_process && status.flow_steps.length === 0 && (
                         <Alert color="amber">
-                            No disclaimer flow configured for your department. Please contact your department manager.
+                            {t('employeeDisclaimer.noFlow')}
                         </Alert>
                     )}
 
@@ -157,7 +159,10 @@ export default function EmployeeDisclaimerPage() {
                             <div className="mb-8">
                                 <div className="flex justify-between items-center mb-4">
                                     <Typography variant="h6" color="blue-gray">
-                                        Progress: Step {status.process?.current_step} of {status.process?.total_steps}
+                                        {t('employeeDisclaimer.progress', {
+                                            current: status.process?.current_step,
+                                            total: status.process?.total_steps
+                                        })}
                                     </Typography>
                                     <Chip
                                         value={disclaimerUtils.getStatusLabel(status.process?.status)}
@@ -193,7 +198,7 @@ export default function EmployeeDisclaimerPage() {
                                                         <div className="flex justify-between items-start mb-2">
                                                             <div>
                                                                 <Typography variant="h6" color="blue-gray">
-                                                                    Step {step.step_number}: {step.department_name}
+                                                                    {t('employeeDisclaimer.stepTitle', { num: step.step_number, name: step.department_name })}
                                                                 </Typography>
                                                                 <Chip
                                                                     size="sm"
@@ -209,7 +214,9 @@ export default function EmployeeDisclaimerPage() {
                                                                     onClick={() => handleRequestClick(step)}
                                                                     disabled={submitting}
                                                                 >
-                                                                    {step.status === 'rejected' ? 'Resubmit Request' : 'Submit Request'}
+                                                                    {step.status === 'rejected'
+                                                                        ? t('employeeDisclaimer.resubmitRequest')
+                                                                        : t('employeeDisclaimer.submitRequest')}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -219,7 +226,7 @@ export default function EmployeeDisclaimerPage() {
                                                                 {step.request.employee_notes && (
                                                                     <div className="bg-gray-50 p-3 rounded">
                                                                         <Typography variant="small" className="font-semibold mb-1">
-                                                                            Your Notes:
+                                                                            {t('employeeDisclaimer.yourNotes')}
                                                                         </Typography>
                                                                         <Typography variant="small" color="gray">
                                                                             {step.request.employee_notes}
@@ -232,7 +239,7 @@ export default function EmployeeDisclaimerPage() {
                                                                         {step.request.manager_notes && (
                                                                             <div className={`p-3 rounded ${step.request.status === 'approved' ? 'bg-green-50' : 'bg-red-50'}`}>
                                                                                 <Typography variant="small" className="font-semibold mb-1">
-                                                                                    Manager Response:
+                                                                                    {t('employeeDisclaimerHistory.managerResponse')}
                                                                                 </Typography>
                                                                                 <Typography variant="small">
                                                                                     {step.request.manager_notes}
@@ -243,7 +250,7 @@ export default function EmployeeDisclaimerPage() {
                                                                         {step.request.rejection_reason && (
                                                                             <div className="bg-red-50 p-3 rounded border border-red-200">
                                                                                 <Typography variant="small" className="font-semibold mb-1 text-red-700">
-                                                                                    Rejection Reason:
+                                                                                    {t('employeeDisclaimerHistory.rejectionReason')}
                                                                                 </Typography>
                                                                                 <Typography variant="small" className="text-red-600">
                                                                                     {step.request.rejection_reason}
@@ -252,7 +259,11 @@ export default function EmployeeDisclaimerPage() {
                                                                         )}
 
                                                                         <div className="flex justify-between text-xs text-gray-600">
-                                                                            <span>Reviewed by: {step.request.reviewed_by_name || 'N/A'}</span>
+                                                                            <span>
+                                                                                {t('managerPendingRequests.fields.department', {
+                                                                                    dept: step.request.reviewed_by_name || 'N/A'
+                                                                                })}
+                                                                            </span>
                                                                             <span>{disclaimerUtils.formatDate(step.request.reviewed_at)}</span>
                                                                         </div>
                                                                     </>
@@ -261,7 +272,7 @@ export default function EmployeeDisclaimerPage() {
                                                                 {step.request.status === 'pending' && (
                                                                     <div className="bg-yellow-50 p-3 rounded">
                                                                         <Typography variant="small" className="text-yellow-800">
-                                                                            ⏳ Waiting for department manager review...
+                                                                            {t('employeeDisclaimer.waitingReview')}
                                                                         </Typography>
                                                                     </div>
                                                                 )}
@@ -271,7 +282,7 @@ export default function EmployeeDisclaimerPage() {
                                                         {!step.request && !step.can_request && step.status === 'locked' && (
                                                             <div className="mt-4 bg-gray-50 p-3 rounded">
                                                                 <Typography variant="small" color="gray">
-                                                                    🔒 Complete previous steps to unlock this department
+                                                                    {t('employeeDisclaimer.lockedMsg')}
                                                                 </Typography>
                                                             </div>
                                                         )}
@@ -286,10 +297,10 @@ export default function EmployeeDisclaimerPage() {
                             {status.process?.status === 'completed' && (
                                 <Alert color="green" className="mt-6">
                                     <Typography variant="h6" className="mb-2">
-                                        ✅ Disclaimer Process Completed!
+                                        {t('employeeDisclaimer.completedTitle')}
                                     </Typography>
                                     <Typography>
-                                        All departments have approved your disclaimer request.
+                                        {t('employeeDisclaimer.completedBody')}
                                     </Typography>
                                 </Alert>
                             )}
@@ -301,17 +312,17 @@ export default function EmployeeDisclaimerPage() {
             {/* Request Dialog */}
             <Dialog open={showRequestDialog} handler={() => setShowRequestDialog(false)} size="md">
                 <DialogHeader>
-                    Submit Request to {selectedStep?.department_name}
+                    {t('employeeDisclaimer.dialog.title', { name: selectedStep?.department_name })}
                 </DialogHeader>
                 <DialogBody divider className="space-y-4">
                     <Typography>
-                        You are submitting a disclaimer clearance request to the {selectedStep?.department_name} department.
+                        {t('employeeDisclaimer.dialog.body', { name: selectedStep?.department_name })}
                     </Typography>
                     <Textarea
-                        label="Notes (Optional)"
+                        label={t('employeeDisclaimer.dialog.notesLabel')}
                         value={requestNotes}
                         onChange={(e) => setRequestNotes(e.target.value)}
-                        placeholder="Add any notes or comments for the department manager..."
+                        placeholder={t('employeeDisclaimer.dialog.notesPlaceholder')}
                         rows={4}
                     />
                 </DialogBody>
@@ -322,14 +333,14 @@ export default function EmployeeDisclaimerPage() {
                         onClick={() => setShowRequestDialog(false)}
                         disabled={submitting}
                     >
-                        Cancel
+                        {t('employeeDisclaimer.dialog.cancel')}
                     </Button>
                     <Button
                         color="blue"
                         onClick={handleSubmitRequest}
                         disabled={submitting}
                     >
-                        {submitting ? 'Submitting...' : 'Submit Request'}
+                        {submitting ? t('employeeDisclaimer.dialog.submitting') : t('employeeDisclaimer.dialog.submit')}
                     </Button>
                 </DialogFooter>
             </Dialog>

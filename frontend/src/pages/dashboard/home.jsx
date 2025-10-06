@@ -1,4 +1,3 @@
-// frontend/src/pages/dashboard/home.jsx (partial update - showing key sections)
 import React from "react";
 import {
   Typography,
@@ -43,7 +42,6 @@ export function Home() {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
 
-  // -- Recent transactions limit (5 default) + data fetched from backend
   const [recentLimit, setRecentLimit] = React.useState(5);
   const [recentRows, setRecentRows] = React.useState([]);
   const [recentLoading, setRecentLoading] = React.useState(false);
