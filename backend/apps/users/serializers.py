@@ -65,11 +65,12 @@ class UserSerializer(serializers.ModelSerializer):
                 "name": employee.name,
                 "department_id": employee.department.id,
                 "department_name": employee.department.name,
-                "is_active": employee.is_active,
-                "has_face_data": employee.has_face_data,
+                "is_active": getattr(employee, "is_active", True),
+                "has_face_data": getattr(employee, "has_face_data", False),
                 "is_department_manager": employee.department.manager == obj,
             }
         except Exception as e:
+            print(f"Error getting employee profile: {e}")
             return None
 
 

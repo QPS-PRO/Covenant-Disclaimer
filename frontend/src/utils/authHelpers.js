@@ -38,9 +38,13 @@ export const getDefaultRoute = (user) => {
         case 'manager':
             return '/dashboard/disclaimer-requests';
         case 'employee':
-            if (user.employee_profile?.id) {
-                return `/dashboard/employees/${user.employee_profile.id}/profile`;
+            const employeeId = user.employee_profile?.id || user.employee_id;
+            
+            if (employeeId) {
+                return `/dashboard/employees/${employeeId}/profile`;
             }
+            
+            console.warn('Employee user has no employee_profile.id:', user);
             return '/dashboard/my-disclaimer';
         default:
             return '/auth/sign-in';

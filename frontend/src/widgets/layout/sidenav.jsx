@@ -124,40 +124,51 @@ export function Sidenav({ brandImg, brandName, routes, user }) {
 
               {pages
                 .filter((page) => !shouldHidePage(page))
-                .map(({ icon, name, path }) => (
-                  <li key={name}>
-                    <NavLink to={`/${layout}${path}`}>
-                      {({ isActive }) => (
-                        <Button
-                          variant={isActive ? "gradient" : "text"}
-                          color={
-                            isActive
-                              ? sidenavColor
-                              : sidenavType === "dark" ? "white" : "blue-gray"
-                          }
-                          className="w-full px-4 py-3"
-                          fullWidth
-                        >
-                          <div
-                            className={`flex items-center gap-4 w-full ${isRTL ? "justify-end" : "justify-start"}`}
-                            dir={isRTL ? "rtl" : "ltr"}
-                          >
-                            <span className="shrink-0">
-                              {withOptionalRtlFlip(icon)}
-                            </span>
+                .map(({ icon, name, path, getPath }) => {
+                  // FIXED: Handle dynamic paths for employee profile
+                  const dynamicPath = getPath ? getPath(user) : null;
+                  const finalPath = dynamicPath || path;
 
-                            <Typography
-                              color="inherit"
-                              className={`font-medium capitalize ${isRTL ? "text-right" : "text-left"} flex-1`}
+                  // Skip if dynamic path returns null (user doesn't have required data)
+                  if (getPath && !dynamicPath) {
+                    return null;
+                  }
+
+                  return (
+                    <li key={name}>
+                      <NavLink to={`/${layout}${finalPath}`}>
+                        {({ isActive }) => (
+                          <Button
+                            variant={isActive ? "gradient" : "text"}
+                            color={
+                              isActive
+                                ? sidenavColor
+                                : sidenavType === "dark" ? "white" : "blue-gray"
+                            }
+                            className="w-full px-4 py-3"
+                            fullWidth
+                          >
+                            <div
+                              className={`flex items-center gap-4 w-full ${isRTL ? "justify-end" : "justify-start"}`}
+                              dir={isRTL ? "rtl" : "ltr"}
                             >
-                              {getNavTranslation(name)}
-                            </Typography>
-                          </div>
-                        </Button>
-                      )}
-                    </NavLink>
-                  </li>
-                ))}
+                              <span className="shrink-0">
+                                {withOptionalRtlFlip(icon)}
+                              </span>
+
+                              <Typography
+                                color="inherit"
+                                className={`font-medium capitalize ${isRTL ? "text-right" : "text-left"} flex-1`}
+                              >
+                                {getNavTranslation(name)}
+                              </Typography>
+                            </div>
+                          </Button>
+                        )}
+                      </NavLink>
+                    </li>
+                  );
+                })} 
             </ul>
           ) : null
         )}

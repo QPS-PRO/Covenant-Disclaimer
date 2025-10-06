@@ -19,7 +19,7 @@ import { Employees, Assets, Departments, Transactions, EmployeeProfile } from "@
 
 // Disclaimer components
 import EmployeeDisclaimerPage from "@/pages/dashboard/employee-disclaimer";
-import EmployeeDisclaimerHistory from "@/pages/dashboard/manager-disclaimer-history";
+import EmployeeDisclaimerHistory from "@/pages/dashboard/employee-disclaimer-history";
 import ManagerDisclaimerConfiguration from "@/pages/dashboard/manager-disclaimer-config";
 import ManagerPendingRequests from "@/pages/dashboard/manager-pending-requests";
 import ManagerDisclaimerHistory from "@/pages/dashboard/manager-disclaimer-history";
@@ -103,7 +103,18 @@ export const routes = [
         hideFromSidebar: (user) => !isDepartmentManager(user),
       },
 
-      // EMPLOYEE ONLY PAGES
+      // EMPLOYEE PAGES 
+      {
+        icon: <UserCircleIcon {...icon} />,
+        name: "My Profile",
+        path: `/employees/:id/profile`, // Dynamic route
+        element: <EmployeeProfile />,
+        hideFromSidebar: (user) => !isRegularEmployee(user),
+        // Special handling for dynamic employee ID
+        getPath: (user) => user?.employee_profile?.id 
+          ? `/employees/${user.employee_profile.id}/profile` 
+          : null,
+      },
       {
         icon: <DocumentCheckIcon {...icon} />,
         name: "My Disclaimer",
@@ -113,19 +124,10 @@ export const routes = [
       },
       {
         icon: <ClockIcon {...icon} />,
-        name: "My History",
+        name: "Disclaimer History",
         path: "/my-disclaimer-history",
         element: <EmployeeDisclaimerHistory />,
         hideFromSidebar: (user) => !isRegularEmployee(user),
-      },
-
-      // HIDDEN PAGES (accessible but not in sidebar)
-      {
-        icon: <UsersIcon {...icon} />,
-        name: "employee-profile",
-        path: "/employees/:id/profile",
-        element: <EmployeeProfile />,
-        hideFromSidebar: true,
       },
     ],
   },
