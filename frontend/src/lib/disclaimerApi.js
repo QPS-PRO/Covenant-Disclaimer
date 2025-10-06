@@ -7,6 +7,15 @@ export const disclaimerAdminAPI = {
     createDepartmentConfig: (data) => apiPost('/api/disclaimers/admin/department-config/', data),
     updateDepartmentConfig: (id, data) => apiPatch(`/api/disclaimers/admin/department-config/${id}/`, data),
     deleteDepartmentConfig: (id) => apiDelete(`/api/disclaimers/admin/department-config/${id}/`),
+    getDepartmentsSummary: () => apiGet('/api/disclaimers/admin/departments/summary/'),
+    getDepartmentDisclaimerOrders: (departmentId) => 
+        apiGet(`/api/disclaimers/admin/departments/${departmentId}/disclaimer-orders/`),
+    createDepartmentDisclaimerOrder: (departmentId, data) => 
+        apiPost(`/api/disclaimers/admin/departments/${departmentId}/disclaimer-orders/create/`, data),
+    reorderDepartmentDisclaimerOrders: (departmentId, orders) => 
+        apiPut(`/api/disclaimers/admin/departments/${departmentId}/disclaimer-orders/reorder/`, { orders }),
+    deleteDepartmentDisclaimerOrder: (departmentId, orderId) => 
+        apiDelete(`/api/disclaimers/admin/departments/${departmentId}/disclaimer-orders/${orderId}/delete/`),
 };
 
 // ============ DEPARTMENT MANAGER API ============

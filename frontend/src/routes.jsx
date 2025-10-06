@@ -24,6 +24,7 @@ import ManagerDisclaimerConfiguration from "@/pages/dashboard/manager-disclaimer
 import ManagerPendingRequests from "@/pages/dashboard/manager-pending-requests";
 import ManagerDisclaimerHistory from "@/pages/dashboard/manager-disclaimer-history";
 import AdminDisclaimerConfig from "@/pages/dashboard/admin-disclaimer-config";
+import AdminDisclaimerSetup from "@/pages/dashboard/admin-disclaimer-setup";
 
 // Import auth helpers
 import { isAdmin, isDepartmentManager, isRegularEmployee } from "@/utils/authHelpers";
@@ -77,6 +78,13 @@ export const routes = [
         name: "Admin Config",
         path: "/admin-disclaimer-config",
         element: <AdminDisclaimerConfig />,
+        hideFromSidebar: (user) => !isAdmin(user),
+      },
+      {
+        icon: <Cog6ToothIcon {...icon} />,
+        name: "Disclaimer Setup",
+        path: "/admin-disclaimer-setup",
+        element: <AdminDisclaimerSetup />,
         hideFromSidebar: (user) => !isAdmin(user),
       },
 

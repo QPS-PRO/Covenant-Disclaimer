@@ -78,6 +78,209 @@ def disclaimer_department_config_detail_view(request, pk):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_department_disclaimer_orders_view(request, department_id):
+    """
+    GET: Get disclaimer order configuration for a specific department (Admin only)
+    """
+    try:
+        department = get_object_or_404(Department, pk=department_id)
+
+        orders = (
+            DepartmentDisclaimerOrder.objects.filter(
+                employee_department=department, is_active=True
+            )
+            .select_related("target_department")
+            .order_by("order")
+        )
+
+        serializer = DepartmentDisclaimerOrderSerializer(orders, many=True)
+
+        # Get available departments for adding
+        configured_dept_ids = orders.values_list("target_department_id", flat=True)
+
+        # Get all departments that require disclaimer
+        available_departments = (
+            DisclaimerDepartmentConfig.objects.filter(
+                requires_disclaimer=True, is_active=True
+            )
+            .exclude(department_id__in=configured_dept_ids)
+            .select_related("department")
+        )
+
+        available_depts = [
+            {"id": config.department.id, "name": config.department.name}
+            for config in available_departments
+        ]
+
+        return Response(
+            {
+                "orders": serializer.data,
+                "available_departments": available_depts,
+                "department": {"id": department.id, "name": department.name},
+            }
+        )
+
+    except Department.DoesNotExist:
+        return Response(
+            {"error": "Department not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_department_disclaimer_order_create_view(request, department_id):
+    """
+    POST: Add a new department to the disclaimer order (Admin only)
+    """
+    try:
+        department = get_object_or_404(Department, pk=department_id)
+
+        # Get the next order number
+        max_order = (
+            DepartmentDisclaimerOrder.objects.filter(
+                employee_department=department, is_active=True
+            ).aggregate(max_order=Max("order"))["max_order"]
+            or 0
+        )
+
+        data = request.data.copy()
+        data["employee_department"] = department.id
+        data["order"] = max_order + 1
+
+        serializer = DepartmentDisclaimerOrderSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    except Department.DoesNotExist:
+        return Response(
+            {"error": "Department not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_department_disclaimer_orders_reorder_view(request, department_id):
+    """
+    PUT: Reorder departments in the disclaimer flow (Admin only)
+    Expected data: { "orders": [{"id": 1, "order": 1}, {"id": 2, "order": 2}, ...] }
+    """
+    try:
+        department = get_object_or_404(Department, pk=department_id)
+
+        serializer = DepartmentDisclaimerOrderBulkUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        orders_data = serializer.validated_data["orders"]
+
+        with transaction.atomic():
+            for order_data in orders_data:
+                order_obj = DepartmentDisclaimerOrder.objects.get(
+                    id=order_data["id"], employee_department=department
+                )
+                order_obj.order = order_data["order"]
+                order_obj.save()
+
+        # Return updated orders
+        updated_orders = (
+            DepartmentDisclaimerOrder.objects.filter(
+                employee_department=department, is_active=True
+            )
+            .select_related("target_department")
+            .order_by("order")
+        )
+
+        result_serializer = DepartmentDisclaimerOrderSerializer(
+            updated_orders, many=True
+        )
+        return Response(result_serializer.data)
+
+    except Department.DoesNotExist:
+        return Response(
+            {"error": "Department not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+    except DepartmentDisclaimerOrder.DoesNotExist:
+        return Response(
+            {"error": "Order configuration not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_department_disclaimer_order_delete_view(request, department_id, order_id):
+    """
+    DELETE: Remove a department from the disclaimer order (Admin only)
+    """
+    try:
+        department = get_object_or_404(Department, pk=department_id)
+
+        order = get_object_or_404(
+            DepartmentDisclaimerOrder, pk=order_id, employee_department=department
+        )
+
+        deleted_order = order.order
+        order.delete()
+
+        # Reorder remaining orders
+        with transaction.atomic():
+            remaining_orders = DepartmentDisclaimerOrder.objects.filter(
+                employee_department=department, order__gt=deleted_order, is_active=True
+            ).order_by("order")
+
+            for idx, order_obj in enumerate(remaining_orders, start=deleted_order):
+                order_obj.order = idx
+                order_obj.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    except Department.DoesNotExist:
+        return Response(
+            {"error": "Department not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_all_departments_disclaimer_summary_view(request):
+    """
+    GET: Get a summary of disclaimer configurations for all departments
+    """
+    try:
+        departments = Department.objects.all()
+        summary = []
+
+        for dept in departments:
+            # Get disclaimer config
+            config = DisclaimerDepartmentConfig.objects.filter(department=dept).first()
+
+            # Count orders
+            orders_count = DepartmentDisclaimerOrder.objects.filter(
+                employee_department=dept, is_active=True
+            ).count()
+
+            summary.append(
+                {
+                    "id": dept.id,
+                    "name": dept.name,
+                    "requires_disclaimer": config.requires_disclaimer
+                    if config
+                    else False,
+                    "config_active": config.is_active if config else False,
+                    "disclaimer_steps_count": orders_count,
+                    "has_configuration": orders_count > 0,
+                }
+            )
+
+        return Response(summary)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # ============ DEPARTMENT MANAGER VIEWS ============
 
 
@@ -104,7 +307,7 @@ def department_disclaimer_orders_view(request):
 
         # Get available departments for adding
         configured_dept_ids = orders.values_list("target_department_id", flat=True)
-        
+
         # Get all departments that require disclaimer (including own department)
         available_departments = (
             DisclaimerDepartmentConfig.objects.filter(
@@ -132,8 +335,8 @@ def department_disclaimer_orders_view(request):
         return Response(
             {"error": "Employee profile not found"}, status=status.HTTP_404_NOT_FOUND
         )
-        
-        
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsDepartmentManager])
 def department_disclaimer_order_create_view(request):
@@ -602,9 +805,7 @@ def manager_all_requests_view(request):
 
         # Get ALL requests for this department, not just pending
         requests = (
-            DisclaimerRequest.objects.filter(
-                target_department=department
-            )
+            DisclaimerRequest.objects.filter(target_department=department)
             .select_related("employee__user", "employee__department", "reviewed_by")
             .order_by("-created_at")
         )

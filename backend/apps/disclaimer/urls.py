@@ -14,6 +14,31 @@ urlpatterns = [
         views.disclaimer_department_config_detail_view,
         name="disclaimer-department-config-detail",
     ),
+    path(
+        "admin/departments/summary/",
+        views.admin_all_departments_disclaimer_summary_view,
+        name="admin-departments-summary",
+    ),
+    path(
+        "admin/departments/<int:department_id>/disclaimer-orders/",
+        views.admin_department_disclaimer_orders_view,
+        name="admin-department-disclaimer-orders",
+    ),
+    path(
+        "admin/departments/<int:department_id>/disclaimer-orders/create/",
+        views.admin_department_disclaimer_order_create_view,
+        name="admin-department-disclaimer-order-create",
+    ),
+    path(
+        "admin/departments/<int:department_id>/disclaimer-orders/reorder/",
+        views.admin_department_disclaimer_orders_reorder_view,
+        name="admin-department-disclaimer-orders-reorder",
+    ),
+    path(
+        "admin/departments/<int:department_id>/disclaimer-orders/<int:order_id>/delete/",
+        views.admin_department_disclaimer_order_delete_view,
+        name="admin-department-disclaimer-order-delete",
+    ),
     # ============ DEPARTMENT MANAGER ENDPOINTS ============
     # Disclaimer flow configuration
     path(
