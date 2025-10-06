@@ -73,7 +73,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     
     "apps.users",
-    "apps.core",
+    "apps.reports",
     "apps.assets",
     "apps.disclaimer",
 ]

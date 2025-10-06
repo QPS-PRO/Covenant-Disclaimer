@@ -556,6 +556,9 @@ def employee_disclaimer_status_view(request):
     try:
         employee = request.user.employee_profile
 
+        # Check if ever completed
+        has_ever_completed = DisclaimerProcess.has_completed_process(employee)
+
         # Get or check for active process
         process = DisclaimerProcess.objects.filter(
             employee=employee, is_active=True
@@ -622,13 +625,17 @@ def employee_disclaimer_status_view(request):
                 }
             )
 
-        can_start_process = (not process or process.status == "completed") and len(
-            flow_orders
-        ) > 0
+        # NEW: Can only start if never completed before
+        can_start_process = (
+            not has_ever_completed
+            and (not process or process.status != "in_progress")
+            and len(flow_orders) > 0
+        )
 
         response_data = {
             "has_active_process": process is not None
             and process.status == "in_progress",
+            "has_ever_completed": has_ever_completed,
             "process": DisclaimerProcessSerializer(process).data if process else None,
             "flow_steps": flow_steps,
             "can_start_process": can_start_process,
@@ -647,11 +654,22 @@ def employee_disclaimer_status_view(request):
 def employee_start_disclaimer_process_view(request):
     """
     POST: Start a new disclaimer process for employee
+    NOTE: Cannot restart if already completed once
     """
     try:
         employee = request.user.employee_profile
 
-        # Check if there's already an active process
+        # NEW: Check if employee has ever completed the disclaimer process
+        if DisclaimerProcess.has_completed_process(employee):
+            return Response(
+                {
+                    "error": "You have already completed the disclaimer process. "
+                    "The disclaimer can only be completed once and cannot be restarted."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if there's already an active in-progress process
         existing_process = DisclaimerProcess.objects.filter(
             employee=employee, is_active=True, status="in_progress"
         ).first()

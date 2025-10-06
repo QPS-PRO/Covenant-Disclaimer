@@ -160,6 +160,7 @@ class DisclaimerRequest(models.Model):
 class DisclaimerProcess(models.Model):
     """
     Overall disclaimer process tracking for an employee
+    Once completed, the process cannot be restarted - it's a one-time completion
     """
 
     STATUS_CHOICES = [
@@ -228,3 +229,11 @@ class DisclaimerProcess(models.Model):
         ).first()
 
         return order_config.target_department if order_config else None
+    
+    @classmethod
+    def has_completed_process(cls, employee):
+        """Check if employee has ever completed a disclaimer process"""
+        return cls.objects.filter(
+            employee=employee,
+            status='completed'
+        ).exists()
