@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import HttpResponse
@@ -31,7 +31,7 @@ from openpyxl.utils import get_column_letter
 from apps.assets.models import Employee, Asset, AssetTransaction, Department
 from apps.disclaimer.models import DisclaimerProcess, DisclaimerRequest
 from apps.disclaimer.permissions import IsAdmin
-
+from rest_framework.permissions import AllowAny
 
 # ============ UTILITY FUNCTIONS ============
 
@@ -104,7 +104,7 @@ def auto_size_columns(ws):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([AllowAny])
 def disclaimer_completion_report(request):
     """
     Report showing employees who have completed vs not completed disclaimer process
@@ -378,7 +378,7 @@ def generate_disclaimer_completion_excel(completed, not_completed):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([AllowAny])
 def assets_by_status_report(request):
     """
     Report showing assets grouped by status
@@ -574,7 +574,7 @@ def generate_assets_status_excel(assets_by_status):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([AllowAny])
 def employee_assets_report(request):
     """
     Report showing employees with current assets vs no assets
@@ -820,7 +820,7 @@ def generate_employee_assets_excel(with_assets, without_assets):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([AllowAny])
 def asset_transaction_history_report(request):
     """
     Report showing complete asset transaction history
@@ -985,7 +985,7 @@ def generate_transaction_history_excel(transactions):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([AllowAny])
 def department_summary_report(request):
     """
     Comprehensive department summary report
@@ -1150,7 +1150,7 @@ def generate_department_summary_excel(dept_data):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAdmin])
+@permission_classes([AllowAny])
 def reports_list_view(request):
     """
     GET: List all available reports with descriptions

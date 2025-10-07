@@ -21,7 +21,7 @@ export async function apiRequest(endpoint, options = {}) {
 
     try {
         const response = await fetch(url, config);
-        
+
         if (!response.ok) {
             // If unauthorized and we have a refresh token, try to refresh
             if (response.status === 401 && localStorage.getItem('refresh_token')) {
@@ -49,22 +49,22 @@ export async function apiRequest(endpoint, options = {}) {
                     localStorage.removeItem('user');
                 }
             }
-            
+
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
         }
-        
+
         if (response.status === 204) {
             return null;
         }
-        
+
         // Check if response has content to parse
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
             const text = await response.text();
             return text ? JSON.parse(text) : null;
         }
-        
+
         return await response.text();
     } catch (error) {
         console.error('API request failed:', error);
@@ -99,6 +99,7 @@ export async function apiPut(path, data, options = {}) {
         ...options,
     });
 }
+
 export async function apiDelete(path, options = {}) {
     return apiRequest(path, { method: 'DELETE', ...options });
 }
@@ -137,11 +138,11 @@ export const authAPI = {
         if (!refreshToken) {
             throw new Error('No refresh token available');
         }
-        
+
         const response = await apiPost('/api/auth/token/refresh/', {
             refresh: refreshToken
         });
-        
+
         return response;
     }
 };
@@ -166,7 +167,7 @@ export function AuthProvider({ children }) {
         try {
             const token = localStorage.getItem('access_token');
             const storedUser = localStorage.getItem('user');
-            
+
             if (!token) {
                 setLoading(false);
                 setInitialized(true);
@@ -212,24 +213,24 @@ export function AuthProvider({ children }) {
     const login = async (credentials) => {
         try {
             const response = await authAPI.login(credentials);
-            
+
             // Store tokens
             if (response.access_token || response.access) {
                 const accessToken = response.access_token || response.access;
                 const refreshToken = response.refresh_token || response.refresh;
-                
+
                 localStorage.setItem('access_token', accessToken);
                 if (refreshToken) {
                     localStorage.setItem('refresh_token', refreshToken);
                 }
             }
-            
+
             // Get user data
             const userData = await authAPI.getCurrentUser();
             setUser(userData);
             setIsAuthenticated(true);
             localStorage.setItem('user', JSON.stringify(userData));
-            
+
             return { success: true, user: userData };
         } catch (error) {
             console.error('Login failed:', error);
@@ -240,24 +241,24 @@ export function AuthProvider({ children }) {
     const register = async (userData) => {
         try {
             const response = await authAPI.register(userData);
-            
+
             // Store tokens if provided (some setups auto-login after registration)
             if (response.access_token || response.access) {
                 const accessToken = response.access_token || response.access;
                 const refreshToken = response.refresh_token || response.refresh;
-                
+
                 localStorage.setItem('access_token', accessToken);
                 if (refreshToken) {
                     localStorage.setItem('refresh_token', refreshToken);
                 }
-                
+
                 // Get user data
                 const currentUser = await authAPI.getCurrentUser();
                 setUser(currentUser);
                 setIsAuthenticated(true);
                 localStorage.setItem('user', JSON.stringify(currentUser));
             }
-            
+
             return { success: true, data: response };
         } catch (error) {
             console.error('Registration failed:', error);
@@ -300,4 +301,37 @@ export function useAuth() {
         throw new Error('useAuth must be used within AuthProvider');
     }
     return context;
+}
+
+// Reports Export (auth-free)
+export async function apiGetBlob(path, options = {}) {
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const url = `${BASE_URL}${path}`;
+
+    const resp = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-store',
+        headers: {
+            Accept: '*/*',
+            ...(options.headers || {}),
+        },
+
+    });
+
+    if (!resp.ok) {
+        const text = await resp.text().catch(() => '');
+        throw new Error(text || `HTTP error! status: ${resp.status}`);
+    }
+
+    // pick filename if server provides it
+    const cd = resp.headers.get('content-disposition');
+    let filename = null;
+    if (cd) {
+        const m = cd.match(/filename="?([^"]+)"?/i);
+        if (m) filename = decodeURIComponent(m[1]);
+    }
+
+    const blob = await resp.blob();
+    return { blob, filename };
 }

@@ -7,7 +7,7 @@ import { RequireAuth } from "./utils/RequireAuth";
 import { RequireGuest } from "./utils/RequireGuest";
 import { getDefaultRoute } from "./utils/authHelpers";
 import './lib/i18n';
-
+import ReportsRoutes from './components/Reports';
 function AppRoutes() {
   const { user, loading } = useAuth();
 
@@ -41,6 +41,7 @@ function AppRoutes() {
       />
       <Route path="/" element={<Navigate to={defaultRoute} replace />} />
       <Route path="*" element={<Navigate to={defaultRoute} replace />} />
+      <Route path="/reports/*" element={<ReportsRoutes />} />
     </Routes>
   );
 }

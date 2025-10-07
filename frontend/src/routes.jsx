@@ -12,6 +12,7 @@ import {
   DocumentCheckIcon,
   ClipboardDocumentCheckIcon,
   ClockIcon,
+  DocumentIcon,
 } from "@heroicons/react/24/solid";
 import { Home } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
@@ -25,6 +26,7 @@ import ManagerPendingRequests from "@/pages/dashboard/manager-pending-requests";
 import ManagerDisclaimerHistory from "@/pages/dashboard/manager-disclaimer-history";
 import AdminDisclaimerConfig from "@/pages/dashboard/admin-disclaimer-config";
 import AdminDisclaimerSetup from "@/pages/dashboard/admin-disclaimer-setup";
+import Reports from "@/layout/ReportsDashboard";
 
 // Import auth helpers
 import { isAdmin, isDepartmentManager, isRegularEmployee } from "@/utils/authHelpers";
@@ -87,7 +89,13 @@ export const routes = [
         element: <AdminDisclaimerSetup />,
         hideFromSidebar: (user) => !isAdmin(user),
       },
-
+      {
+        icon: <DocumentIcon {...icon} />,
+        name: 'Reports',
+        path: '/reports',
+        element: <Reports />,
+        hideFromSidebar: (user) => !isAdmin(user),
+      },
       // MANAGER ONLY PAGES
       {
         icon: <ClipboardDocumentCheckIcon {...icon} />,
