@@ -82,6 +82,17 @@ const ReportsListSimple = () => {
             const filename = reportsUtils.generateFilename(report.id, format);
             reportsUtils.downloadReport(blob, filename);
             toast.success(`${report.name} downloaded successfully`);
+            console.log('Blob received:', {
+                type: blob.type,
+                size: blob.size,
+                isBlob: blob instanceof Blob
+            });
+            
+            // Check if blob is empty or wrong type
+            if (blob.size === 0) {
+                toast.error('Received empty file from server');
+                return;
+            }
         } catch (error) {
             console.error('Error downloading report:', error);
             toast.error('Failed to download report');

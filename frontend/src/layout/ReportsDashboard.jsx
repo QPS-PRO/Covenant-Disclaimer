@@ -106,7 +106,17 @@ const ReportsDashboard = () => {
             downloadBlob(blob, filename);
 
             toast.success(`${report.name} downloaded successfully`);
-
+            console.log('Blob received:', {
+                type: blob.type,
+                size: blob.size,
+                isBlob: blob instanceof Blob
+            });
+            
+            // Check if blob is empty or wrong type
+            if (blob.size === 0) {
+                toast.error('Received empty file from server');
+                return;
+            }
             // Reset date filter if it was used
             if (report.id === 'transaction-history' && showDateFilter) {
                 setShowDateFilter(false);

@@ -7,6 +7,8 @@ from django.utils import timezone
 from django.db.models import Count, Q, Prefetch
 from datetime import datetime
 import io
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 
 # PDF Generation
 from reportlab.lib import colors
@@ -46,7 +48,6 @@ def create_pdf_header(elements, title, styles):
         spaceAfter=30,
         alignment=TA_CENTER,
     )
-
     elements.append(Paragraph(title, title_style))
     elements.append(
         Paragraph(
@@ -65,9 +66,7 @@ def create_pdf_header(elements, title, styles):
 
 def style_excel_header(ws, headers, row=1):
     """Style Excel header row"""
-    header_fill = PatternFill(
-        start_color="1e40af", end_color="1e40af", fill_type="solid"
-    )
+    header_fill = PatternFill(start_color="1e40af", end_color="1e40af", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF", size=12)
     border = Border(
         left=Side(style="thin"),
@@ -100,189 +99,12 @@ def auto_size_columns(ws):
         ws.column_dimensions[column_letter].width = adjusted_width
 
 
+
 # ============ DISCLAIMER REPORTS ============
 
 
-def test_report_simple(request):
-    """
-    Simple test report without DRF decorators
-    """
-    from django.http import JsonResponse
-    return JsonResponse({"message": "Simple test report working!", "format": request.GET.get("format", "none")})
-
-
-def disclaimer_completion_report_simple(request):
-    """
-    Simple disclaimer completion report without DRF decorators
-    """
-    from django.http import JsonResponse
-    format_type = request.GET.get("format", "pdf").lower()
-    
-    # Get all employees with their disclaimer status
-    employees = Employee.objects.select_related("user", "department").all()
-    
-    completed_count = 0
-    not_completed_count = 0
-    
-    for emp in employees:
-        completed_process = emp.disclaimer_processes.filter(status="completed").first()
-        if completed_process:
-            completed_count += 1
-        else:
-            not_completed_count += 1
-    
-    return JsonResponse({
-        "message": "Disclaimer completion report (simple)",
-        "format": format_type,
-        "total_employees": employees.count(),
-        "completed": completed_count,
-        "not_completed": not_completed_count
-    })
-
-
-def employee_assets_report_simple(request):
-    """
-    Simple employee assets report without DRF decorators
-    """
-    from django.http import JsonResponse
-    format_type = request.GET.get("format", "pdf").lower()
-    
-    # Get all employees with their assets
-    employees = Employee.objects.select_related("user", "department").prefetch_related("current_assets").all()
-    
-    with_assets_count = 0
-    without_assets_count = 0
-    
-    for emp in employees:
-        current_assets = emp.current_assets.filter(status="assigned")
-        if current_assets.exists():
-            with_assets_count += 1
-        else:
-            without_assets_count += 1
-    
-    return JsonResponse({
-        "message": "Employee assets report (simple)",
-        "format": format_type,
-        "total_employees": employees.count(),
-        "with_assets": with_assets_count,
-        "without_assets": without_assets_count
-    })
-
-
-def assets_by_status_report_simple(request):
-    """
-    Simple assets by status report without DRF decorators
-    """
-    from django.http import JsonResponse
-    format_type = request.GET.get("format", "pdf").lower()
-    
-    # Get all assets grouped by status
-    assets = Asset.objects.select_related("department", "current_holder__user").all()
-    
-    assets_by_status = {
-        "available": 0,
-        "assigned": 0,
-        "maintenance": 0,
-        "retired": 0,
-    }
-    
-    for asset in assets:
-        assets_by_status[asset.status] += 1
-    
-    return JsonResponse({
-        "message": "Assets by status report (simple)",
-        "format": format_type,
-        "total_assets": assets.count(),
-        "assets_by_status": assets_by_status
-    })
-
-
-def transaction_history_report_simple(request):
-    """
-    Simple transaction history report without DRF decorators
-    """
-    from django.http import JsonResponse
-    format_type = request.GET.get("format", "pdf").lower()
-    start_date = request.GET.get("start_date")
-    end_date = request.GET.get("end_date")
-    
-    # Get transactions
-    transactions = AssetTransaction.objects.select_related(
-        "asset", "employee__user", "employee__department", "processed_by"
-    ).all()
-    
-    if start_date:
-        transactions = transactions.filter(transaction_date__gte=start_date)
-    if end_date:
-        transactions = transactions.filter(transaction_date__lte=end_date)
-    
-    transactions = transactions.order_by("-transaction_date")
-    
-    return JsonResponse({
-        "message": "Transaction history report (simple)",
-        "format": format_type,
-        "total_transactions": transactions.count(),
-        "start_date": start_date,
-        "end_date": end_date
-    })
-
-
-def department_summary_report_simple(request):
-    """
-    Simple department summary report without DRF decorators
-    """
-    from django.http import JsonResponse
-    format_type = request.GET.get("format", "pdf").lower()
-    
-    # Get departments
-    departments = Department.objects.prefetch_related(
-        "employees", "assets", "employees__disclaimer_processes"
-    ).all()
-    
-    dept_summary = []
-    for dept in departments:
-        total_employees = dept.employees.count()
-        completed_disclaimers = (
-            dept.employees.filter(disclaimer_processes__status="completed")
-            .distinct()
-            .count()
-        )
-        
-        dept_summary.append({
-            "name": dept.name,
-            "manager": dept.manager.get_full_name() if dept.manager else "No Manager",
-            "total_employees": total_employees,
-            "completed_disclaimers": completed_disclaimers,
-            "total_assets": dept.assets.count(),
-        })
-    
-    return JsonResponse({
-        "message": "Department summary report (simple)",
-        "format": format_type,
-        "total_departments": departments.count(),
-        "departments": dept_summary
-    })
-
-
-@api_view(["GET"])
-def test_report_minimal(request):
-    """
-    Minimal DRF test report
-    """
-    return Response({"message": "Minimal DRF test working!", "format": request.GET.get("format", "none")})
-
-
-@api_view(["GET"])
-@permission_classes([])
-def test_report(request):
-    """
-    Simple test report to debug URL routing
-    """
-    return Response({"message": "Test report working!", "format": request.GET.get("format", "none")})
-
-
-@api_view(["GET"])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["GET"])
 def disclaimer_completion_report(request):
     """
     Report showing employees who have completed vs not completed disclaimer process
@@ -355,25 +177,18 @@ def generate_disclaimer_completion_pdf(completed, not_completed):
     create_pdf_header(elements, "Disclaimer Completion Report", styles)
 
     # Summary
-    elements.append(
-        Paragraph(
-            f"<b>Total Employees:</b> {len(completed) + len(not_completed)}",
-            styles["Normal"],
-        )
-    )
-    elements.append(
-        Paragraph(
-            f"<b>Completed:</b> {len(completed)} ({len(completed) / (len(completed) + len(not_completed)) * 100:.1f}%)",
-            styles["Normal"],
-        )
-    )
-    elements.append(
-        Paragraph(
-            f"<b>Not Completed:</b> {len(not_completed)} ({len(not_completed) / (len(completed) + len(not_completed)) * 100:.1f}%)",
-            styles["Normal"],
-        )
-    )
-    elements.append(Spacer(1, 0.3 * inch))
+    total = len(completed) + len(not_completed)
+    if total > 0:
+        elements.append(Paragraph(f"<b>Total Employees:</b> {total}", styles["Normal"]))
+        elements.append(Paragraph(
+            f"<b>Completed:</b> {len(completed)} ({len(completed) / total * 100:.1f}%)",
+            styles["Normal"]
+        ))
+        elements.append(Paragraph(
+            f"<b>Not Completed:</b> {len(not_completed)} ({len(not_completed) / total * 100:.1f}%)",
+            styles["Normal"]
+        ))
+        elements.append(Spacer(1, 0.3 * inch))
 
     # Completed Employees Table
     if completed:
@@ -468,10 +283,12 @@ def generate_disclaimer_completion_pdf(completed, not_completed):
     doc.build(elements)
     buffer.seek(0)
 
-    response = HttpResponse(buffer.read(), content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f'attachment; filename="disclaimer_completion_report_{timezone.now().strftime("%Y%m%d")}.pdf"'
-    )
+    response = HttpResponse(content_type="application/pdf")
+    response['Content-Disposition'] = f'attachment; filename="disclaimer_completion_report_{timezone.now().strftime("%Y%m%d")}.pdf"'
+    response['Content-Length'] = buffer.getbuffer().nbytes
+    response.write(buffer.getvalue())
+    
+    print(f"PDF generated: {buffer.getbuffer().nbytes} bytes")  # Debug
     return response
 
 
@@ -542,21 +359,24 @@ def generate_disclaimer_completion_excel(completed, not_completed):
     wb.save(buffer)
     buffer.seek(0)
 
+   # Create response with proper headers
     response = HttpResponse(
-        buffer.read(),
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response["Content-Disposition"] = (
-        f'attachment; filename="disclaimer_completion_report_{timezone.now().strftime("%Y%m%d")}.xlsx"'
-    )
+    response['Content-Disposition'] = f'attachment; filename="disclaimer_completion_report_{timezone.now().strftime("%Y%m%d")}.xlsx"'
+    response['Content-Length'] = buffer.getbuffer().nbytes
+    response.write(buffer.getvalue())
+    
+    print(f"Excel generated: {buffer.getbuffer().nbytes} bytes")  # Debug
     return response
+
 
 
 # ============ ASSET REPORTS ============
 
 
-@api_view(["GET"])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["GET"])
 def assets_by_status_report(request):
     """
     Report showing assets grouped by status
@@ -751,8 +571,8 @@ def generate_assets_status_excel(assets_by_status):
     return response
 
 
-@api_view(["GET"])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["GET"])
 def employee_assets_report(request):
     """
     Report showing employees with current assets vs no assets
@@ -997,8 +817,8 @@ def generate_employee_assets_excel(with_assets, without_assets):
 # ============ ADDITIONAL RECOMMENDED REPORTS ============
 
 
-@api_view(["GET"])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["GET"])
 def asset_transaction_history_report(request):
     """
     Report showing complete asset transaction history
@@ -1162,8 +982,8 @@ def generate_transaction_history_excel(transactions):
     return response
 
 
-@api_view(["GET"])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["GET"])
 def department_summary_report(request):
     """
     Comprehensive department summary report
@@ -1335,6 +1155,14 @@ def reports_list_view(request):
     """
     reports = [
         {
+            "id": "transaction-history",
+            "name": "Asset Transaction History",
+            "description": "Complete history of all asset transactions with face verification details",
+            "endpoint": "/api/reports/transaction-history/",
+            "formats": ["pdf", "excel"],
+            "parameters": ["start_date (optional)", "end_date (optional)"],
+        },
+        {
             "id": "disclaimer-completion",
             "name": "Disclaimer Completion Report",
             "description": "Shows which employees have completed disclaimer process vs those who haven't",
@@ -1354,14 +1182,6 @@ def reports_list_view(request):
             "description": "Categorizes all assets by their status (available, assigned, maintenance, retired)",
             "endpoint": "/api/reports/assets-by-status/",
             "formats": ["pdf", "excel"],
-        },
-        {
-            "id": "transaction-history",
-            "name": "Asset Transaction History",
-            "description": "Complete history of all asset transactions with face verification details",
-            "endpoint": "/api/reports/transaction-history/",
-            "formats": ["pdf", "excel"],
-            "parameters": ["start_date (optional)", "end_date (optional)"],
         },
         {
             "id": "department-summary",

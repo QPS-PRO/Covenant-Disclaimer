@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Helper to get auth token
@@ -7,28 +5,42 @@ const getAuthToken = () => {
     return localStorage.getItem('token');
 };
 
-// Helper for blob downloads
+// Helper for blob downloads using fetch (better for binary data)
 const downloadBlob = async (url) => {
     const token = getAuthToken();
-    const response = await axios.get(`${API_BASE_URL}${url}`, {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+        method: 'GET',
         headers: {
             'Authorization': token ? `Token ${token}` : '',
         },
-        responseType: 'blob',
+        credentials: 'include',
     });
-    return response.data;
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Return the blob directly
+    return await response.blob();
 };
 
 // Helper for JSON API calls
 const apiGet = async (url) => {
     const token = getAuthToken();
-    const response = await axios.get(`${API_BASE_URL}${url}`, {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+        method: 'GET',
         headers: {
             'Authorization': token ? `Token ${token}` : '',
             'Content-Type': 'application/json',
         },
+        credentials: 'include',
     });
-    return response.data;
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
 };
 
 // ============ REPORTS API ============
@@ -37,14 +49,14 @@ export const reportsAPI = {
     getReportsList: () => apiGet('/api/reports/'),
 
     // Disclaimer Reports
-    getDisclaimerCompletionReport: (format = 'pdf') => 
+    getDisclaimerCompletionReport: (format = 'pdf') =>
         downloadBlob(`/api/reports/disclaimer-completion/?format=${format}`),
 
     // Asset Reports
-    getEmployeeAssetsReport: (format = 'pdf') => 
+    getEmployeeAssetsReport: (format = 'pdf') =>
         downloadBlob(`/api/reports/employee-assets/?format=${format}`),
 
-    getAssetsByStatusReport: (format = 'pdf') => 
+    getAssetsByStatusReport: (format = 'pdf') =>
         downloadBlob(`/api/reports/assets-by-status/?format=${format}`),
 
     getTransactionHistoryReport: (format = 'pdf', startDate = null, endDate = null) => {
@@ -55,7 +67,7 @@ export const reportsAPI = {
     },
 
     // Department Reports
-    getDepartmentSummaryReport: (format = 'pdf') => 
+    getDepartmentSummaryReport: (format = 'pdf') =>
         downloadBlob(`/api/reports/department-summary/?format=${format}`),
 };
 
@@ -63,14 +75,34 @@ export const reportsAPI = {
 export const reportsUtils = {
     // Download a report file
     downloadReport: (blob, filename) => {
+        // Verify we have a valid blob
+        if (!(blob instanceof Blob)) {
+            console.error('Invalid blob object', blob);
+            throw new Error('Invalid file data received');
+        }
+
+        console.log('Downloading blob:', {
+            type: blob.type,
+            size: blob.size,
+            filename: filename
+        });
+
+        // Create download link
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
+        link.style.display = 'none';
+
+        // Trigger download
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+
+        // Cleanup
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        }, 100);
     },
 
     // Get report file extension
