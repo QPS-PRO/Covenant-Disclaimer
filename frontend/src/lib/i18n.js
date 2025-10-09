@@ -641,6 +641,88 @@ const enTranslations = {
                 submitFailed: "Failed to submit review",
                 loadFailed: "Failed to load pending requests"
             }
+        },
+
+        //Reports Dashboard
+        reportsDashboard: {
+            headerTitle: "Reports Center",
+            headerSubtitle: "Generate comprehensive reports in PDF or Excel format",
+            loading: "Loading reports...",
+            configureDownload: "Configure & Download",
+            selectDateRange: "Select Date Range",
+            startDate: "Start Date",
+            endDate: "End Date",
+            downloadPDF: "Download PDF",
+            downloadExcel: "Download Excel",
+            generatingPDF: "Generating PDF...",
+            generatingExcel: "Generating Excel...",
+            generating: "Generating...",
+            optionalFilters: "Optional Filters:",
+            availableFormats: "Available formats:",
+            noReportsTitle: "No Reports Available",
+            noReportsBody: "Reports are currently being configured. Please check back later.",
+            aboutTitle: "About Reports",
+            aboutBody:
+                "All reports are generated in real-time with the latest data. PDF reports are optimized for printing, while Excel reports allow for further analysis and filtering.",
+            reports: {
+                'transaction-history': {
+                    name: 'Asset Transaction History',
+                    description: 'Complete history of all asset transactions with face verification details'
+                },
+                'disclaimer-completion': {
+                    name: 'Disclaimer Completion Report',
+                    description: "Shows which employees have completed disclaimer process vs those who haven't"
+                },
+                'employee-assets': {
+                    name: 'Employee Assets Report',
+                    description: 'Shows employees with current assigned assets vs those without any assets'
+                },
+                'assets-by-status': {
+                    name: 'Assets by Status Report',
+                    description: 'Categorizes all assets by their status (available, assigned, maintenance, retired)'
+                },
+                'department-summary': {
+                    name: 'Department Summary Report',
+                    description: 'Comprehensive overview of each department including employees, assets, and disclaimer completion'
+                }
+                },
+                params: {
+                startDateOptional: 'start_date (optional)',
+                endDateOptional: 'end_date (optional)'
+            }
+        },
+
+        reportsListSimple: {
+            loading: "Loading...",
+            headerTitle: "Reports",
+            headerSubtitle: "Generate and download reports in PDF or Excel format",
+            table: {
+              report: "Report",
+              description: "Description",
+              formats: "Formats",
+              actions: "Actions"
+            },
+            hasOptionalFilters: "Has optional filters",
+            dateRangeOptional: "Date Range (Optional):",
+            startDate: "Start Date",
+            endDate: "End Date",
+            to: "to",
+            clear: "Clear",
+            downloadPdfTitle: "Download PDF",
+            downloadExcelTitle: "Download Excel",
+            pdf: "PDF",
+            excel: "Excel",
+            emptyTitle: "No reports available",
+            emptyBody: "Check back later for available reports",
+            // Toasts / errors / success
+            toast: {
+              loadFailed: "Failed to load reports",
+              startBeforeEnd: "Start date must be before end date",
+              unknownType: "Unknown report type",
+              downloadFailed: "Failed to download report",
+              emptyFile: "Received empty file from server",
+              downloaded: "{{name}} downloaded successfully"
+            }
         }
 
 
@@ -1281,9 +1363,87 @@ const arTranslations = {
                 submitFailed: "فشل في إرسال المراجعة",
                 loadFailed: "فشل في تحميل الطلبات قيد الانتظار"
             }
+        },
+
+        // Reports Dashboard
+        reportsDashboard: {
+            headerTitle: "مركز التقارير",
+            headerSubtitle: "قم بإنشاء تقارير شاملة بصيغة PDF أو Excel",
+            loading: "جاري تحميل التقارير...",
+            configureDownload: "تهيئة وتحميل",
+            selectDateRange: "حدد نطاق التاريخ",
+            startDate: "تاريخ البدء",
+            endDate: "تاريخ الانتهاء",
+            downloadPDF: "تحميل PDF",
+            downloadExcel: "تحميل Excel",
+            generatingPDF: "جاري إنشاء PDF...",
+            generatingExcel: "جاري إنشاء Excel...",
+            generating: "جاري الإنشاء...",
+            optionalFilters: "مرشحات اختيارية:",
+            availableFormats: "الصيغ المتاحة:",
+            noReportsTitle: "لا توجد تقارير",
+            noReportsBody: "يتم حالياً إعداد التقارير. يرجى المحاولة لاحقاً.",
+            aboutTitle: "حول التقارير",
+            aboutBody: "يتم إنشاء جميع التقارير في الوقت الحقيقي بأحدث البيانات. تقارير PDF مهيأة للطباعة، بينما تقارير Excel مناسبة للتحليل والتصفية.",
+            reports: {
+                'transaction-history': {
+                  name: 'سجل معاملات الأصول',
+                  description: 'سجل كامل لجميع معاملات الأصول مع تفاصيل التحقق بالوجه'
+                },
+                'disclaimer-completion': {
+                  name: 'تقرير إتمام إخلاء الطرف ',
+                  description: 'يعرض الموظفين الذين أكملوا إجراء إخلاء الطرف ومن لم يكملوه'
+                },
+                'employee-assets': {
+                  name: 'تقرير أصول الموظفين',
+                  description: 'يعرض الموظفين الذين لديهم أصول مسندة حاليًا مقابل من لا يملكون أي أصول'
+                },
+                'assets-by-status': {
+                  name: 'تقرير الأصول حسب الحالة',
+                  description: 'يصنّف جميع الأصول حسب حالتها (متاح، مسند، صيانة، متقاعد)'
+                },
+                'department-summary': {
+                  name: 'تقرير ملخص المعاملات',
+                  description: 'نظرة شاملة لكل إدارة تتضمن الموظفين والأصول ونسبة إتمام إخلاء الطرف'
+                }
+              },
+            params: {
+                startDateOptional: 'تاريخ البدء (اختياري)',
+                endDateOptional: 'تاريخ الإنتهاء (اختياري)'
+            }
+        },
+
+        reportsListSimple: {
+            loading: "جارٍ التحميل...",
+            headerTitle: "التقارير",
+            headerSubtitle: "إنشاء وتنزيل التقارير بصيغة PDF أو Excel",
+            table: {
+              report: "التقرير",
+              description: "الوصف",
+              formats: "الصيغ",
+              actions: "الإجراءات"
+            },
+            hasOptionalFilters: "يحتوي على عوامل تصفية اختيارية",
+            dateRangeOptional: "نطاق التاريخ (اختياري):",
+            startDate: "تاريخ البدء",
+            endDate: "تاريخ الانتهاء",
+            to: "إلى",
+            clear: "مسح",
+            downloadPdfTitle: "تنزيل PDF",
+            downloadExcelTitle: "تنزيل Excel",
+            pdf: "PDF",
+            excel: "Excel",
+            emptyTitle: "لا توجد تقارير متاحة",
+            emptyBody: "تحقق لاحقًا لعرض التقارير المتاحة",
+            toast: {
+              loadFailed: "فشل تحميل التقارير",
+              startBeforeEnd: "يجب أن يكون تاريخ البدء قبل تاريخ الانتهاء",
+              unknownType: "نوع تقرير غير معروف",
+              downloadFailed: "فشل تنزيل التقرير",
+              emptyFile: "تم استلام ملف فارغ من الخادم",
+              downloaded: "تم تنزيل {{name}} بنجاح"
+            }
         }
-
-
     }
 };
 

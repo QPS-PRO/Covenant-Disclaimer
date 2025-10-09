@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
-
+from django.utils.translation import gettext_lazy as _
 User = get_user_model()
 
 class Department(models.Model):
@@ -55,10 +55,10 @@ class Employee(models.Model):
 
 class Asset(models.Model):
     STATUS_CHOICES = [
-        ('available', 'Available'),
-        ('assigned', 'Assigned'),
-        ('maintenance', 'Under Maintenance'),
-        ('retired', 'Retired'),
+        ('available', _("Available")),
+        ('assigned', _("Assigned")),
+        ('maintenance', _("Maintenance")),
+        ('retired', _("Retired")),
     ]
 
     name = models.CharField(max_length=200)
@@ -112,8 +112,8 @@ class Asset(models.Model):
 
 class AssetTransaction(models.Model):
     TRANSACTION_TYPES = [
-        ('issue', 'Issue'),
-        ('return', 'Return'),
+        ('issue', _('Issue')),
+        ('return', _('Return')),
     ]
 
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name='transactions')
