@@ -1,8 +1,34 @@
-import { apiGet, apiGetBlob } from './api';
+import axios from 'axios';
 
-const downloadBlob = async (endpoint) => {
-    const { blob /*, filename */ } = await apiGetBlob(endpoint);
-    return blob;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// Helper to get auth token
+const getAuthToken = () => {
+    return localStorage.getItem('token');
+};
+
+// Helper for blob downloads
+const downloadBlob = async (url) => {
+    const token = getAuthToken();
+    const response = await axios.get(`${API_BASE_URL}${url}`, {
+        headers: {
+            'Authorization': token ? `Token ${token}` : '',
+        },
+        responseType: 'blob',
+    });
+    return response.data;
+};
+
+// Helper for JSON API calls
+const apiGet = async (url) => {
+    const token = getAuthToken();
+    const response = await axios.get(`${API_BASE_URL}${url}`, {
+        headers: {
+            'Authorization': token ? `Token ${token}` : '',
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
 };
 
 // ============ REPORTS API ============
@@ -11,14 +37,14 @@ export const reportsAPI = {
     getReportsList: () => apiGet('/api/reports/'),
 
     // Disclaimer Reports
-    getDisclaimerCompletionReport: (format = 'pdf') =>
+    getDisclaimerCompletionReport: (format = 'pdf') => 
         downloadBlob(`/api/reports/disclaimer-completion/?format=${format}`),
 
     // Asset Reports
-    getEmployeeAssetsReport: (format = 'pdf') =>
+    getEmployeeAssetsReport: (format = 'pdf') => 
         downloadBlob(`/api/reports/employee-assets/?format=${format}`),
 
-    getAssetsByStatusReport: (format = 'pdf') =>
+    getAssetsByStatusReport: (format = 'pdf') => 
         downloadBlob(`/api/reports/assets-by-status/?format=${format}`),
 
     getTransactionHistoryReport: (format = 'pdf', startDate = null, endDate = null) => {
@@ -29,7 +55,7 @@ export const reportsAPI = {
     },
 
     // Department Reports
-    getDepartmentSummaryReport: (format = 'pdf') =>
+    getDepartmentSummaryReport: (format = 'pdf') => 
         downloadBlob(`/api/reports/department-summary/?format=${format}`),
 };
 

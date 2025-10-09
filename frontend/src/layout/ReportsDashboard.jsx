@@ -10,12 +10,10 @@ import {
     Loader2,
     Calendar,
     Filter,
-    TrendingUp,
-    Users,
     CheckCircle,
-    XCircle
+    XCircle,
+    AlertCircle
 } from 'lucide-react';
-import { reportsAPI, reportsUtils } from '../lib/reportsApi';
 import toast from 'react-hot-toast';
 
 const ReportsDashboard = () => {
@@ -29,27 +27,7 @@ const ReportsDashboard = () => {
         endDate: ''
     });
 
-    // Quick stats (you can fetch these from your API)
-    const quickStats = [
-        {
-            label: 'Total Reports',
-            value: '5',
-            icon: FileText,
-            color: 'bg-blue-500'
-        },
-        {
-            label: 'Downloads Today',
-            value: '12',
-            icon: Download,
-            color: 'bg-green-500'
-        },
-        {
-            label: 'Most Popular',
-            value: 'Employee Assets',
-            icon: TrendingUp,
-            color: 'bg-purple-500'
-        }
-    ];
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
     useEffect(() => {
         fetchReports();
@@ -58,7 +36,11 @@ const ReportsDashboard = () => {
     const fetchReports = async () => {
         try {
             setLoading(true);
-            const data = await reportsAPI.getReportsList();
+            const response = await fetch(`${BASE_URL}/api/reports/`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch reports');
+            }
+            const data = await response.json();
             setReports(data);
         } catch (error) {
             console.error('Error fetching reports:', error);
@@ -68,44 +50,71 @@ const ReportsDashboard = () => {
         }
     };
 
+    const downloadBlob = (blob, filename) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    };
+
     const handleDownloadReport = async (report, format) => {
         const downloadKey = `${report.id}-${format}`;
+
         try {
             setDownloadingReport(downloadKey);
-            let blob;
 
-            switch (report.id) {
-                case 'disclaimer-completion':
-                    blob = await reportsAPI.getDisclaimerCompletionReport(format);
-                    break;
-                case 'employee-assets':
-                    blob = await reportsAPI.getEmployeeAssetsReport(format);
-                    break;
-                case 'assets-by-status':
-                    blob = await reportsAPI.getAssetsByStatusReport(format);
-                    break;
-                case 'transaction-history':
-                    blob = await reportsAPI.getTransactionHistoryReport(
-                        format,
-                        dateRange.startDate,
-                        dateRange.endDate
-                    );
-                    setShowDateFilter(false);
-                    setDateRange({ startDate: '', endDate: '' });
-                    break;
-                case 'department-summary':
-                    blob = await reportsAPI.getDepartmentSummaryReport(format);
-                    break;
-                default:
-                    throw new Error('Unknown report type');
+            // Build URL using the endpoint from the report data
+            let url = `${BASE_URL}${report.endpoint}?format=${format}`;
+
+            // Add date filters for transaction history
+            if (report.id === 'transaction-history') {
+                if (dateRange.startDate) url += `&start_date=${dateRange.startDate}`;
+                if (dateRange.endDate) url += `&end_date=${dateRange.endDate}`;
             }
 
-            const filename = reportsUtils.generateFilename(report.id, format);
-            reportsUtils.downloadReport(blob, filename);
+            console.log('Downloading from:', url);
+
+            // Fetch the file
+            const response = await fetch(url, {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Download error:', errorText);
+                throw new Error(`Failed to download report: ${response.status}`);
+            }
+
+            // Get filename from Content-Disposition header or generate one
+            let filename = `${report.id}_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+            const contentDisposition = response.headers.get('Content-Disposition');
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+                if (filenameMatch) {
+                    filename = filenameMatch[1].replace(/"/g, '');
+                }
+            }
+
+            // Convert response to blob and download
+            const blob = await response.blob();
+            downloadBlob(blob, filename);
+
             toast.success(`${report.name} downloaded successfully`);
+
+            // Reset date filter if it was used
+            if (report.id === 'transaction-history' && showDateFilter) {
+                setShowDateFilter(false);
+                setDateRange({ startDate: '', endDate: '' });
+            }
         } catch (error) {
             console.error('Error downloading report:', error);
-            toast.error('Failed to download report');
+            toast.error(error.message || 'Failed to download report');
         } finally {
             setDownloadingReport(null);
         }
@@ -155,23 +164,6 @@ const ReportsDashboard = () => {
                     </p>
                 </div>
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    {quickStats.map((stat, idx) => (
-                        <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.label}</p>
-                                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                                </div>
-                                <div className={`${stat.color} p-3 rounded-lg`}>
-                                    <stat.icon className="w-6 h-6 text-white" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
                 {/* Date Range Filter */}
                 {showDateFilter && selectedReport?.id === 'transaction-history' && (
                     <div className="mb-6 p-6 bg-white rounded-xl shadow-sm border border-gray-200">
@@ -184,6 +176,7 @@ const ReportsDashboard = () => {
                                 onClick={() => {
                                     setShowDateFilter(false);
                                     setSelectedReport(null);
+                                    setDateRange({ startDate: '', endDate: '' });
                                 }}
                                 className="text-gray-400 hover:text-gray-600"
                             >
@@ -387,7 +380,7 @@ const ReportsDashboard = () => {
                 {/* Empty State */}
                 {reports.length === 0 && (
                     <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200">
-                        <FileText className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+                        <AlertCircle className="w-20 h-20 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">
                             No Reports Available
                         </h3>

@@ -103,6 +103,184 @@ def auto_size_columns(ws):
 # ============ DISCLAIMER REPORTS ============
 
 
+def test_report_simple(request):
+    """
+    Simple test report without DRF decorators
+    """
+    from django.http import JsonResponse
+    return JsonResponse({"message": "Simple test report working!", "format": request.GET.get("format", "none")})
+
+
+def disclaimer_completion_report_simple(request):
+    """
+    Simple disclaimer completion report without DRF decorators
+    """
+    from django.http import JsonResponse
+    format_type = request.GET.get("format", "pdf").lower()
+    
+    # Get all employees with their disclaimer status
+    employees = Employee.objects.select_related("user", "department").all()
+    
+    completed_count = 0
+    not_completed_count = 0
+    
+    for emp in employees:
+        completed_process = emp.disclaimer_processes.filter(status="completed").first()
+        if completed_process:
+            completed_count += 1
+        else:
+            not_completed_count += 1
+    
+    return JsonResponse({
+        "message": "Disclaimer completion report (simple)",
+        "format": format_type,
+        "total_employees": employees.count(),
+        "completed": completed_count,
+        "not_completed": not_completed_count
+    })
+
+
+def employee_assets_report_simple(request):
+    """
+    Simple employee assets report without DRF decorators
+    """
+    from django.http import JsonResponse
+    format_type = request.GET.get("format", "pdf").lower()
+    
+    # Get all employees with their assets
+    employees = Employee.objects.select_related("user", "department").prefetch_related("current_assets").all()
+    
+    with_assets_count = 0
+    without_assets_count = 0
+    
+    for emp in employees:
+        current_assets = emp.current_assets.filter(status="assigned")
+        if current_assets.exists():
+            with_assets_count += 1
+        else:
+            without_assets_count += 1
+    
+    return JsonResponse({
+        "message": "Employee assets report (simple)",
+        "format": format_type,
+        "total_employees": employees.count(),
+        "with_assets": with_assets_count,
+        "without_assets": without_assets_count
+    })
+
+
+def assets_by_status_report_simple(request):
+    """
+    Simple assets by status report without DRF decorators
+    """
+    from django.http import JsonResponse
+    format_type = request.GET.get("format", "pdf").lower()
+    
+    # Get all assets grouped by status
+    assets = Asset.objects.select_related("department", "current_holder__user").all()
+    
+    assets_by_status = {
+        "available": 0,
+        "assigned": 0,
+        "maintenance": 0,
+        "retired": 0,
+    }
+    
+    for asset in assets:
+        assets_by_status[asset.status] += 1
+    
+    return JsonResponse({
+        "message": "Assets by status report (simple)",
+        "format": format_type,
+        "total_assets": assets.count(),
+        "assets_by_status": assets_by_status
+    })
+
+
+def transaction_history_report_simple(request):
+    """
+    Simple transaction history report without DRF decorators
+    """
+    from django.http import JsonResponse
+    format_type = request.GET.get("format", "pdf").lower()
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    
+    # Get transactions
+    transactions = AssetTransaction.objects.select_related(
+        "asset", "employee__user", "employee__department", "processed_by"
+    ).all()
+    
+    if start_date:
+        transactions = transactions.filter(transaction_date__gte=start_date)
+    if end_date:
+        transactions = transactions.filter(transaction_date__lte=end_date)
+    
+    transactions = transactions.order_by("-transaction_date")
+    
+    return JsonResponse({
+        "message": "Transaction history report (simple)",
+        "format": format_type,
+        "total_transactions": transactions.count(),
+        "start_date": start_date,
+        "end_date": end_date
+    })
+
+
+def department_summary_report_simple(request):
+    """
+    Simple department summary report without DRF decorators
+    """
+    from django.http import JsonResponse
+    format_type = request.GET.get("format", "pdf").lower()
+    
+    # Get departments
+    departments = Department.objects.prefetch_related(
+        "employees", "assets", "employees__disclaimer_processes"
+    ).all()
+    
+    dept_summary = []
+    for dept in departments:
+        total_employees = dept.employees.count()
+        completed_disclaimers = (
+            dept.employees.filter(disclaimer_processes__status="completed")
+            .distinct()
+            .count()
+        )
+        
+        dept_summary.append({
+            "name": dept.name,
+            "manager": dept.manager.get_full_name() if dept.manager else "No Manager",
+            "total_employees": total_employees,
+            "completed_disclaimers": completed_disclaimers,
+            "total_assets": dept.assets.count(),
+        })
+    
+    return JsonResponse({
+        "message": "Department summary report (simple)",
+        "format": format_type,
+        "total_departments": departments.count(),
+        "departments": dept_summary
+    })
+
+
+@api_view(["GET"])
+def test_report_minimal(request):
+    """
+    Minimal DRF test report
+    """
+    return Response({"message": "Minimal DRF test working!", "format": request.GET.get("format", "none")})
+
+
+@api_view(["GET"])
+@permission_classes([])
+def test_report(request):
+    """
+    Simple test report to debug URL routing
+    """
+    return Response({"message": "Test report working!", "format": request.GET.get("format", "none")})
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def disclaimer_completion_report(request):

@@ -73,9 +73,9 @@ INSTALLED_APPS = [
     "drf_spectacular",
     
     "apps.users",
-    "apps.reports",
     "apps.assets",
     "apps.disclaimer",
+    'apps.reports',
 ]
 
 MIDDLEWARE = [

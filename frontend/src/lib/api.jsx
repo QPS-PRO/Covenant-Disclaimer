@@ -303,35 +303,50 @@ export function useAuth() {
     return context;
 }
 
-// Reports Export (auth-free)
+
 export async function apiGetBlob(path, options = {}) {
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
     const url = `${BASE_URL}${path}`;
 
-    const resp = await fetch(url, {
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-store',
-        headers: {
-            Accept: '*/*',
-            ...(options.headers || {}),
-        },
+    console.log('Fetching blob from:', url); // Debug log
 
-    });
+    try {
+        const resp = await fetch(url, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-store',
+            headers: {
+                Accept: '*/*',
+                ...(options.headers || {}),
+            },
+            credentials: 'include',
+        });
 
-    if (!resp.ok) {
-        const text = await resp.text().catch(() => '');
-        throw new Error(text || `HTTP error! status: ${resp.status}`);
+        console.log('Response status:', resp.status); // Debug log
+        console.log('Response headers:', resp.headers); // Debug log
+
+        if (!resp.ok) {
+            const text = await resp.text().catch(() => '');
+            console.error('Error response:', text); // Debug log
+            throw new Error(text || `HTTP error! status: ${resp.status}`);
+        }
+
+        // Get filename from Content-Disposition header
+        const cd = resp.headers.get('content-disposition');
+        let filename = null;
+        if (cd) {
+            const m = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (m && m[1]) {
+                filename = m[1].replace(/['"]/g, '');
+            }
+        }
+
+        const blob = await resp.blob();
+        console.log('Blob created:', blob.size, 'bytes'); // Debug log
+
+        return { blob, filename };
+    } catch (error) {
+        console.error('apiGetBlob error:', error);
+        throw error;
     }
-
-    // pick filename if server provides it
-    const cd = resp.headers.get('content-disposition');
-    let filename = null;
-    if (cd) {
-        const m = cd.match(/filename="?([^"]+)"?/i);
-        if (m) filename = decodeURIComponent(m[1]);
-    }
-
-    const blob = await resp.blob();
-    return { blob, filename };
 }
