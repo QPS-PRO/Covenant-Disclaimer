@@ -25,7 +25,6 @@ from .serializers import (
 from .permissions import IsAdmin, IsDepartmentManager, IsEmployee
 from apps.assets.models import Department, Employee
 from django.db.models import Max
-
 # ============ ADMIN VIEWS ============
 
 
@@ -546,22 +545,21 @@ def manager_review_request_view(request, request_id):
 
 # ============ EMPLOYEE VIEWS ============
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsEmployee])
 def employee_disclaimer_status_view(request):
     """
     GET: Get employee's complete disclaimer status and flow
+    UPDATED: Now supports multiple processes
     """
     try:
         employee = request.user.employee_profile
 
-        # Check if ever completed
-        has_ever_completed = DisclaimerProcess.has_completed_process(employee)
-
-        # Get or check for active process
-        process = DisclaimerProcess.objects.filter(
-            employee=employee, is_active=True
+        # Get active in-progress process
+        active_process = DisclaimerProcess.objects.filter(
+            employee=employee,
+            is_active=True,
+            status='in_progress'
         ).first()
 
         # Get the disclaimer flow for this employee's department
@@ -576,23 +574,24 @@ def employee_disclaimer_status_view(request):
         # Build flow steps
         flow_steps = []
         for order in flow_orders:
-            # Get the latest request for this step
+            # Get the latest request for this step in the active process
             step_request = None
-            if process:
+            if active_process:
                 step_request = (
                     DisclaimerRequest.objects.filter(
-                        employee=employee, step_number=order.order
+                        process=active_process,
+                        step_number=order.order
                     )
                     .order_by("-created_at")
                     .first()
                 )
 
             # Determine step status
-            if not process:
+            if not active_process:
                 step_status = "locked"
                 is_active = False
                 can_request = False
-            elif process.current_step == order.order:
+            elif active_process.current_step == order.order:
                 if step_request:
                     step_status = step_request.status
                     is_active = True
@@ -601,7 +600,7 @@ def employee_disclaimer_status_view(request):
                     step_status = "pending"
                     is_active = True
                     can_request = True
-            elif order.order < process.current_step:
+            elif order.order < active_process.current_step:
                 step_status = "approved" if step_request else "skipped"
                 is_active = False
                 can_request = False
@@ -625,18 +624,22 @@ def employee_disclaimer_status_view(request):
                 }
             )
 
-        # NEW: Can only start if never completed before
+        # Can start if no active process (regardless of past completions)
         can_start_process = (
-            not has_ever_completed
-            and (not process or process.status != "in_progress")
+            not active_process
             and len(flow_orders) > 0
         )
 
+        # Get total completed processes count
+        completed_count = DisclaimerProcess.objects.filter(
+            employee=employee,
+            status='completed'
+        ).count()
+
         response_data = {
-            "has_active_process": process is not None
-            and process.status == "in_progress",
-            "has_ever_completed": has_ever_completed,
-            "process": DisclaimerProcessSerializer(process).data if process else None,
+            "has_active_process": active_process is not None,
+            "completed_processes_count": completed_count,
+            "process": DisclaimerProcessSerializer(active_process).data if active_process else None,
             "flow_steps": flow_steps,
             "can_start_process": can_start_process,
         }
@@ -646,6 +649,10 @@ def employee_disclaimer_status_view(request):
     except Employee.DoesNotExist:
         return Response(
             {"error": "Employee profile not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 

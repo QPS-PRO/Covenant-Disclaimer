@@ -1,10 +1,11 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import HttpResponse
 from django.utils import timezone
 from django.db.models import Count, Q, Prefetch
+from django.shortcuts import get_object_or_404
 from datetime import datetime
 import io
 from django.views.decorators.http import require_http_methods
@@ -31,9 +32,10 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
 from apps.assets.models import Employee, Asset, AssetTransaction, Department
-from apps.disclaimer.models import DisclaimerProcess, DisclaimerRequest
+from apps.disclaimer.models import DisclaimerProcess
+from apps.reports.models import ReportPermission
+from apps.reports.serializers import ReportPermissionSerializer
 from apps.disclaimer.permissions import IsAdmin
-from rest_framework.permissions import AllowAny
 
 # ============ UTILITY FUNCTIONS ============
 
@@ -1193,3 +1195,87 @@ def reports_list_view(request):
     ]
 
     return Response(reports)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def report_permissions_view(request):
+    """
+    GET: List all employees with report permissions
+    POST: Grant report permission to an employee
+    """
+    if request.method == "GET":
+        permissions = ReportPermission.objects.select_related(
+            "employee__user",
+            "employee__department",
+            "granted_by"
+        ).all()
+        serializer = ReportPermissionSerializer(permissions, many=True)
+        return Response(serializer.data)
+
+    elif request.method == "POST":
+        serializer = ReportPermissionSerializer(
+            data=request.data,
+            context={"request": request}
+        )
+        if serializer.is_valid():
+            serializer.save(granted_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
+@permission_classes([AllowAny])
+def report_permission_detail_view(request, pk):
+    """
+    GET: Retrieve a report permission
+    PUT/PATCH: Update a report permission
+    DELETE: Revoke a report permission
+    """
+    permission = get_object_or_404(ReportPermission, pk=pk)
+
+    if request.method == "GET":
+        serializer = ReportPermissionSerializer(permission)
+        return Response(serializer.data)
+
+    elif request.method in ["PUT", "PATCH"]:
+        partial = request.method == "PATCH"
+        serializer = ReportPermissionSerializer(
+            permission,
+            data=request.data,
+            partial=partial,
+            context={"request": request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == "DELETE":
+        permission.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def check_report_access_view(request):
+    """
+    GET: Check if current user has report access
+    """
+    try:
+        employee = request.user.employee_profile
+        
+        if request.user.is_superuser or request.user.is_staff:
+            return Response({"has_access": True, "reason": "admin"})
+        
+        try:
+            permission = ReportPermission.objects.get(employee=employee)
+            return Response({
+                "has_access": permission.can_access_reports,
+                "reason": "permission_granted" if permission.can_access_reports else "no_permission"
+            })
+        except ReportPermission.DoesNotExist:
+            return Response({"has_access": False, "reason": "no_permission"})
+            
+    except Exception as e:
+        return Response({"has_access": False, "reason": "error"})

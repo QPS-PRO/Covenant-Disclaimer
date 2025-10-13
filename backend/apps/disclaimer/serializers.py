@@ -145,6 +145,59 @@ class DisclaimerRequestSerializer(serializers.ModelSerializer):
         ]
 
 
+class DisclaimerProcessHistorySerializer(serializers.ModelSerializer):
+    """Serializer for process history view"""
+
+    employee_name = serializers.CharField(source="employee.name", read_only=True)
+    employee_department = serializers.CharField(
+        source="employee.department.name", read_only=True
+    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    progress_percentage = serializers.IntegerField(read_only=True)
+    duration_days = serializers.SerializerMethodField()
+    completed_steps = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DisclaimerProcess
+        fields = [
+            "id",
+            "process_number",
+            "employee_name",
+            "employee_department",
+            "status",
+            "status_display",
+            "current_step",
+            "total_steps",
+            "progress_percentage",
+            "started_at",
+            "completed_at",
+            "duration_days",
+            "completed_steps",
+        ]
+        read_only_fields = ["started_at", "completed_at"]
+
+    def get_duration_days(self, obj):
+        """Calculate how long the process took"""
+        if obj.completed_at and obj.started_at:
+            delta = obj.completed_at - obj.started_at
+            return delta.days
+        return None
+
+    def get_completed_steps(self, obj):
+        """Get summary of completed steps"""
+        approved_requests = obj.requests.filter(status="approved").order_by(
+            "step_number"
+        )
+        return [
+            {
+                "step_number": req.step_number,
+                "department": req.target_department.name,
+                "approved_at": req.reviewed_at,
+            }
+            for req in approved_requests
+        ]
+
+
 class DisclaimerRequestCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = DisclaimerRequest
@@ -153,17 +206,8 @@ class DisclaimerRequestCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Validate request can be created"""
         employee = self.context["employee"]
+        process = self.context["process"]
         target_dept = data.get("target_department")
-
-        # Get active process
-        process = DisclaimerProcess.objects.filter(
-            employee=employee, is_active=True, status="in_progress"
-        ).first()
-
-        if not process:
-            raise serializers.ValidationError(
-                "No active disclaimer process found. Please start a new process."
-            )
 
         # Check if this is the correct next department
         order_config = DepartmentDisclaimerOrder.objects.filter(
@@ -178,9 +222,9 @@ class DisclaimerRequestCreateSerializer(serializers.ModelSerializer):
                 f"You cannot request disclaimer from {target_dept.name} at this step."
             )
 
-        # Check if there's already a pending request for this step
+        # Check if there's already a pending request for this step in this process
         existing_request = DisclaimerRequest.objects.filter(
-            employee=employee, step_number=process.current_step, status="pending"
+            process=process, step_number=process.current_step, status="pending"
         ).first()
 
         if existing_request:

@@ -97,6 +97,12 @@ class DisclaimerRequest(models.Model):
     employee = models.ForeignKey(
         "assets.Employee", on_delete=models.CASCADE, related_name="disclaimer_requests"
     )
+    process = models.ForeignKey(
+        "DisclaimerProcess",
+        on_delete=models.CASCADE,
+        related_name="requests",
+        help_text="The disclaimer process this request belongs to"
+    )
     target_department = models.ForeignKey(
         "assets.Department",
         on_delete=models.CASCADE,
@@ -132,6 +138,7 @@ class DisclaimerRequest(models.Model):
         indexes = [
             models.Index(fields=["employee", "status"]),
             models.Index(fields=["target_department", "status"]),
+            models.Index(fields=["process", "status"]),
         ]
 
     def __str__(self):
@@ -160,7 +167,7 @@ class DisclaimerRequest(models.Model):
 class DisclaimerProcess(models.Model):
     """
     Overall disclaimer process tracking for an employee
-    Once completed, the process cannot be restarted - it's a one-time completion
+    NEW: Employees can now have multiple processes over time
     """
 
     STATUS_CHOICES = [
@@ -184,14 +191,25 @@ class DisclaimerProcess(models.Model):
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    process_number = models.PositiveIntegerField(
+        default=1, help_text="Sequential number of this process for the employee"
+    )
 
     class Meta:
         verbose_name = "Disclaimer Process"
         verbose_name_plural = "Disclaimer Processes"
         ordering = ["-started_at"]
+        # NEW: Allow only one active in-progress process per employee
+        constraints = [
+            models.UniqueConstraint(
+                fields=['employee'],
+                condition=models.Q(status='in_progress', is_active=True),
+                name='unique_active_in_progress_process'
+            )
+        ]
 
     def __str__(self):
-        return f"{self.employee.name} - Step {self.current_step}/{self.total_steps} - {self.status}"
+        return f"{self.employee.name} - Process #{self.process_number} - Step {self.current_step}/{self.total_steps} - {self.status}"
 
     @property
     def progress_percentage(self):
@@ -210,7 +228,7 @@ class DisclaimerProcess(models.Model):
             return False
 
         # Check if current step is approved
-        current_request = self.employee.disclaimer_requests.filter(
+        current_request = self.requests.filter(
             step_number=self.current_step, status="approved"
         ).first()
 
@@ -231,9 +249,18 @@ class DisclaimerProcess(models.Model):
         return order_config.target_department if order_config else None
     
     @classmethod
-    def has_completed_process(cls, employee):
-        """Check if employee has ever completed a disclaimer process"""
+    def has_active_process(cls, employee):
+        """Check if employee has an active in-progress process"""
         return cls.objects.filter(
             employee=employee,
-            status='completed'
+            status='in_progress',
+            is_active=True
         ).exists()
+    
+    @classmethod
+    def get_next_process_number(cls, employee):
+        """Get the next process number for an employee"""
+        max_number = cls.objects.filter(employee=employee).aggregate(
+            max_num=Max('process_number')
+        )['max_num']
+        return (max_number or 0) + 1

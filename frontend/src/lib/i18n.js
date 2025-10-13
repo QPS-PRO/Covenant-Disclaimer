@@ -685,8 +685,8 @@ const enTranslations = {
                     name: 'Department Summary Report',
                     description: 'Comprehensive overview of each department including employees, assets, and disclaimer completion'
                 }
-                },
-                params: {
+            },
+            params: {
                 startDateOptional: 'start_date (optional)',
                 endDateOptional: 'end_date (optional)'
             }
@@ -697,10 +697,10 @@ const enTranslations = {
             headerTitle: "Reports",
             headerSubtitle: "Generate and download reports in PDF or Excel format",
             table: {
-              report: "Report",
-              description: "Description",
-              formats: "Formats",
-              actions: "Actions"
+                report: "Report",
+                description: "Description",
+                formats: "Formats",
+                actions: "Actions"
             },
             hasOptionalFilters: "Has optional filters",
             dateRangeOptional: "Date Range (Optional):",
@@ -716,12 +716,12 @@ const enTranslations = {
             emptyBody: "Check back later for available reports",
             // Toasts / errors / success
             toast: {
-              loadFailed: "Failed to load reports",
-              startBeforeEnd: "Start date must be before end date",
-              unknownType: "Unknown report type",
-              downloadFailed: "Failed to download report",
-              emptyFile: "Received empty file from server",
-              downloaded: "{{name}} downloaded successfully"
+                loadFailed: "Failed to load reports",
+                startBeforeEnd: "Start date must be before end date",
+                unknownType: "Unknown report type",
+                downloadFailed: "Failed to download report",
+                emptyFile: "Received empty file from server",
+                downloaded: "{{name}} downloaded successfully"
             }
         }
 
@@ -1387,26 +1387,26 @@ const arTranslations = {
             aboutBody: "يتم إنشاء جميع التقارير في الوقت الحقيقي بأحدث البيانات. تقارير PDF مهيأة للطباعة، بينما تقارير Excel مناسبة للتحليل والتصفية.",
             reports: {
                 'transaction-history': {
-                  name: 'سجل معاملات الأصول',
-                  description: 'سجل كامل لجميع معاملات الأصول مع تفاصيل التحقق بالوجه'
+                    name: 'سجل معاملات الأصول',
+                    description: 'سجل كامل لجميع معاملات الأصول مع تفاصيل التحقق بالوجه'
                 },
                 'disclaimer-completion': {
-                  name: 'تقرير إتمام إخلاء الطرف ',
-                  description: 'يعرض الموظفين الذين أكملوا إجراء إخلاء الطرف ومن لم يكملوه'
+                    name: 'تقرير إتمام إخلاء الطرف ',
+                    description: 'يعرض الموظفين الذين أكملوا إجراء إخلاء الطرف ومن لم يكملوه'
                 },
                 'employee-assets': {
-                  name: 'تقرير أصول الموظفين',
-                  description: 'يعرض الموظفين الذين لديهم أصول مسندة حاليًا مقابل من لا يملكون أي أصول'
+                    name: 'تقرير أصول الموظفين',
+                    description: 'يعرض الموظفين الذين لديهم أصول مسندة حاليًا مقابل من لا يملكون أي أصول'
                 },
                 'assets-by-status': {
-                  name: 'تقرير الأصول حسب الحالة',
-                  description: 'يصنّف جميع الأصول حسب حالتها (متاح، مسند، صيانة، متقاعد)'
+                    name: 'تقرير الأصول حسب الحالة',
+                    description: 'يصنّف جميع الأصول حسب حالتها (متاح، مسند، صيانة، متقاعد)'
                 },
                 'department-summary': {
-                  name: 'تقرير ملخص المعاملات',
-                  description: 'نظرة شاملة لكل إدارة تتضمن الموظفين والأصول ونسبة إتمام إخلاء الطرف'
+                    name: 'تقرير ملخص الأقسام',
+                    description: 'نظرة عامة شاملة على كل قسم بما في ذلك الموظفين والأصول وإكمال إخلاء المسؤولية'
                 }
-              },
+            },
             params: {
                 startDateOptional: 'تاريخ البدء (اختياري)',
                 endDateOptional: 'تاريخ الإنتهاء (اختياري)'
@@ -1418,10 +1418,10 @@ const arTranslations = {
             headerTitle: "التقارير",
             headerSubtitle: "إنشاء وتنزيل التقارير بصيغة PDF أو Excel",
             table: {
-              report: "التقرير",
-              description: "الوصف",
-              formats: "الصيغ",
-              actions: "الإجراءات"
+                report: "التقرير",
+                description: "الوصف",
+                formats: "الصيغ",
+                actions: "الإجراءات"
             },
             hasOptionalFilters: "يحتوي على عوامل تصفية اختيارية",
             dateRangeOptional: "نطاق التاريخ (اختياري):",
@@ -1436,12 +1436,12 @@ const arTranslations = {
             emptyTitle: "لا توجد تقارير متاحة",
             emptyBody: "تحقق لاحقًا لعرض التقارير المتاحة",
             toast: {
-              loadFailed: "فشل تحميل التقارير",
-              startBeforeEnd: "يجب أن يكون تاريخ البدء قبل تاريخ الانتهاء",
-              unknownType: "نوع تقرير غير معروف",
-              downloadFailed: "فشل تنزيل التقرير",
-              emptyFile: "تم استلام ملف فارغ من الخادم",
-              downloaded: "تم تنزيل {{name}} بنجاح"
+                loadFailed: "فشل تحميل التقارير",
+                startBeforeEnd: "يجب أن يكون تاريخ البدء قبل تاريخ الانتهاء",
+                unknownType: "نوع تقرير غير معروف",
+                downloadFailed: "فشل تنزيل التقرير",
+                emptyFile: "تم استلام ملف فارغ من الخادم",
+                downloaded: "تم تنزيل {{name}} بنجاح"
             }
         }
     }

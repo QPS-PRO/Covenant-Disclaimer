@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { apiPost, apiPatch, apiDelete } from '@/lib/api';
 
 // Helper to get auth token
 const getAuthToken = () => {
@@ -141,3 +142,13 @@ export const reportsUtils = {
         return colors[reportId] || 'gray';
     }
 };
+
+
+// ===== Report permissions (JSON CRUD) =====
+export const reportPermissionAPI = {
+    getAllPermissions: () => apiGet('/api/reports/admin/report-permissions/'),
+    createPermission: (data) => apiPost('/api/reports/admin/report-permissions/', data),
+    updatePermission: (id, data) => apiPatch(`/api/reports/admin/report-permissions/${id}/`, data),
+    deletePermission: (id) => apiDelete(`/api/reports/admin/report-permissions/${id}/`),
+    checkAccess: () => apiGet('/api/reports/check-report-access/'),
+};  

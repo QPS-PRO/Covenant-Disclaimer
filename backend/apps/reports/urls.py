@@ -2,12 +2,43 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.reports_list_view, name='reports-list'),
-
-    path('disclaimer-completion/', views.disclaimer_completion_report, name='disclaimer-completion-report'),
-    path('employee-assets/', views.employee_assets_report, name='employee-assets-report'),
-    path('assets-by-status/', views.assets_by_status_report, name='assets-by-status-report'),
-    path('transaction-history/', views.asset_transaction_history_report, name='transaction-history-report'),
-    path('department-summary/', views.department_summary_report, name='department-summary-report'),
-
+    path("", views.reports_list_view, name="reports-list"),
+    path(
+        "disclaimer-completion/",
+        views.disclaimer_completion_report,
+        name="disclaimer-completion-report",
+    ),
+    path(
+        "employee-assets/", views.employee_assets_report, name="employee-assets-report"
+    ),
+    path(
+        "assets-by-status/",
+        views.assets_by_status_report,
+        name="assets-by-status-report",
+    ),
+    path(
+        "transaction-history/",
+        views.asset_transaction_history_report,
+        name="transaction-history-report",
+    ),
+    path(
+        "department-summary/",
+        views.department_summary_report,
+        name="department-summary-report",
+    ),
+    path(
+        "admin/report-permissions/",
+        views.report_permissions_view,
+        name="admin-report-permissions",
+    ),
+    path(
+        "admin/report-permissions/<int:pk>/",
+        views.report_permission_detail_view,
+        name="admin-report-permission-detail",
+    ),
+    path(
+        "check-report-access/",
+        views.check_report_access_view,
+        name="check-report-access",
+    ),
 ]

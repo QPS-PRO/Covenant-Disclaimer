@@ -1,8 +1,3 @@
-// frontend/src/utils/authHelpers.js
-/**
- * Helper functions for role-based access control
- */
-
 export const isAdmin = (user) => {
     if (!user) return false;
     return user.is_staff === true || user.is_superuser === true;
@@ -15,7 +10,6 @@ export const isDepartmentManager = (user) => {
 
 export const isRegularEmployee = (user) => {
     if (!user) return false;
-    // Has employee profile but is NOT admin and NOT manager
     return user.employee_profile && !isAdmin(user) && !isDepartmentManager(user);
 };
 
@@ -68,4 +62,23 @@ export const canAccessRoute = (user, requiredRole) => {
 
     // No specific role required
     return true;
+};
+/**
+Check if user has report access
+**/
+export const hasReportAccess = (user) => {
+    if (!user) return false;
+    
+    if (isAdmin(user)) return true;
+    
+    // Check employee profile for report permission
+    if (user.employee_profile) {
+        const reportPerm = user.employee_profile.report_permission;
+        
+        // Check if report_permission exists and has can_access_reports set to true
+        if (reportPerm && typeof reportPerm === 'object') {
+            return reportPerm.can_access_reports === true;
+        }
+    }
+    return false;
 };

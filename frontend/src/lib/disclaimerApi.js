@@ -96,7 +96,16 @@ export const disclaimerUtils = {
             minute: '2-digit'
         });
     },
-
+    // NEW: Format date without time
+    formatDateOnly: (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    },
     // Check if step is accessible
     isStepAccessible: (step) => {
         return step.is_active && step.can_request;
@@ -109,5 +118,25 @@ export const disclaimerUtils = {
         if (step.status === 'pending') return 'clock';
         if (step.status === 'locked') return 'lock';
         return 'circle';
+    },
+    
+    // NEW: Calculate process duration
+    calculateDuration: (startDate, endDate) => {
+        if (!startDate || !endDate) return null;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    },
+    
+    // NEW: Get process badge color
+    getProcessBadgeColor: (status) => {
+        const colors = {
+            'in_progress': 'blue',
+            'completed': 'green',
+            'blocked': 'red'
+        };
+        return colors[status] || 'gray';
     }
 };

@@ -1,4 +1,3 @@
-// frontend/src/routes.jsx
 import {
   HomeIcon,
   ServerStackIcon,
@@ -13,6 +12,7 @@ import {
   ClipboardDocumentCheckIcon,
   ClockIcon,
   DocumentIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/solid";
 import { Home } from "@/pages/dashboard";
 import { SignIn, SignUp } from "@/pages/auth";
@@ -26,10 +26,10 @@ import ManagerPendingRequests from "@/pages/dashboard/manager-pending-requests";
 import ManagerDisclaimerHistory from "@/pages/dashboard/manager-disclaimer-history";
 import AdminDisclaimerConfig from "@/pages/dashboard/admin-disclaimer-config";
 import AdminDisclaimerSetup from "@/pages/dashboard/admin-disclaimer-setup";
+import AdminReportPermissions from "@/pages/dashboard/admin-report-permissions";
 import Reports from "@/layout/ReportsDashboard";
 
-// Import auth helpers
-import { isAdmin, isDepartmentManager, isRegularEmployee } from "@/utils/authHelpers";
+import { isAdmin, isDepartmentManager, isRegularEmployee, hasReportAccess } from "@/utils/authHelpers";
 
 const icon = {
   className: "w-5 h-5 text-inherit",
@@ -39,7 +39,7 @@ export const routes = [
   {
     layout: "dashboard",
     pages: [
-      // ADMIN ONLY PAGES
+      // ==================== ADMIN ONLY PAGES ====================
       {
         icon: <HomeIcon {...icon} />,
         name: "dashboard",
@@ -90,19 +90,40 @@ export const routes = [
         hideFromSidebar: (user) => !isAdmin(user),
       },
       {
+        icon: <ShieldCheckIcon {...icon} />,
+        name: "Report Permissions",
+        path: "/admin-report-permissions",
+        element: <AdminReportPermissions />,
+        hideFromSidebar: (user) => !isAdmin(user),
+      },
+      {
         icon: <DocumentIcon {...icon} />,
         name: 'Reports',
         path: '/reports',
         element: <Reports />,
         hideFromSidebar: (user) => !isAdmin(user),
       },
-      // MANAGER ONLY PAGES
+
+      // ==================== MANAGER PAGES ====================
       {
         icon: <ClipboardDocumentCheckIcon {...icon} />,
         name: "Disclaimer Requests",
         path: "/disclaimer-requests",
         element: <ManagerPendingRequests />,
         hideFromSidebar: (user) => !isDepartmentManager(user),
+      },
+      {
+        icon: <UserCircleIcon {...icon} />,
+        name: "My Profile",
+        path: `/employees/:id/profile`,
+        element: <EmployeeProfile />,
+        hideFromSidebar: (user) => !isDepartmentManager(user),
+        getPath: (user) => {
+          if (isDepartmentManager(user) && user?.employee_profile?.id) {
+            return `/employees/${user.employee_profile.id}/profile`;
+          }
+          return null;
+        },
       },
       {
         icon: <Cog6ToothIcon {...icon} />,
@@ -118,18 +139,38 @@ export const routes = [
         element: <ManagerDisclaimerHistory />,
         hideFromSidebar: (user) => !isDepartmentManager(user),
       },
+      {
+        icon: <DocumentIcon {...icon} />,
+        name: 'Reports',
+        path: '/manager-reports',
+        element: <Reports />,
+        hideFromSidebar: (user) => {
+          // Debug logging
+          if (isDepartmentManager(user)) {
+            console.log('Manager detected, checking report access:', {
+              hasAccess: hasReportAccess(user),
+              reportPermission: user?.employee_profile?.report_permission
+            });
+          }
 
-      // EMPLOYEE PAGES 
+          // Show only if user is manager AND has report access
+          return !(isDepartmentManager(user) && hasReportAccess(user));
+        },
+      },
+
+      // ==================== EMPLOYEE ONLY PAGES ====================
       {
         icon: <UserCircleIcon {...icon} />,
         name: "My Profile",
-        path: `/employees/:id/profile`, // Dynamic route
+        path: `/employees/:id/profile`,
         element: <EmployeeProfile />,
         hideFromSidebar: (user) => !isRegularEmployee(user),
-        // Special handling for dynamic employee ID
-        getPath: (user) => user?.employee_profile?.id 
-          ? `/employees/${user.employee_profile.id}/profile` 
-          : null,
+        getPath: (user) => {
+          if (isRegularEmployee(user) && user?.employee_profile?.id) {
+            return `/employees/${user.employee_profile.id}/profile`;
+          }
+          return null;
+        },
       },
       {
         icon: <DocumentCheckIcon {...icon} />,
@@ -144,6 +185,24 @@ export const routes = [
         path: "/my-disclaimer-history",
         element: <EmployeeDisclaimerHistory />,
         hideFromSidebar: (user) => !isRegularEmployee(user),
+      },
+      {
+        icon: <DocumentIcon {...icon} />,
+        name: 'Reports',
+        path: '/employee-reports',
+        element: <Reports />,
+        hideFromSidebar: (user) => {
+          // Debug logging
+          if (isRegularEmployee(user)) {
+            console.log('Employee detected, checking report access:', {
+              hasAccess: hasReportAccess(user),
+              reportPermission: user?.employee_profile?.report_permission
+            });
+          }
+
+          // Show only if user is employee AND has report access
+          return !(isRegularEmployee(user) && hasReportAccess(user));
+        },
       },
     ],
   },
