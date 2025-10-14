@@ -106,13 +106,6 @@ export const routes = [
 
       // ==================== MANAGER PAGES ====================
       {
-        icon: <ClipboardDocumentCheckIcon {...icon} />,
-        name: "Disclaimer Requests",
-        path: "/disclaimer-requests",
-        element: <ManagerPendingRequests />,
-        hideFromSidebar: (user) => !isDepartmentManager(user),
-      },
-      {
         icon: <UserCircleIcon {...icon} />,
         name: "My Profile",
         path: `/employees/:id/profile`,
@@ -124,6 +117,13 @@ export const routes = [
           }
           return null;
         },
+      },
+      {
+        icon: <ClipboardDocumentCheckIcon {...icon} />,
+        name: "Disclaimer Requests",
+        path: "/disclaimer-requests",
+        element: <ManagerPendingRequests />,
+        hideFromSidebar: (user) => !isDepartmentManager(user),
       },
       {
         icon: <Cog6ToothIcon {...icon} />,

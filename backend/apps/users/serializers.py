@@ -59,6 +59,22 @@ class UserSerializer(serializers.ModelSerializer):
         """Get complete employee profile data"""
         try:
             employee = obj.employee_profile
+            
+            # Get report permission
+            report_permission = None
+            try:
+                if hasattr(employee, 'report_permission'):
+                    perm = employee.report_permission
+                    report_permission = {
+                        'id': perm.id,
+                        'can_access_reports': perm.can_access_reports,
+                        'granted_at': perm.granted_at.isoformat() if perm.granted_at else None,
+                        'notes': perm.notes
+                    }
+            except Exception as e:
+                print(f"Error getting report permission: {e}")
+                report_permission = None
+            
             return {
                 "id": employee.id,
                 "employee_id": employee.employee_id,
@@ -68,6 +84,7 @@ class UserSerializer(serializers.ModelSerializer):
                 "is_active": getattr(employee, "is_active", True),
                 "has_face_data": getattr(employee, "has_face_data", False),
                 "is_department_manager": employee.department.manager == obj,
+                "report_permission": report_permission,
             }
         except Exception as e:
             print(f"Error getting employee profile: {e}")

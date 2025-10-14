@@ -63,6 +63,7 @@ export function DashboardNavbar() {
       "disclaimer-history": t("nav.disclaimerHistory", { defaultValue: "Disclaimer History" }),
       "my-disclaimer-history": t("nav.disclaimerHistory", { defaultValue: "Disclaimer History" }),
       "request history": t("nav.disclaimerHistory", { defaultValue: "Request History" }),
+      "admin-report-permissions": t("nav.reportPermissions", { defaultValue: "Report Permissions" }),
     };
     return pageTranslations[page] || page;
   };

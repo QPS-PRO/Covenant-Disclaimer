@@ -545,25 +545,34 @@ def manager_review_request_view(request, request_id):
 
 # ============ EMPLOYEE VIEWS ============
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsEmployee])
 def employee_disclaimer_status_view(request):
     """
-    GET: Get employee's complete disclaimer status and flow
-    UPDATED: Now supports multiple processes
+    FIXED: Get employee disclaimer status WITH flow_steps
     """
     try:
         employee = request.user.employee_profile
 
-        # Get active in-progress process
-        active_process = DisclaimerProcess.objects.filter(
-            employee=employee,
-            is_active=True,
-            status='in_progress'
-        ).first()
+        # Check if there's an active in-progress process
+        has_active = DisclaimerProcess.has_active_process(employee)
 
-        # Get the disclaimer flow for this employee's department
-        flow_orders = (
+        # Get current active process if exists
+        current_process = None
+        if has_active:
+            current_process = DisclaimerProcess.objects.filter(
+                employee=employee, status="in_progress", is_active=True
+            ).first()
+
+        # Check if department requires disclaimer
+        requires_disclaimer = (
+            hasattr(employee.department, "disclaimer_config")
+            and employee.department.disclaimer_config.requires_disclaimer
+        )
+
+        # Get disclaimer flow orders
+        orders = (
             DepartmentDisclaimerOrder.objects.filter(
                 employee_department=employee.department, is_active=True
             )
@@ -571,88 +580,157 @@ def employee_disclaimer_status_view(request):
             .order_by("order")
         )
 
-        # Build flow steps
+        # Build flow steps array - THIS IS CRITICAL
         flow_steps = []
-        for order in flow_orders:
-            # Get the latest request for this step in the active process
-            step_request = None
-            if active_process:
+        for order in orders:
+            step_data = {
+                "step_number": order.order,
+                "department_id": order.target_department.id,
+                "department_name": order.target_department.name,
+                "is_active": False,
+                "is_completed": False,
+                "can_request": False,
+                "status": "locked",
+                "request_id": None,
+                "request": None,
+            }
+
+            # If there's an active process, check the status of this step
+            if current_process:
+                # Check if this is the current active step
+                step_data["is_active"] = order.order == current_process.current_step
+
+                # Get any existing request for this step
                 step_request = (
                     DisclaimerRequest.objects.filter(
-                        process=active_process,
-                        step_number=order.order
+                        process=current_process, step_number=order.order
                     )
-                    .order_by("-created_at")
+                    .select_related("target_department", "reviewed_by")
                     .first()
                 )
 
-            # Determine step status
-            if not active_process:
-                step_status = "locked"
-                is_active = False
-                can_request = False
-            elif active_process.current_step == order.order:
                 if step_request:
-                    step_status = step_request.status
-                    is_active = True
-                    can_request = step_request.status == "rejected"
-                else:
-                    step_status = "pending"
-                    is_active = True
-                    can_request = True
-            elif order.order < active_process.current_step:
-                step_status = "approved" if step_request else "skipped"
-                is_active = False
-                can_request = False
+                    step_data["request_id"] = step_request.id
+                    step_data["status"] = step_request.status
+                    step_data["is_completed"] = step_request.status == "approved"
+
+                    # Serialize the request details
+                    step_data["request"] = {
+                        "id": step_request.id,
+                        "status": step_request.status,
+                        "employee_notes": step_request.employee_notes,
+                        "manager_notes": step_request.manager_notes,
+                        "rejection_reason": step_request.rejection_reason,
+                        "reviewed_by_name": step_request.reviewed_by.get_full_name()
+                        if step_request.reviewed_by
+                        else None,
+                        "reviewed_at": step_request.reviewed_at.isoformat()
+                        if step_request.reviewed_at
+                        else None,
+                        "created_at": step_request.created_at.isoformat()
+                        if step_request.created_at
+                        else None,
+                    }
+
+                    # If rejected, status should show as 'rejected' not 'blocked'
+                    if step_request.status == "rejected":
+                        step_data["status"] = "rejected"
+
+                # Check if this step can accept a new request
+                if order.order == current_process.current_step:
+                    # Can request if no existing request OR if the existing request was rejected
+                    if not step_request:
+                        step_data["can_request"] = True
+                        step_data["status"] = "available"
+                    elif step_request.status == "rejected":
+                        # Allow resubmission after rejection
+                        step_data["can_request"] = True
+                    elif step_request.status == "pending":
+                        step_data["status"] = "pending"
+                        step_data["can_request"] = False
+                elif order.order < current_process.current_step:
+                    # Previous steps - should be completed
+                    if step_request and step_request.status == "approved":
+                        step_data["is_completed"] = True
             else:
-                step_status = "locked"
-                is_active = False
-                can_request = False
+                # No active process - only first step can be requested after starting
+                if order.order == 1:
+                    step_data["status"] = "available"
 
-            flow_steps.append(
-                {
-                    "step_number": order.order,
-                    "department_id": order.target_department.id,
-                    "department_name": order.target_department.name,
-                    "status": step_status,
-                    "is_active": is_active,
-                    "is_completed": step_status == "approved",
-                    "can_request": can_request,
-                    "request": DisclaimerRequestSerializer(step_request).data
-                    if step_request
-                    else None,
-                }
-            )
+            flow_steps.append(step_data)
 
-        # Can start if no active process (regardless of past completions)
-        can_start_process = (
-            not active_process
-            and len(flow_orders) > 0
-        )
-
-        # Get total completed processes count
-        completed_count = DisclaimerProcess.objects.filter(
-            employee=employee,
-            status='completed'
-        ).count()
-
+        # Build main response
         response_data = {
-            "has_active_process": active_process is not None,
-            "completed_processes_count": completed_count,
-            "process": DisclaimerProcessSerializer(active_process).data if active_process else None,
-            "flow_steps": flow_steps,
-            "can_start_process": can_start_process,
+            "has_active_process": has_active,
+            "can_start_new_process": not has_active
+            and requires_disclaimer
+            and orders.exists(),
+            "requires_disclaimer": requires_disclaimer,
+            "can_start_process": not has_active
+            and requires_disclaimer
+            and orders.exists(),  # Alias for frontend
+            "total_processes": DisclaimerProcess.objects.filter(
+                employee=employee
+            ).count(),
+            "completed_processes": DisclaimerProcess.objects.filter(
+                employee=employee, status="completed"
+            ).count(),
+            "flow_steps": flow_steps,  # CRITICAL: Always include this, even if empty
         }
 
-        return Response(response_data)
+        # Add current process details if exists
+        if current_process:
+            response_data["process"] = {
+                "id": current_process.id,
+                "status": current_process.status,
+                "current_step": current_process.current_step,
+                "total_steps": current_process.total_steps,
+                "progress_percentage": current_process.progress_percentage,
+                "started_at": current_process.started_at.isoformat(),
+                "completed_at": current_process.completed_at.isoformat()
+                if current_process.completed_at
+                else None,
+                "process_number": current_process.process_number,
+            }
 
-    except Employee.DoesNotExist:
-        return Response(
-            {"error": "Employee profile not found"}, status=status.HTTP_404_NOT_FOUND
-        )
+            # Also include as 'current_process' for compatibility
+            response_data["current_process"] = response_data["process"]
+
+            # Get current step request details
+            current_step_request = (
+                DisclaimerRequest.objects.filter(
+                    process=current_process, step_number=current_process.current_step
+                )
+                .select_related("target_department", "reviewed_by")
+                .first()
+            )
+
+            if current_step_request:
+                response_data["current_step"] = {
+                    "id": current_step_request.id,
+                    "step_number": current_step_request.step_number,
+                    "status": current_step_request.status,
+                    "target_department_name": current_step_request.target_department.name,
+                    "employee_notes": current_step_request.employee_notes,
+                    "manager_notes": current_step_request.manager_notes,
+                    "rejection_reason": current_step_request.rejection_reason,
+                    "created_at": current_step_request.created_at.isoformat(),
+                }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
     except Exception as e:
+        import traceback
+
+        error_trace = traceback.format_exc()
+        print(f"Error in employee_disclaimer_status_view: {str(e)}")
+        print(error_trace)
         return Response(
-            {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {
+                "error": str(e),
+                "flow_steps": [],  # Return empty array even on error
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
@@ -667,14 +745,14 @@ def employee_start_disclaimer_process_view(request):
         employee = request.user.employee_profile
 
         # NEW: Check if employee has ever completed the disclaimer process
-        if DisclaimerProcess.has_completed_process(employee):
-            return Response(
-                {
-                    "error": "You have already completed the disclaimer process. "
-                    "The disclaimer can only be completed once and cannot be restarted."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # if DisclaimerProcess.has_completed_process(employee):
+        #     return Response(
+        #         {
+        #             "error": "You have already completed the disclaimer process. "
+        #             "The disclaimer can only be completed once and cannot be restarted."
+        #         },
+        #         status=status.HTTP_400_BAD_REQUEST,
+        #     )
 
         # Check if there's already an active in-progress process
         existing_process = DisclaimerProcess.objects.filter(
@@ -704,6 +782,8 @@ def employee_start_disclaimer_process_view(request):
             status="in_progress",
             current_step=1,
             total_steps=total_steps,
+            is_active=True,
+            process_number=DisclaimerProcess.get_next_process_number(employee),
         )
 
         serializer = DisclaimerProcessSerializer(process)
@@ -719,24 +799,87 @@ def employee_start_disclaimer_process_view(request):
 @permission_classes([IsAuthenticated, IsEmployee])
 def employee_submit_disclaimer_request_view(request):
     """
-    POST: Submit a disclaimer request for the current step
+    FIXED: Submit a disclaimer request for the current step
     """
     try:
         employee = request.user.employee_profile
 
-        serializer = DisclaimerRequestCreateSerializer(
-            data=request.data, context={"employee": employee}
-        )
+        # Get the active process
+        active_process = DisclaimerProcess.objects.filter(
+            employee=employee, status="in_progress", is_active=True
+        ).first()
 
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not active_process:
+            return Response(
+                {
+                    "error": "No active disclaimer process found. Please start a process first."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # Create the request
+        # Get step_number and target_department from request
+        step_number = request.data.get("step_number")
+        target_department_id = request.data.get("target_department")
+        employee_notes = request.data.get("employee_notes", "")
+
+        if not step_number:
+            return Response(
+                {"error": "step_number is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not target_department_id:
+            return Response(
+                {"error": "target_department is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate step number
+        if step_number != active_process.current_step:
+            return Response(
+                {
+                    "error": f"Can only submit request for current step ({active_process.current_step})"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if request already exists for this step
+        existing_request = DisclaimerRequest.objects.filter(
+            process=active_process, step_number=step_number
+        ).first()
+
+        # If exists and is pending, cannot resubmit
+        if existing_request and existing_request.status == "pending":
+            return Response(
+                {"error": "A request for this step is already pending"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # If exists and is approved, cannot resubmit
+        if existing_request and existing_request.status == "approved":
+            return Response(
+                {"error": "This step has already been approved"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get target department
+        try:
+            target_department = Department.objects.get(id=target_department_id)
+        except Department.DoesNotExist:
+            return Response(
+                {"error": "Invalid target department"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # If request was rejected, delete the old one before creating new
+        if existing_request and existing_request.status == "rejected":
+            existing_request.delete()
+
+        # Create the request with process link
         disclaimer_request = DisclaimerRequest.objects.create(
             employee=employee,
-            target_department=serializer.validated_data["target_department"],
-            step_number=serializer.validated_data["step_number"],
-            employee_notes=serializer.validated_data.get("employee_notes", ""),
+            process=active_process,  # CRITICAL: Link to process
+            target_department=target_department,
+            step_number=step_number,
+            employee_notes=employee_notes,
             status="pending",
         )
 
@@ -747,30 +890,63 @@ def employee_submit_disclaimer_request_view(request):
         return Response(
             {"error": "Employee profile not found"}, status=status.HTTP_404_NOT_FOUND
         )
+    except Exception as e:
+        import traceback
+
+        print(f"Error in employee_submit_disclaimer_request_view: {str(e)}")
+        print(traceback.format_exc())
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsEmployee])
 def employee_disclaimer_history_view(request):
     """
-    GET: Get employee's disclaimer request history
+    UPDATED: Get employee's disclaimer history with process information
+    Returns all requests grouped by process for better history view
     """
     try:
         employee = request.user.employee_profile
 
+        # Get all requests for this employee with process info
         requests = (
             DisclaimerRequest.objects.filter(employee=employee)
-            .select_related("target_department", "reviewed_by")
+            .select_related("target_department", "reviewed_by", "process")
             .order_by("-created_at")
         )
 
+        # Serialize with process info
         serializer = DisclaimerRequestSerializer(requests, many=True)
-        return Response(serializer.data)
 
-    except Employee.DoesNotExist:
-        return Response(
-            {"error": "Employee profile not found"}, status=status.HTTP_404_NOT_FOUND
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+@permission_classes([IsEmployee])
+def employee_disclaimer_processes_view(request):
+    """
+    NEW: Get all disclaimer processes for the employee
+    Provides a complete overview of all process attempts
+    """
+    try:
+        employee = request.user.employee_profile
+
+        # Get all processes for this employee
+        processes = (
+            DisclaimerProcess.objects.filter(employee=employee)
+            .prefetch_related("requests")
+            .order_by("-started_at")
         )
+
+        serializer = DisclaimerProcessSerializer(processes, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ============ GENERAL VIEWS ============

@@ -40,6 +40,7 @@ export function Sidenav({ brandImg, brandName, routes, user }) {
       "admin config": t("nav.adminDisclaimerConfig", { defaultValue: "Disclaimer Departments" }),
       "disclaimer history": t("nav.disclaimerHistory", { defaultValue: "Disclaimer History" }),
       "request history": t("nav.disclaimerHistory", { defaultValue: "Request History" }),
+      "report permissions": t("nav.reportPermissions", { defaultValue: "Report Permissions" }),
     };
     return navTranslations[name.toLowerCase()] || name;
   };
@@ -84,10 +85,16 @@ export function Sidenav({ brandImg, brandName, routes, user }) {
           to="/"
           className="py-6 px-8 text-center flex items-center justify-center gap-3"
         >
+          <img
+            src={brandImg ?? "/img/logo.png"}
+            alt={brandName || "Qurtubah Schools"}
+            className="h-12 w-auto sm:h-10 md:h-12 shrink-0 object-contain"
+            loading="lazy"
+          />
           <Typography
             variant="h6"
             color={sidenavType === "dark" ? "white" : "blue-gray"}
-            className="font-bold"
+            className="font-bold leading-none"
           >
             {t("nav.qurtubahSchools", { defaultValue: brandName || "Qurtubah Schools" })}
           </Typography>
@@ -171,7 +178,7 @@ export function Sidenav({ brandImg, brandName, routes, user }) {
                       </NavLink>
                     </li>
                   );
-                })} 
+                })}
             </ul>
           ) : null
         )}

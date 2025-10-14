@@ -203,7 +203,13 @@ export function Assets() {
             };
 
             if (selectedAsset && showEditModal) {
-                await assetAPI.update(selectedAsset.id, submitData);
+                const allowed = ["available", "maintenance", "retired"];
+                if (!allowed.includes(formData.status)) {
+                    setFormLoading(false);
+                    setError("Status can only be changed to available, maintenance, or retired.");
+                    return;
+                }
+                await assetAPI.update(selectedAsset.id, { status: formData.status });
                 setShowEditModal(false);
             } else {
                 await assetAPI.create(submitData);
@@ -524,7 +530,15 @@ export function Assets() {
                                                     <IconButton variant="text" color="blue-gray" onClick={() => handleViewAsset(asset)}>
                                                         <EyeIcon className="h-4 w-4" />
                                                     </IconButton>
-                                                    <IconButton variant="text" color="blue-gray" onClick={() => handleEdit(asset)}>
+                                                    <IconButton
+                                                        variant="text"
+                                                        color="blue-gray"
+                                                        onClick={() => handleEdit(asset)}
+                                                        disabled={asset.status === "assigned"}
+                                                        className={asset.status === "assigned" ? "opacity-50 cursor-not-allowed" : ""}
+                                                        aria-label={t("assets.editAsset")}
+                                                        title={t("assets.editAsset")}
+                                                    >
                                                         <PencilIcon className="h-4 w-4" />
                                                     </IconButton>
                                                     <IconButton
@@ -626,16 +640,16 @@ export function Assets() {
                             <Select
                                 label={t("assets.status")}
                                 value={formData.status}
-                                onChange={handleStatusChange}
+                                onChange={(value) => setFormData((p) => ({ ...p, status: value }))}
                                 required
                                 menuProps={{ className: "select-menu-in-dialog", placement: "bottom-start" }}
                             >
-                                {statusOptions.map((status) => (
-                                    <Option key={status.value} value={status.value}>
-                                        {status.label}
-                                    </Option>
-                                ))}
+                                <Option value="available">{t("status.available")}</Option>
+                                <Option value="maintenance">{t("status.maintenance")}</Option>
+                                <Option value="retired">{t("status.retired")}</Option>
                             </Select>
+
+
                         </div>
 
                         {/* Current Holder field - only show if status is 'assigned' */}
@@ -702,7 +716,7 @@ export function Assets() {
                         <Button variant="text" color="red" onClick={handleModalClose} className="mr-1">
                             {t("actions.cancel")}
                         </Button>
-                        <Button type="submit" loading={formLoading}>
+                        <Button type="submit" disabled={formLoading}>
                             {selectedAsset && showEditModal ? t("assets.updateAsset") : t("assets.createAsset")}
                         </Button>
                     </DialogFooter>
@@ -903,7 +917,7 @@ export function Assets() {
                     )}
                 </DialogFooter>
             </Dialog>
-        </div>
+        </div >
     );
 }
 

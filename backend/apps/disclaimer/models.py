@@ -250,17 +250,18 @@ class DisclaimerProcess(models.Model):
     
     @classmethod
     def has_active_process(cls, employee):
-        """Check if employee has an active in-progress process"""
         return cls.objects.filter(
-            employee=employee,
-            status='in_progress',
-            is_active=True
+            employee=employee, status="in_progress", is_active=True
         ).exists()
-    
+
+    @classmethod
+    def has_completed_process(cls, employee):
+        """Has this employee ever completed a disclaimer process?"""
+        return cls.objects.filter(employee=employee, status="completed").exists()
+
     @classmethod
     def get_next_process_number(cls, employee):
-        """Get the next process number for an employee"""
         max_number = cls.objects.filter(employee=employee).aggregate(
-            max_num=Max('process_number')
-        )['max_num']
+            max_num=Max("process_number")
+        )["max_num"]
         return (max_number or 0) + 1

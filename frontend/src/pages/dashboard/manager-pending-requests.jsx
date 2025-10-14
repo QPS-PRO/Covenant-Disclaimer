@@ -277,7 +277,7 @@ export default function ManagerPendingRequests() {
                                 label={t('managerPendingRequests.dialog.notesLabel')}
                                 value={managerNotes}
                                 onChange={(e) => setManagerNotes(e.target.value)}
-                                placeholder={t('managerPendingRequests.dialog.notesPlaceholder')}
+                                // placeholder={t('managerPendingRequests.dialog.notesPlaceholder')}
                                 rows={3}
                             />
 

@@ -99,19 +99,11 @@ class DepartmentDisclaimerOrderBulkUpdateSerializer(serializers.Serializer):
 
 class DisclaimerRequestSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source="employee.name", read_only=True)
-    employee_id_number = serializers.CharField(
-        source="employee.employee_id", read_only=True
-    )
-    employee_department = serializers.CharField(
-        source="employee.department.name", read_only=True
-    )
     target_department_name = serializers.CharField(
         source="target_department.name", read_only=True
     )
-    reviewed_by_name = serializers.CharField(
-        source="reviewed_by.get_full_name", read_only=True
-    )
-    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
+    process_info = serializers.SerializerMethodField()
 
     class Meta:
         model = DisclaimerRequest
@@ -119,13 +111,12 @@ class DisclaimerRequestSerializer(serializers.ModelSerializer):
             "id",
             "employee",
             "employee_name",
-            "employee_id_number",
-            "employee_department",
+            "process",
+            "process_info",
             "target_department",
             "target_department_name",
             "step_number",
             "status",
-            "status_display",
             "employee_notes",
             "manager_notes",
             "rejection_reason",
@@ -135,14 +126,23 @@ class DisclaimerRequestSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = [
-            "employee",
-            "step_number",
-            "reviewed_by",
-            "reviewed_at",
-            "created_at",
-            "updated_at",
-        ]
+        read_only_fields = ["reviewed_by", "reviewed_at", "created_at", "updated_at"]
+
+    def get_reviewed_by_name(self, obj):
+        if obj.reviewed_by:
+            return obj.reviewed_by.get_full_name() or obj.reviewed_by.email
+        return None
+
+    def get_process_info(self, obj):
+        """Get basic process information"""
+        if obj.process:
+            return {
+                "id": obj.process.id,
+                "process_number": obj.process.process_number,
+                "status": obj.process.status,
+                "total_steps": obj.process.total_steps,
+            }
+        return None
 
 
 class DisclaimerProcessHistorySerializer(serializers.ModelSerializer):
@@ -253,6 +253,8 @@ class DisclaimerRequestReviewSerializer(serializers.Serializer):
 
 
 class DisclaimerProcessSerializer(serializers.ModelSerializer):
+    """Serializer for DisclaimerProcess with additional computed fields"""
+
     employee_name = serializers.CharField(source="employee.name", read_only=True)
     employee_id_number = serializers.CharField(
         source="employee.employee_id", read_only=True
@@ -260,10 +262,8 @@ class DisclaimerProcessSerializer(serializers.ModelSerializer):
     employee_department = serializers.CharField(
         source="employee.department.name", read_only=True
     )
-    status_display = serializers.CharField(source="get_status_display", read_only=True)
     progress_percentage = serializers.IntegerField(read_only=True)
-    current_request = serializers.SerializerMethodField()
-    all_requests = serializers.SerializerMethodField()
+    duration_days = serializers.SerializerMethodField()
 
     class Meta:
         model = DisclaimerProcess
@@ -274,43 +274,28 @@ class DisclaimerProcessSerializer(serializers.ModelSerializer):
             "employee_id_number",
             "employee_department",
             "status",
-            "status_display",
             "current_step",
             "total_steps",
             "progress_percentage",
             "started_at",
             "completed_at",
             "is_active",
-            "current_request",
-            "all_requests",
+            "process_number",
+            "duration_days",
         ]
-        read_only_fields = ["started_at", "completed_at", "is_active"]
+        read_only_fields = ["started_at", "completed_at", "process_number"]
 
-    def get_current_request(self, obj):
-        """Get the current step's request"""
-        request = (
-            obj.employee.disclaimer_requests.filter(step_number=obj.current_step)
-            .order_by("-created_at")
-            .first()
-        )
+    def get_duration_days(self, obj):
+        """Calculate duration in days"""
+        if obj.status == "completed" and obj.completed_at:
+            duration = obj.completed_at - obj.started_at
+            return duration.days
+        elif obj.status == "in_progress":
+            from django.utils import timezone
 
-        if request:
-            return DisclaimerRequestSerializer(request).data
+            duration = timezone.now() - obj.started_at
+            return duration.days
         return None
-
-    def get_all_requests(self, obj):
-        """Get all requests for this process"""
-        requests = obj.employee.disclaimer_requests.filter(
-            step_number__lte=obj.current_step
-        ).order_by("step_number", "-created_at")
-
-        # Get unique requests per step (latest only)
-        unique_requests = {}
-        for req in requests:
-            if req.step_number not in unique_requests:
-                unique_requests[req.step_number] = req
-
-        return DisclaimerRequestSerializer(unique_requests.values(), many=True).data
 
 
 class DisclaimerFlowStepSerializer(serializers.Serializer):

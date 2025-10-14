@@ -50,8 +50,29 @@ export async function apiRequest(endpoint, options = {}) {
                 }
             }
 
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
+            // const errorData = await response.json().catch(() => ({}));
+            // throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
+            let errorText = `HTTP error! status: ${response.status}`;
+            try {
+                const cloned = response.clone();
+                const ct = cloned.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const jd = await cloned.json();
+                    if (typeof jd === 'string') errorText = jd;
+                    else if (jd.error) errorText = jd.error;
+                    else if (jd.detail) errorText = jd.detail;
+                    else if (jd.message) errorText = jd.message;
+                    else {
+                        const pairs = Object.entries(jd).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`);
+                        if (pairs.length) errorText = pairs.join(' | ');
+                    }
+                } else {
+                    const raw = await cloned.text();
+                    if (raw) errorText = raw;
+                }
+            } catch (_) {}
+            throw new Error(errorText);
+
         }
 
         if (response.status === 204) {

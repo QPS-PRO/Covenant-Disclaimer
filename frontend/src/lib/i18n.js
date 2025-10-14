@@ -24,6 +24,7 @@ const enTranslations = {
             disclaimerSetup: "Disclaimer Setup",
             adminDisclaimerConfig: "Disclaimer Departments",
             disclaimerHistory: "Disclaimer Request History",
+            reportPermissions: "Report Permissions",
 
 
         },
@@ -618,7 +619,8 @@ const enTranslations = {
             fields: {
                 employeeId: "Employee ID: {{id}}",
                 department: "Department: {{dept}}",
-                submitted: "Submitted: {{date}}"
+                submitted: "Submitted: {{date}}",
+                reviewedBy: "Reviewed By"
             },
             dialog: {
                 title: "Review Disclaimer Request",
@@ -723,6 +725,68 @@ const enTranslations = {
                 emptyFile: "Received empty file from server",
                 downloaded: "{{name}} downloaded successfully"
             }
+        },
+
+        reportsPermissions: {
+            header: {
+                title: 'Report Access Permissions',
+                subtitle: 'Manage which employees can access and download reports',
+            },
+            actions: {
+                grantAccess: 'Grant Access',
+                edit: 'Edit',
+                delete: 'Delete',
+                cancel: 'Cancel',
+                update: 'Update',
+                grant: 'Grant Access',
+            },
+            table: {
+                employee: 'Employee',
+                employeeId: 'Employee ID',
+                department: 'Department',
+                status: 'Status',
+                grantedBy: 'Granted By',
+                actions: 'Actions',
+            },
+            status: {
+                active: 'Active',
+                revoked: 'Revoked',
+            },
+            empty: {
+                title: 'No Report Permissions Granted',
+                subtitle: 'Click "Grant Access" to allow employees to view reports',
+            },
+            dialog: {
+                createTitle: 'Grant Report Access',
+                editTitle: 'Edit Report Permission',
+            },
+            form: {
+                employee: 'Employee',
+                selectEmployee: 'Select an employee...',
+                accessStatus: 'Access Status',
+                status: {
+                    active: 'Active - Can Access Reports',
+                    revoked: 'Revoked - Cannot Access Reports',
+                },
+                notesOptional: 'Notes (Optional)',
+                notesPlaceholder: 'Add any notes about this permission...',
+            },
+            messages: {
+                createSuccess: 'Permission granted successfully',
+                updateSuccess: 'Permission updated successfully',
+                deleteSuccess: 'Permission revoked successfully',
+            },
+            confirm: {
+                revoke: 'Are you sure you want to revoke this report access permission?',
+            },
+            errors: {
+                load: 'Failed to load data',
+                save: 'Failed to save permission',
+                delete: 'Failed to revoke permission',
+            },
+            common: {
+                na: 'N/A',
+            },
         }
 
 
@@ -749,6 +813,8 @@ const arTranslations = {
             disclaimerSetup: "إدارة مسارات إخلاء الطرف ",
             adminDisclaimerConfig: "إعداد أقسام إخلاء الطرف",
             disclaimerHistory: "سجل طلبات إخلاء الطرف ",
+            reportPermissions: "صلاحيات التقارير",
+
         },
 
         // Authentication
@@ -1340,7 +1406,8 @@ const arTranslations = {
             fields: {
                 employeeId: "رقم الموظف: {{id}}",
                 department: "القسم: {{dept}}",
-                submitted: "التقديم: {{date}}"
+                submitted: "التقديم: {{date}}",
+                reviewedBy: "تم مراجعة بواسطة"
             },
             dialog: {
                 title: "مراجعة طلب إخلاء الطرف",
@@ -1443,8 +1510,70 @@ const arTranslations = {
                 emptyFile: "تم استلام ملف فارغ من الخادم",
                 downloaded: "تم تنزيل {{name}} بنجاح"
             }
-        }
-    }
+        },
+
+        reportsPermissions: {
+            header: {
+                title: 'صلاحيات الوصول للتقارير',
+                subtitle: 'إدارة الموظفين المسموح لهم بالوصول وتحميل التقارير',
+            },
+            actions: {
+                grantAccess: 'منح صلاحية',
+                edit: 'تعديل',
+                delete: 'حذف',
+                cancel: 'إلغاء',
+                update: 'تحديث',
+                grant: 'منح الصلاحية',
+            },
+            table: {
+                employee: 'الموظف',
+                employeeId: 'رقم الموظف',
+                department: 'القسم',
+                status: 'الحالة',
+                grantedBy: 'مُنِحت بواسطة',
+                actions: 'إجراءات',
+            },
+            status: {
+                active: 'ساري',
+                revoked: 'مُلغى',
+            },
+            empty: {
+                title: 'لا توجد صلاحيات تقارير مُنحت',
+                subtitle: 'اضغط "منح صلاحية" للسماح للموظفين بعرض التقارير',
+            },
+            dialog: {
+                createTitle: 'منح صلاحية الوصول للتقارير',
+                editTitle: 'تعديل صلاحية التقارير',
+            },
+            form: {
+                employee: 'الموظف',
+                selectEmployee: 'اختر موظفًا...',
+                accessStatus: 'حالة الصلاحية',
+                status: {
+                    active: 'ساري - يمكنه الوصول للتقارير',
+                    revoked: 'مُلغى - لا يمكنه الوصول للتقارير',
+                },
+                notesOptional: 'ملاحظات (اختياري)',
+                notesPlaceholder: 'أضف أي ملاحظات عن هذه الصلاحية...',
+            },
+            messages: {
+                createSuccess: 'تم منح الصلاحية بنجاح',
+                updateSuccess: 'تم تحديث الصلاحية بنجاح',
+                deleteSuccess: 'تم إلغاء الصلاحية بنجاح',
+            },
+            confirm: {
+                revoke: 'هل أنت متأكد أنك تريد إلغاء صلاحية الوصول للتقارير؟',
+            },
+            errors: {
+                load: 'فشل في تحميل البيانات',
+                save: 'فشل في حفظ الصلاحية',
+                delete: 'فشل في إلغاء الصلاحية',
+            },
+            common: {
+                na: 'غير متاح',
+            },
+        },
+}
 };
 
 i18n

@@ -48,9 +48,9 @@ export function Dashboard() {
     <div className={getLayoutClasses()}>
       <Sidenav
         routes={routes}
-        brandImg={
-          sidenavType === "dark" ? "/img/logo-ct.png" : "/img/logo-ct-dark.png"
-        }
+        // brandImg={
+        //   sidenavType === "dark" ? "/img/logo-ct.png" : "/img/logo-ct-dark.png"
+        // }
         user={user}
       />
       <div className={getMainContentClasses()}>

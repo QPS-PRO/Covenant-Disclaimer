@@ -24,8 +24,17 @@ export default function EmployeeDisclaimerPage() {
             setLoading(true);
             setError(null);
             const data = await disclaimerEmployeeAPI.getStatus();
+
+            // CRITICAL: Add safety check and default value
+            if (!data.flow_steps) {
+                console.warn('flow_steps missing from API response, using empty array');
+                data.flow_steps = [];
+            }
+
+            console.log('Loaded disclaimer status:', data);
             setStatus(data);
         } catch (err) {
+            console.error('Error loading status:', err);
             setError(err.message || t('employeeDisclaimer.alerts.loadFailed'));
         } finally {
             setLoading(false);
@@ -40,6 +49,7 @@ export default function EmployeeDisclaimerPage() {
             setSuccess(t('employeeDisclaimer.alerts.startSuccess'));
             await loadStatus();
         } catch (err) {
+            console.error('Error starting process:', err);
             setError(err.message || t('employeeDisclaimer.alerts.startFailed'));
         } finally {
             setSubmitting(false);
@@ -61,12 +71,14 @@ export default function EmployeeDisclaimerPage() {
             setError(null);
             await disclaimerEmployeeAPI.submitRequest({
                 target_department: selectedStep.department_id,
+                step_number: selectedStep.step_number,
                 employee_notes: requestNotes
             });
             setSuccess(t('employeeDisclaimer.alerts.submitSuccess', { name: selectedStep.department_name }));
             setShowRequestDialog(false);
             await loadStatus();
         } catch (err) {
+            console.error('Error submitting request:', err);
             setError(err.message || t('employeeDisclaimer.alerts.submitFailed'));
         } finally {
             setSubmitting(false);
@@ -108,6 +120,10 @@ export default function EmployeeDisclaimerPage() {
         );
     }
 
+    // CRITICAL: Safety check for flow_steps
+    const flowSteps = status.flow_steps || [];
+    const hasFlowSteps = flowSteps.length > 0;
+
     return (
         <div className="mt-12 mb-8 flex flex-col gap-12">
             <Card>
@@ -133,7 +149,15 @@ export default function EmployeeDisclaimerPage() {
                         </Alert>
                     )}
 
-                    {!status.has_active_process && status.can_start_process && (
+                    {/* No flow configured */}
+                    {!hasFlowSteps && (
+                        <Alert color="amber" className="mb-4">
+                            {t('employeeDisclaimer.noFlow')}
+                        </Alert>
+                    )}
+
+                    {/* Can start new process */}
+                    {!status.has_active_process && (status.can_start_process || status.can_start_new_process) && hasFlowSteps && (
                         <div className="text-center py-8">
                             <Typography className="mb-4">
                                 {t('employeeDisclaimer.start.noActive')}
@@ -148,20 +172,15 @@ export default function EmployeeDisclaimerPage() {
                         </div>
                     )}
 
-                    {!status.can_start_process && status.flow_steps.length === 0 && (
-                        <Alert color="amber">
-                            {t('employeeDisclaimer.noFlow')}
-                        </Alert>
-                    )}
-
-                    {status.has_active_process && (
+                    {/* Active process display */}
+                    {status.has_active_process && hasFlowSteps && (
                         <>
                             <div className="mb-8">
                                 <div className="flex justify-between items-center mb-4">
                                     <Typography variant="h6" color="blue-gray">
                                         {t('employeeDisclaimer.progress', {
-                                            current: status.process?.current_step,
-                                            total: status.process?.total_steps
+                                            current: status.process?.current_step || 0,
+                                            total: status.process?.total_steps || 0
                                         })}
                                     </Typography>
                                     <Chip
@@ -178,7 +197,7 @@ export default function EmployeeDisclaimerPage() {
                             </div>
 
                             <div className="relative">
-                                {status.flow_steps.map((step, index) => (
+                                {flowSteps.map((step, index) => (
                                     <div key={step.step_number} className="mb-8">
                                         <div className="flex items-start gap-4">
                                             {/* Step Icon */}
@@ -186,7 +205,7 @@ export default function EmployeeDisclaimerPage() {
                                                 <div className={`rounded-full p-2 ${step.is_active ? 'bg-blue-50' : 'bg-gray-50'}`}>
                                                     {getStepIcon(step)}
                                                 </div>
-                                                {index < status.flow_steps.length - 1 && (
+                                                {index < flowSteps.length - 1 && (
                                                     <div className={`w-0.5 h-16 ${step.is_completed ? 'bg-green-500' : 'bg-gray-300'}`} />
                                                 )}
                                             </div>
@@ -258,14 +277,16 @@ export default function EmployeeDisclaimerPage() {
                                                                             </div>
                                                                         )}
 
-                                                                        <div className="flex justify-between text-xs text-gray-600">
-                                                                            <span>
-                                                                                {t('managerPendingRequests.fields.department', {
-                                                                                    dept: step.request.reviewed_by_name || 'N/A'
-                                                                                })}
-                                                                            </span>
-                                                                            <span>{disclaimerUtils.formatDate(step.request.reviewed_at)}</span>
-                                                                        </div>
+                                                                        {step.request.reviewed_at && (
+                                                                            <div className="flex justify-between text-xs text-gray-600">
+                                                                                <span>
+                                                                                    {t('managerPendingRequests.fields.reviewedBy', {
+                                                                                        name: step.request.reviewed_by_name || 'N/A'
+                                                                                    })}
+                                                                                </span>
+                                                                                <span>{disclaimerUtils.formatDate(step.request.reviewed_at)}</span>
+                                                                            </div>
+                                                                        )}
                                                                     </>
                                                                 )}
 

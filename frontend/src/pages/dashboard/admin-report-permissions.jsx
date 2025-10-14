@@ -1,33 +1,25 @@
+// AdminReportPermissions.jsx
 import React, { useState, useEffect } from 'react';
 import {
-    Card,
-    CardBody,
-    CardHeader,
-    Typography,
-    Button,
-    Dialog,
-    DialogHeader,
-    DialogBody,
-    DialogFooter,
-    Input,
-    Textarea,
-    Chip,
-    Spinner,
-    Alert,
-    IconButton,
+    Card, CardBody, CardHeader, Typography, Button,
+    Dialog, DialogHeader, DialogBody, DialogFooter,
+    Input, Textarea, Chip, Spinner, Alert, IconButton,
 } from '@material-tailwind/react';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/solid';
 import { reportPermissionAPI } from '@/lib/reportsApi';
-import { apiGet } from '@/lib/api';
+// import { apiGet } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
+import { employeeAPI } from '@/lib/assetApi';
 
 export default function AdminReportPermissions() {
+    const { t } = useTranslation();
+
     const [permissions, setPermissions] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
-    // Dialog state
     const [openDialog, setOpenDialog] = useState(false);
     const [editingPermission, setEditingPermission] = useState(null);
     const [formData, setFormData] = useState({
@@ -36,29 +28,25 @@ export default function AdminReportPermissions() {
         notes: ''
     });
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    useEffect(() => { loadData(); }, []);
 
-    const toArray = (v) =>
-        Array.isArray(v) ? v
-            : v?.results ?? v?.employees ?? v?.data ?? [];
-    
+    const toArray = (v) => Array.isArray(v) ? v : v?.results ?? v?.employees ?? v?.data ?? [];
+
     const loadData = async () => {
         try {
             setLoading(true);
             setError(null);
 
-            const [permissionsData, employeesData] = await Promise.all([
+            const [permissionsData, employeesDropdown] = await Promise.all([
                 reportPermissionAPI.getAllPermissions(),
-                apiGet('/api/employees/'),
+                employeeAPI.getAllForDropdown(),
             ]);
 
             setPermissions(toArray(permissionsData));
-            setEmployees(toArray(employeesData));
+            setEmployees(toArray(employeesDropdown));
         } catch (err) {
             console.error('Error loading data:', err);
-            setError(err.message || 'Failed to load data');
+            setError(err.message || t('reportsPermissions.errors.load'));
         } finally {
             setLoading(false);
         }
@@ -66,7 +54,6 @@ export default function AdminReportPermissions() {
 
     const handleOpenDialog = (permission = null) => {
         if (permission) {
-            // Editing existing permission
             setEditingPermission(permission);
             setFormData({
                 employee: permission.employee,
@@ -74,13 +61,8 @@ export default function AdminReportPermissions() {
                 notes: permission.notes || ''
             });
         } else {
-            // Creating new permission
             setEditingPermission(null);
-            setFormData({
-                employee: '',
-                can_access_reports: true,
-                notes: ''
-            });
+            setFormData({ employee: '', can_access_reports: true, notes: '' });
         }
         setOpenDialog(true);
     };
@@ -88,11 +70,7 @@ export default function AdminReportPermissions() {
     const handleCloseDialog = () => {
         setOpenDialog(false);
         setEditingPermission(null);
-        setFormData({
-            employee: '',
-            can_access_reports: true,
-            notes: ''
-        });
+        setFormData({ employee: '', can_access_reports: true, notes: '' });
     };
 
     const handleSubmit = async () => {
@@ -100,49 +78,40 @@ export default function AdminReportPermissions() {
             setError(null);
 
             if (editingPermission) {
-                // Update existing permission
                 await reportPermissionAPI.updatePermission(editingPermission.id, formData);
-                setSuccess('Permission updated successfully');
+                setSuccess(t('reportsPermissions.messages.updateSuccess'));
             } else {
-                // Create new permission
                 await reportPermissionAPI.createPermission(formData);
-                setSuccess('Permission granted successfully');
+                setSuccess(t('reportsPermissions.messages.createSuccess'));
             }
 
             handleCloseDialog();
             await loadData();
-
-            // Clear success message after 3 seconds
             setTimeout(() => setSuccess(null), 3000);
         } catch (err) {
             console.error('Error saving permission:', err);
-            setError(err.message || 'Failed to save permission');
+            setError(err.message || t('reportsPermissions.errors.save'));
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to revoke this report access permission?')) {
-            return;
-        }
+        if (!window.confirm(t('reportsPermissions.confirm.revoke'))) return;
 
         try {
             setError(null);
             await reportPermissionAPI.deletePermission(id);
-            setSuccess('Permission revoked successfully');
+            setSuccess(t('reportsPermissions.messages.deleteSuccess'));
             await loadData();
-
             setTimeout(() => setSuccess(null), 3000);
         } catch (err) {
             console.error('Error deleting permission:', err);
-            setError(err.message || 'Failed to revoke permission');
+            setError(err.message || t('reportsPermissions.errors.delete'));
         }
     };
 
-    // Get employees who don't have permissions yet
     const availableEmployees = Array.isArray(employees)
         ? employees.filter(emp => !permissions.some(perm => perm.employee === emp.id))
         : [];
-
 
     if (loading) {
         return (
@@ -159,10 +128,10 @@ export default function AdminReportPermissions() {
                     <div className="flex justify-between items-center">
                         <div>
                             <Typography variant="h6" color="white">
-                                Report Access Permissions
+                                {t('reportsPermissions.header.title')}
                             </Typography>
                             <Typography variant="small" color="white" className="opacity-80 mt-1">
-                                Manage which employees can access and download reports
+                                {t('reportsPermissions.header.subtitle')}
                             </Typography>
                         </div>
                         <Button
@@ -172,31 +141,22 @@ export default function AdminReportPermissions() {
                             onClick={() => handleOpenDialog()}
                         >
                             <PlusIcon className="h-4 w-4" />
-                            Grant Access
+                            {t('reportsPermissions.actions.grantAccess')}
                         </Button>
                     </div>
                 </CardHeader>
 
                 <CardBody>
-                    {error && (
-                        <Alert color="red" className="mb-6">
-                            {error}
-                        </Alert>
-                    )}
-
-                    {success && (
-                        <Alert color="green" className="mb-6">
-                            {success}
-                        </Alert>
-                    )}
+                    {error && (<Alert color="red" className="mb-6">{error}</Alert>)}
+                    {success && (<Alert color="green" className="mb-6">{success}</Alert>)}
 
                     {permissions.length === 0 ? (
                         <div className="text-center py-12">
                             <Typography variant="h6" color="gray">
-                                No Report Permissions Granted
+                                {t('reportsPermissions.empty.title')}
                             </Typography>
                             <Typography variant="small" color="gray" className="mt-2">
-                                Click "Grant Access" to allow employees to view reports
+                                {t('reportsPermissions.empty.subtitle')}
                             </Typography>
                         </div>
                     ) : (
@@ -206,32 +166,32 @@ export default function AdminReportPermissions() {
                                     <tr>
                                         <th className="border-b border-blue-gray-100 bg-blue-gray-50 p-4">
                                             <Typography variant="small" color="blue-gray" className="font-bold">
-                                                Employee
+                                                {t('reportsPermissions.table.employee')}
                                             </Typography>
                                         </th>
                                         <th className="border-b border-blue-gray-100 bg-blue-gray-50 p-4">
                                             <Typography variant="small" color="blue-gray" className="font-bold">
-                                                Employee ID
+                                                {t('reportsPermissions.table.employeeId')}
                                             </Typography>
                                         </th>
                                         <th className="border-b border-blue-gray-100 bg-blue-gray-50 p-4">
                                             <Typography variant="small" color="blue-gray" className="font-bold">
-                                                Department
+                                                {t('reportsPermissions.table.department')}
                                             </Typography>
                                         </th>
                                         <th className="border-b border-blue-gray-100 bg-blue-gray-50 p-4">
                                             <Typography variant="small" color="blue-gray" className="font-bold">
-                                                Status
+                                                {t('reportsPermissions.table.status')}
                                             </Typography>
                                         </th>
                                         <th className="border-b border-blue-gray-100 bg-blue-gray-50 p-4">
                                             <Typography variant="small" color="blue-gray" className="font-bold">
-                                                Granted By
+                                                {t('reportsPermissions.table.grantedBy')}
                                             </Typography>
                                         </th>
                                         <th className="border-b border-blue-gray-100 bg-blue-gray-50 p-4">
                                             <Typography variant="small" color="blue-gray" className="font-bold">
-                                                Actions
+                                                {t('reportsPermissions.table.actions')}
                                             </Typography>
                                         </th>
                                     </tr>
@@ -258,12 +218,16 @@ export default function AdminReportPermissions() {
                                                 <Chip
                                                     size="sm"
                                                     color={permission.can_access_reports ? 'green' : 'red'}
-                                                    value={permission.can_access_reports ? 'Active' : 'Revoked'}
+                                                    value={
+                                                        permission.can_access_reports
+                                                            ? t('reportsPermissions.status.active')
+                                                            : t('reportsPermissions.status.revoked')
+                                                    }
                                                 />
                                             </td>
                                             <td className="p-4 border-b border-blue-gray-50">
                                                 <Typography variant="small" color="blue-gray">
-                                                    {permission.granted_by_name || 'N/A'}
+                                                    {permission.granted_by_name || t('reportsPermissions.common.na')}
                                                 </Typography>
                                             </td>
                                             <td className="p-4 border-b border-blue-gray-50">
@@ -273,6 +237,8 @@ export default function AdminReportPermissions() {
                                                         color="blue"
                                                         size="sm"
                                                         onClick={() => handleOpenDialog(permission)}
+                                                        aria-label={t('reportsPermissions.actions.edit')}
+                                                        title={t('reportsPermissions.actions.edit')}
                                                     >
                                                         <PencilIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -281,6 +247,8 @@ export default function AdminReportPermissions() {
                                                         color="red"
                                                         size="sm"
                                                         onClick={() => handleDelete(permission.id)}
+                                                        aria-label={t('reportsPermissions.actions.delete')}
+                                                        title={t('reportsPermissions.actions.delete')}
                                                     >
                                                         <TrashIcon className="h-4 w-4" />
                                                     </IconButton>
@@ -298,72 +266,80 @@ export default function AdminReportPermissions() {
             {/* Create/Edit Dialog */}
             <Dialog open={openDialog} handler={handleCloseDialog} size="md">
                 <DialogHeader>
-                    {editingPermission ? 'Edit Report Permission' : 'Grant Report Access'}
+                    {editingPermission
+                        ? t('reportsPermissions.dialog.editTitle')
+                        : t('reportsPermissions.dialog.createTitle')}
                 </DialogHeader>
                 <DialogBody divider className="space-y-4">
                     <div>
                         <Typography variant="small" color="blue-gray" className="mb-2 font-semibold">
-                            Employee *
+                            {t('reportsPermissions.form.employee')} *
                         </Typography>
                         {editingPermission ? (
                             <Input
                                 value={editingPermission.employee_name}
                                 disabled
-                                label="Employee"
+                                label={t('reportsPermissions.form.employee')}
                             />
                         ) : (
-                            <select
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                                value={formData.employee}
-                                onChange={(e) => setFormData({ ...formData, employee: e.target.value })}
-                                required
-                            >
-                                <option value="">Select an employee...</option>
-                                {availableEmployees.map((emp) => (
-                                    <option key={emp.id} value={emp.id}>
-                                        {emp.name} - {emp.employee_id} ({emp.department_name})
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="max-h-64 overflow-y-auto rounded-lg">
+                                <select
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                    value={formData.employee}
+                                    onChange={(e) => setFormData({ ...formData, employee: Number(e.target.value) })}
+                                    required
+                                >
+                                    <option value="">{t('reportsPermissions.form.selectEmployee')}</option>
+                                    {availableEmployees.map((emp) => (
+                                        <option key={emp.id} value={emp.id}>
+                                            {emp.name} - {emp.employee_id} ({emp.department_name})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         )}
                     </div>
 
                     <div>
                         <Typography variant="small" color="blue-gray" className="mb-2 font-semibold">
-                            Access Status *
+                            {t('reportsPermissions.form.accessStatus')} *
                         </Typography>
                         <select
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                            value={formData.can_access_reports}
-                            onChange={(e) => setFormData({ ...formData, can_access_reports: e.target.value === 'true' })}
+                            value={String(formData.can_access_reports)}
+                            onChange={(e) =>
+                                setFormData({ ...formData, can_access_reports: e.target.value === 'true' })
+                            }
                         >
-                            <option value="true">Active - Can Access Reports</option>
-                            <option value="false">Revoked - Cannot Access Reports</option>
+                            <option value="true">{t('reportsPermissions.form.status.active')}</option>
+                            <option value="false">{t('reportsPermissions.form.status.revoked')}</option>
                         </select>
                     </div>
 
                     <div>
                         <Typography variant="small" color="blue-gray" className="mb-2 font-semibold">
-                            Notes (Optional)
+                            {t('reportsPermissions.form.notesOptional')}
                         </Typography>
                         <Textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            label="Add any notes about this permission..."
+                            label={t('reportsPermissions.form.notesPlaceholder')}
                             rows={3}
                         />
                     </div>
                 </DialogBody>
                 <DialogFooter className="space-x-2">
                     <Button variant="text" color="gray" onClick={handleCloseDialog}>
-                        Cancel
+                        {t('reportsPermissions.actions.cancel')}
                     </Button>
                     <Button
                         color="blue"
                         onClick={handleSubmit}
                         disabled={!formData.employee && !editingPermission}
                     >
-                        {editingPermission ? 'Update' : 'Grant Access'}
+                        {editingPermission
+                            ? t('reportsPermissions.actions.update')
+                            : t('reportsPermissions.actions.grant')}
                     </Button>
                 </DialogFooter>
             </Dialog>
