@@ -806,7 +806,7 @@ const arTranslations = {
     translation: {
         // Navigation
         nav: {
-            qurtubahSchools: "مدارس قرطباء",
+            qurtubahSchools: "مدارس قرطبة",
             dashboard: "لوحة القيادة",
             home: "الرئيسية",
             assets: "الأصول",
