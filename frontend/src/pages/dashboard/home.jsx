@@ -122,8 +122,8 @@ export function Home() {
     {
       color: "orange",
       icon: ArrowsRightLeftIcon,
-      title: t('dashboard.recentTransactions'),
-      value: stats?.recent_transactions?.toLocaleString() || "0",
+      title: t('dashboard.totalTransactions'),
+      value: stats?.total_transactions?.toLocaleString() || "0",
       to: "/dashboard/transactions",
     },
   ];

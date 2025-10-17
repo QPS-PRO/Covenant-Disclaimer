@@ -159,6 +159,8 @@ export function Employees() {
         employee_id: "",
         phone_number: "",
         department: "",
+        password: "",
+        confirmPassword: "",
     });
     const [formLoading, setFormLoading] = useState(false);
 
@@ -170,7 +172,26 @@ export function Employees() {
             if (showEditModal) {
                 await employeeAPI.update(selectedEmployee.id, formData);
             } else {
-                await employeeAPI.create(formData);
+                // Validate passwords for new employee creation
+                if (!formData.password) {
+                    setError(t("employees.errors.passwordRequired") || "Password is required");
+                    setFormLoading(false);
+                    return;
+                }
+                if (formData.password.length < 8) {
+                    setError(t("employees.errors.passwordTooShort") || "Password must be at least 8 characters");
+                    setFormLoading(false);
+                    return;
+                }
+                if (formData.password !== formData.confirmPassword) {
+                    setError(t("employees.errors.passwordMismatch") || "Passwords do not match");
+                    setFormLoading(false);
+                    return;
+                }
+                
+                // Remove confirmPassword before sending to API
+                const { confirmPassword, ...dataToSend } = formData;
+                await employeeAPI.create(dataToSend);
             }
             handleModalClose();
             setPage(1);
@@ -269,6 +290,8 @@ export function Employees() {
             employee_id: "",
             phone_number: "",
             department: "",
+            password: "",
+            confirmPassword: "",
         });
         setError("");
         setActiveTab("basic");
@@ -578,6 +601,24 @@ export function Employees() {
                                             </Option>
                                         ))}
                                     </Select>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input
+                                            type="password"
+                                            label={t("auth.password")}
+                                            name="password"
+                                            value={formData.password}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                        <Input
+                                            type="password"
+                                            label={t("auth.confirmPassword") || "Confirm Password"}
+                                            name="confirmPassword"
+                                            value={formData.confirmPassword}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    </div>
                                 </TabPanel>
                             </TabsBody>
                         </Tabs>

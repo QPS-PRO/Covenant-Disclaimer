@@ -2,6 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+// Custom error class to preserve field-specific errors
+class ValidationError extends Error {
+    constructor(message, fieldErrors = {}) {
+        super(message);
+        this.name = 'ValidationError';
+        this.fieldErrors = fieldErrors;
+    }
+}
+
 // API utility functions
 export async function apiRequest(endpoint, options = {}) {
     const url = `${BASE_URL}${endpoint}`;
@@ -50,14 +59,34 @@ export async function apiRequest(endpoint, options = {}) {
                 }
             }
 
-            // const errorData = await response.json().catch(() => ({}));
-            // throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
+            // Parse error response
             let errorText = `HTTP error! status: ${response.status}`;
+            let fieldErrors = {};
+            
             try {
                 const cloned = response.clone();
                 const ct = cloned.headers.get('content-type') || '';
                 if (ct.includes('application/json')) {
                     const jd = await cloned.json();
+                    
+                    // Check if this is a field validation error (DRF format)
+                    if (typeof jd === 'object' && !jd.detail && !jd.error && !jd.message) {
+                        // This looks like field-specific errors: {field: [errors]}
+                        const hasFieldErrors = Object.keys(jd).some(key => 
+                            Array.isArray(jd[key]) || typeof jd[key] === 'string'
+                        );
+                        
+                        if (hasFieldErrors) {
+                            fieldErrors = jd;
+                            // Create a user-friendly error message from first error
+                            const firstField = Object.keys(jd)[0];
+                            const firstError = Array.isArray(jd[firstField]) ? jd[firstField][0] : jd[firstField];
+                            errorText = `${firstField}: ${firstError}`;
+                            throw new ValidationError(errorText, fieldErrors);
+                        }
+                    }
+                    
+                    // Handle other error formats
                     if (typeof jd === 'string') errorText = jd;
                     else if (jd.error) errorText = jd.error;
                     else if (jd.detail) errorText = jd.detail;
@@ -70,7 +99,10 @@ export async function apiRequest(endpoint, options = {}) {
                     const raw = await cloned.text();
                     if (raw) errorText = raw;
                 }
-            } catch (_) {}
+            } catch (e) {
+                // If it's already a ValidationError, re-throw it
+                if (e instanceof ValidationError) throw e;
+            }
             throw new Error(errorText);
 
         }
@@ -278,11 +310,23 @@ export function AuthProvider({ children }) {
                 setUser(currentUser);
                 setIsAuthenticated(true);
                 localStorage.setItem('user', JSON.stringify(currentUser));
+                
+                return { success: true, data: response, user: currentUser };
             }
 
             return { success: true, data: response };
         } catch (error) {
             console.error('Registration failed:', error);
+            
+            // Check if this is a validation error with field-specific errors
+            if (error.name === 'ValidationError' && error.fieldErrors) {
+                return { 
+                    success: false, 
+                    error: error.message,
+                    fieldErrors: error.fieldErrors 
+                };
+            }
+            
             return { success: false, error: error.message };
         }
     };

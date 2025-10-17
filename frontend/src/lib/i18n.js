@@ -65,6 +65,7 @@ const enTranslations = {
             totalAssets: "Total Assets",
             totalEmployees: "Total Employees",
             recentTransactions: "Recent Transactions",
+            totalTransactions: "Total Transactions",
             assetStatusDistribution: "Asset Status Distribution",
             weeklyTransactions: "Weekly Transactions",
             assetsByDepartment: "Assets by Department",
@@ -506,6 +507,13 @@ const enTranslations = {
             managerResponse: "Manager Response:",
             rejectionReason: "Rejection Reason:",
             reviewedAt: "Reviewed: {{date}}",
+            subtitle: "View all your disclaimer processes and their progress",
+            noneHint: "You haven't started any disclaimer processes yet",
+            processLabel: "Process #{{num}}",
+            startedOn: "Started {{date}}",
+            days: "days",
+            stepsSummary: "{{done}} / {{total}} Steps",
+            progressPercent: "{{percent}}% Complete",
             errors: { loadFailed: "Failed to load history" }
         },
 
@@ -853,6 +861,7 @@ const arTranslations = {
             totalAssets: "إجمالي الأصول",
             totalEmployees: "إجمالي الموظفين",
             recentTransactions: "المعاملات الأخيرة",
+            totalTransactions: "إجمالي المعاملات",
             assetStatusDistribution: "توزيع حالة الأصول",
             weeklyTransactions: "المعاملات الأسبوعية",
             assetsByDepartment: "الأصول حسب القسم",
@@ -1293,6 +1302,13 @@ const arTranslations = {
             managerResponse: "رد المدير:",
             rejectionReason: "سبب الرفض:",
             reviewedAt: "تمت المراجعة: {{date}}",
+            subtitle: "اعرض جميع عمليات إخلاء الطرف الخاصة بك وتقدمها",
+            noneHint: "لم تبدأ أي عملية إخلاء طرف بعد",
+            processLabel: "عملية رقم {{num}}",
+            startedOn: "بدأت في {{date}}",
+            days: "يومًا",
+            stepsSummary: "{{done}} / {{total}} خطوة",
+            progressPercent: "{{percent}}٪ مكتمل",
             errors: { loadFailed: "فشل في تحميل السجل" }
         },
 
@@ -1573,7 +1589,7 @@ const arTranslations = {
                 na: 'غير متاح',
             },
         },
-}
+    }
 };
 
 i18n

@@ -1,5 +1,5 @@
 // frontend/src/App.jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Dashboard, Auth } from "./layouts";
 import { AuthProvider, useAuth } from "./lib/api";
 import { LanguageProvider } from "./context/LanguageContext";
@@ -10,6 +10,7 @@ import './lib/i18n';
 import ReportsRoutes from './components/Reports';
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -20,6 +21,27 @@ function AppRoutes() {
   }
 
   const defaultRoute = getDefaultRoute(user);
+
+  // Don't redirect if user is already on a valid dashboard route
+  const isOnValidDashboardRoute = location.pathname.startsWith('/dashboard/') && 
+    (location.pathname.includes('/profile') || 
+     location.pathname.includes('/my-disclaimer') || 
+     location.pathname.includes('/disclaimer-requests') || 
+     location.pathname.includes('/home') ||
+     location.pathname.includes('/employees') ||
+     location.pathname.includes('/assets') ||
+     location.pathname.includes('/departments') ||
+     location.pathname.includes('/transactions') ||
+     location.pathname.includes('/admin-') ||
+     location.pathname.includes('/disclaimer-') ||
+     location.pathname.includes('/reports'));
+
+  console.log('App routing debug:', {
+    currentPath: location.pathname,
+    defaultRoute,
+    isOnValidDashboardRoute,
+    user: user ? { id: user.id, role: user.employee_profile ? 'employee' : 'admin' } : null
+  });
 
   return (
     <Routes>
@@ -40,7 +62,9 @@ function AppRoutes() {
         }
       />
       <Route path="/" element={<Navigate to={defaultRoute} replace />} />
-      <Route path="*" element={<Navigate to={defaultRoute} replace />} />
+      <Route path="*" element={
+        isOnValidDashboardRoute ? null : <Navigate to={defaultRoute} replace />
+      } />
       <Route path="/reports/*" element={<ReportsRoutes />} />
     </Routes>
   );

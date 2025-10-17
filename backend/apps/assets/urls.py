@@ -6,6 +6,7 @@ urlpatterns = [
     path('departments/', views.DepartmentListCreateView.as_view(), name='department-list-create'),
     path('departments/<int:pk>/', views.DepartmentDetailView.as_view(), name='department-detail'),
     path('departments/all/', views.departments_list_all_view, name='departments-list-all'),  # For dropdowns
+    path('departments/public/', views.departments_public_list_view, name='departments-public-list'),  # Public endpoint for sign-up
     
     # Employee URLs
     path('employees/', views.EmployeeListCreateView.as_view(), name='employee-list-create'),

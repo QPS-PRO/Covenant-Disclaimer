@@ -1,6 +1,6 @@
 from rest_framework import generics, status, filters
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Q, Sum
@@ -81,8 +81,16 @@ class EmployeeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         employee = self.get_object()
+        
+        # Deactivate the employee
         employee.is_active = False
         employee.save()
+        
+        # Also deactivate the associated user account to prevent login
+        if employee.user:
+            employee.user.is_active = False
+            employee.user.save()
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -319,6 +327,23 @@ def departments_list_all_view(request):
 
         serializer = DepartmentSerializer(departments, many=True)
         return Response(serializer.data)
+    except Exception as e:
+        return Response(
+            {"error": "Failed to fetch departments", "detail": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def departments_public_list_view(request):
+    """Public endpoint: Get all departments for sign-up page (no authentication required)"""
+    try:
+        departments = Department.objects.all().order_by('name')
+        
+        # Simple serialization - just id and name for sign-up dropdown
+        data = [{"id": dept.id, "name": dept.name} for dept in departments]
+        return Response({"results": data})
     except Exception as e:
         return Response(
             {"error": "Failed to fetch departments", "detail": str(e)},

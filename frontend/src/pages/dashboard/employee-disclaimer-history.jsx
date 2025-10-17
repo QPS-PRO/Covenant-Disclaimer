@@ -13,8 +13,10 @@ import {
 } from '@material-tailwind/react';
 import { ChevronDownIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { disclaimerEmployeeAPI, disclaimerUtils } from '@/lib/disclaimerApi';
+import { useTranslation } from 'react-i18next';
 
 export default function EmployeeDisclaimerHistory() {
+    const { t } = useTranslation();
     const [processes, setProcesses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -34,7 +36,7 @@ export default function EmployeeDisclaimerHistory() {
             const processMap = {};
 
             if (data && Array.isArray(data)) {
-                data.forEach(request => {
+                data.forEach((request) => {
                     const processId = request.process_info?.id || request.process;
                     if (!processMap[processId]) {
                         processMap[processId] = {
@@ -50,23 +52,22 @@ export default function EmployeeDisclaimerHistory() {
                     processMap[processId].requests.push(request);
 
                     // Update completed_at with the latest reviewed date
-                    if (request.reviewed_at &&
+                    if (
+                        request.reviewed_at &&
                         (!processMap[processId].completed_at ||
-                            new Date(request.reviewed_at) > new Date(processMap[processId].completed_at))) {
+                            new Date(request.reviewed_at) > new Date(processMap[processId].completed_at))
+                    ) {
                         processMap[processId].completed_at = request.reviewed_at;
                     }
                 });
             }
 
             // Convert to array and sort by process number (newest first)
-            const processesArray = Object.values(processMap).sort((a, b) =>
-                b.process_number - a.process_number
-            );
-
+            const processesArray = Object.values(processMap).sort((a, b) => b.process_number - a.process_number);
             setProcesses(processesArray);
         } catch (err) {
             console.error('Error loading history:', err);
-            setError(err.message || 'Failed to load disclaimer history');
+            setError(t('employeeDisclaimerHistory.errors.loadFailed'));
         } finally {
             setLoading(false);
         }
@@ -90,8 +91,8 @@ export default function EmployeeDisclaimerHistory() {
     };
 
     const calculateProgress = (requests, totalSteps) => {
-        const approvedSteps = requests.filter(r => r.status === 'approved').length;
-        return Math.round((approvedSteps / totalSteps) * 100);
+        const approvedSteps = requests.filter((r) => r.status === 'approved').length;
+        return totalSteps > 0 ? Math.round((approvedSteps / totalSteps) * 100) : 0;
     };
 
     if (loading) {
@@ -107,10 +108,12 @@ export default function EmployeeDisclaimerHistory() {
             <Card>
                 <CardHeader variant="gradient" color="gray" className="mb-8 p-6">
                     <Typography variant="h6" color="white">
-                        My Disclaimer Process History
+                        {t('employeeDisclaimerHistory.header')}
                     </Typography>
                     <Typography variant="small" color="white" className="opacity-80 mt-1">
-                        View all your disclaimer processes and their progress
+                        {t('employeeDisclaimerHistory.subtitle', {
+                            defaultValue: 'View all your disclaimer processes and their progress',
+                        })}
                     </Typography>
                 </CardHeader>
 
@@ -124,21 +127,20 @@ export default function EmployeeDisclaimerHistory() {
                     {processes.length === 0 ? (
                         <div className="text-center py-12">
                             <Typography variant="h6" color="gray">
-                                No Disclaimer Processes Found
+                                {t('employeeDisclaimerHistory.none')}
                             </Typography>
                             <Typography variant="small" color="gray" className="mt-2">
-                                You haven't started any disclaimer processes yet
+                                {t('employeeDisclaimerHistory.noneHint', {
+                                    defaultValue: "You haven't started any disclaimer processes yet",
+                                })}
                             </Typography>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {processes.map((process) => {
                                 const progress = calculateProgress(process.requests, process.total_steps);
-                                const completedSteps = process.requests.filter(r => r.status === 'approved').length;
-                                const duration = disclaimerUtils.calculateDuration(
-                                    process.started_at,
-                                    process.completed_at || new Date()
-                                );
+                                const completedSteps = process.requests.filter((r) => r.status === 'approved').length;
+                                const duration = disclaimerUtils.calculateDuration(process.started_at, process.completed_at || new Date());
 
                                 return (
                                     <Accordion
@@ -155,21 +157,38 @@ export default function EmployeeDisclaimerHistory() {
                                                     {getProcessIcon(process.status)}
                                                     <div>
                                                         <Typography variant="h6" color="blue-gray">
-                                                            Process #{process.process_number}
+                                                            {t('employeeDisclaimerHistory.processLabel', {
+                                                                num: process.process_number,
+                                                                defaultValue: 'Process #{{num}}',
+                                                            })}
                                                         </Typography>
                                                         <Typography variant="small" color="gray">
-                                                            Started {disclaimerUtils.formatDateOnly(process.started_at)}
-                                                            {duration && ` • ${duration} days`}
+                                                            {t('employeeDisclaimerHistory.startedOn', {
+                                                                date: disclaimerUtils.formatDateOnly(process.started_at),
+                                                                defaultValue: 'Started {{date}}',
+                                                            })}
+                                                            {duration
+                                                                ? ` • ${duration} ${t('employeeDisclaimerHistory.days', {
+                                                                    defaultValue: 'days',
+                                                                })}`
+                                                                : ''}
                                                         </Typography>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-4">
                                                     <div className="text-right mr-4">
                                                         <Typography variant="small" color="blue-gray" className="font-semibold">
-                                                            {completedSteps} / {process.total_steps} Steps
+                                                            {t('employeeDisclaimerHistory.stepsSummary', {
+                                                                done: completedSteps,
+                                                                total: process.total_steps,
+                                                                defaultValue: '{{done}} / {{total}} Steps',
+                                                            })}
                                                         </Typography>
                                                         <Typography variant="small" color="gray">
-                                                            {progress}% Complete
+                                                            {t('employeeDisclaimerHistory.progressPercent', {
+                                                                percent: progress,
+                                                                defaultValue: '{{percent}}% Complete',
+                                                            })}
                                                         </Typography>
                                                     </div>
                                                     <Chip
@@ -186,9 +205,11 @@ export default function EmployeeDisclaimerHistory() {
                                                 <div className="mb-6">
                                                     <div className="w-full bg-gray-200 rounded-full h-3">
                                                         <div
-                                                            className={`h-3 rounded-full ${process.status === 'completed' ? 'bg-green-500' :
-                                                                    process.status === 'blocked' ? 'bg-red-500' :
-                                                                        'bg-blue-500'
+                                                            className={`h-3 rounded-full ${process.status === 'completed'
+                                                                    ? 'bg-green-500'
+                                                                    : process.status === 'blocked'
+                                                                        ? 'bg-red-500'
+                                                                        : 'bg-blue-500'
                                                                 }`}
                                                             style={{ width: `${progress}%` }}
                                                         />
@@ -206,14 +227,16 @@ export default function EmployeeDisclaimerHistory() {
                                                                         <div>
                                                                             <div className="flex items-center gap-2 mb-1">
                                                                                 <Typography variant="small" className="font-semibold">
-                                                                                    Step {request.step_number}:
+                                                                                    {t('employeeDisclaimerHistory.step', { num: request.step_number })}
                                                                                 </Typography>
                                                                                 <Typography variant="small" color="blue-gray">
                                                                                     {request.target_department_name}
                                                                                 </Typography>
                                                                             </div>
                                                                             <Typography variant="small" color="gray">
-                                                                                {disclaimerUtils.formatDate(request.created_at)}
+                                                                                {t('employeeDisclaimerHistory.createdAt', {
+                                                                                    date: disclaimerUtils.formatDate(request.created_at),
+                                                                                })}
                                                                             </Typography>
                                                                         </div>
                                                                         <Chip
@@ -225,21 +248,27 @@ export default function EmployeeDisclaimerHistory() {
 
                                                                     {request.employee_notes && (
                                                                         <div className="mb-2 p-2 bg-blue-50 rounded text-sm">
-                                                                            <span className="font-semibold">Your notes: </span>
+                                                                            <span className="font-semibold">
+                                                                                {t('employeeDisclaimerHistory.myNotes')}
+                                                                            </span>{' '}
                                                                             {request.employee_notes}
                                                                         </div>
                                                                     )}
 
                                                                     {request.manager_notes && (
                                                                         <div className="mb-2 p-2 bg-green-50 rounded text-sm">
-                                                                            <span className="font-semibold">Manager response: </span>
+                                                                            <span className="font-semibold">
+                                                                                {t('employeeDisclaimerHistory.managerResponse')}
+                                                                            </span>{' '}
                                                                             {request.manager_notes}
                                                                         </div>
                                                                     )}
 
                                                                     {request.rejection_reason && (
                                                                         <div className="p-2 bg-red-50 rounded border-l-4 border-red-500 text-sm">
-                                                                            <span className="font-semibold text-red-700">Rejection reason: </span>
+                                                                            <span className="font-semibold text-red-700">
+                                                                                {t('employeeDisclaimerHistory.rejectionReason')}
+                                                                            </span>{' '}
                                                                             {request.rejection_reason}
                                                                         </div>
                                                                     )}

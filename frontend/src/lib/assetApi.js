@@ -14,6 +14,16 @@ export const departmentAPI = {
         return apiGet(`/api/departments/all/${queryString ? `?${queryString}` : ""}`);
     },
 
+    // Public endpoint for sign-up (no authentication required)
+    getPublicList: async () => {
+        const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const response = await fetch(`${BASE_URL}/api/departments/public/`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch departments: ${response.statusText}`);
+        }
+        return await response.json();
+    },
+
     getById: (id) => apiGet(`/api/departments/${id}/`),
     create: (data) => apiPost('/api/departments/', data),
     update: (id, data) => apiPatch(`/api/departments/${id}/`, data),

@@ -286,7 +286,6 @@ export default function ManagerPendingRequests() {
                                     label={t('managerPendingRequests.dialog.reasonLabel')}
                                     value={rejectionReason}
                                     onChange={(e) => setRejectionReason(e.target.value)}
-                                    placeholder={t('managerPendingRequests.dialog.reasonPlaceholder')}
                                     rows={3}
                                     error={reviewStatus === 'rejected' && !rejectionReason.trim()}
                                 />

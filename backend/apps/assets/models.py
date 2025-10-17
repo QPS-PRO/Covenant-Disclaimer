@@ -27,7 +27,7 @@ class Employee(models.Model):
     employee_id = models.CharField(
         max_length=20, 
         unique=True,
-        validators=[RegexValidator(r'^[A-Z0-9]{3,20}$', 'Employee ID must be 3-20 alphanumeric characters')]
+        validators=[RegexValidator(r'^[A-Z0-9]{1,20}$', 'Employee ID must be 1-20 alphanumeric characters')]
     )
     phone_number = models.CharField(
         max_length=15,

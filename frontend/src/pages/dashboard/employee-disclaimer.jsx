@@ -279,11 +279,11 @@ export default function EmployeeDisclaimerPage() {
 
                                                                         {step.request.reviewed_at && (
                                                                             <div className="flex justify-between text-xs text-gray-600">
-                                                                                <span>
+                                                                                {/* <span>
                                                                                     {t('managerPendingRequests.fields.reviewedBy', {
                                                                                         name: step.request.reviewed_by_name || 'N/A'
                                                                                     })}
-                                                                                </span>
+                                                                                </span> */}
                                                                                 <span>{disclaimerUtils.formatDate(step.request.reviewed_at)}</span>
                                                                             </div>
                                                                         )}

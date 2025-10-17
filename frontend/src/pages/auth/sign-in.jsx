@@ -146,12 +146,12 @@ export function SignIn() {
             </Typography>
           </div> */}
 
-          <Typography variant="paragraph" className={`text-center text-blue-gray-500 font-medium mt-4 ${isRTL ? 'text-right' : ''}`}>
+          {/* <Typography variant="paragraph" className={`text-center text-blue-gray-500 font-medium mt-4 ${isRTL ? 'text-right' : ''}`}>
             {t('auth.notRegistered')}
             <Link to="/auth/sign-up" className={`text-gray-900 ${isRTL ? 'mr-1' : 'ml-1'}`}>
               {t('auth.createAccount')}
             </Link>
-          </Typography>
+          </Typography> */}
         </form>
       </div>
 

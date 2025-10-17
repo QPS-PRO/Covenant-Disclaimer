@@ -42,7 +42,6 @@ export const getDefaultRoute = (user) => {
                 return `/dashboard/employees/${employeeId}/profile`;
             }
             
-            console.warn('Employee user has no employee_profile.id:', user);
             return '/dashboard/my-disclaimer';
         default:
             return '/auth/sign-in';
@@ -74,35 +73,22 @@ export const canAccessRoute = (user, requiredRole) => {
  */
 export const hasReportAccess = (user) => {
     if (!user) {
-        console.log('hasReportAccess: No user');
         return false;
     }
     
     // Admin always has access
     if (isAdmin(user)) {
-        console.log('hasReportAccess: User is admin - GRANTED');
         return true;
     }
     
     // Check employee profile for report permission
     if (user.employee_profile) {
         const reportPerm = user.employee_profile.report_permission;
-        
-        console.log('hasReportAccess: Checking report permission:', {
-            hasPermissionObject: !!reportPerm,
-            permissionType: typeof reportPerm,
-            canAccess: reportPerm?.can_access_reports,
-            fullPermission: reportPerm
-        });
-        
         // Check if report_permission exists and has can_access_reports set to true
         if (reportPerm && typeof reportPerm === 'object') {
             const hasAccess = reportPerm.can_access_reports === true;
-            console.log('hasReportAccess: Final decision -', hasAccess ? 'GRANTED' : 'DENIED');
             return hasAccess;
         }
     }
-    
-    console.log('hasReportAccess: No permission found - DENIED');
     return false;
 };

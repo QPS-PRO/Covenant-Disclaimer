@@ -1,5 +1,5 @@
 // frontend/src/pages/auth/sign-up.jsx
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Input,
@@ -7,25 +7,48 @@ import {
   Button,
   Typography,
   Alert,
+  Select,
+  Option,
 } from "@material-tailwind/react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/api";
+import { departmentAPI } from "@/lib/assetApi";
+import { getDefaultRoute } from "@/utils/authHelpers";
 
 export function SignUp() {
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     email: "",
+    employee_id: "",
+    phone_number: "",
+    department: "",
     password1: "",
     password2: "",
     agree_terms: false,
   });
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState("");
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await departmentAPI.getPublicList();
+      setDepartments(response.results || response);
+    } catch (err) {
+      setError("Failed to load departments. Please refresh the page.");
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -48,6 +71,18 @@ export function SignUp() {
       setError("Email is required");
       return false;
     }
+    if (!formData.employee_id.trim()) {
+      setError("Employee ID is required");
+      return false;
+    }
+    if (!formData.phone_number.trim()) {
+      setError("Phone number is required");
+      return false;
+    }
+    if (!formData.department) {
+      setError("Please select a department");
+      return false;
+    }
     if (formData.password1.length < 8) {
       setError("Password must be at least 8 characters long");
       return false;
@@ -67,6 +102,7 @@ export function SignUp() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setFieldErrors({});
     setSuccess("");
 
     if (!validateForm()) {
@@ -79,18 +115,38 @@ export function SignUp() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
+        employee_id: formData.employee_id,
+        phone_number: formData.phone_number,
+        department: parseInt(formData.department),
         password1: formData.password1,
         password2: formData.password2,
       });
 
       if (result.success) {
-        setSuccess("Registration successful! Redirecting to dashboard...");
+        setSuccess("Registration successful! Redirecting to your profile...");
+        setHasRedirected(true);
         // If auto-login after registration is enabled
         setTimeout(() => {
-          navigate("/dashboard/home");
+          // For employees, always go to their profile page
+          if (result.user && result.user.employee_profile) {
+            const employeeId = result.user.employee_profile.id;
+            navigate(`/dashboard/employees/${employeeId}/profile`, { replace: true });
+          } else {
+            // Fallback for other user types
+            const redirectTo = result.user ? getDefaultRoute(result.user) : "/dashboard/home";
+            navigate(redirectTo, { replace: true });
+          }
         }, 2000);
       } else {
-        setError(result.error || "Registration failed. Please try again.");
+        // Check if error is an object with field-specific errors
+        if (result.fieldErrors && typeof result.fieldErrors === 'object') {
+          setFieldErrors(result.fieldErrors);
+          // Also set a general error message
+          const firstError = Object.values(result.fieldErrors)[0];
+          setError(Array.isArray(firstError) ? firstError[0] : firstError);
+        } else {
+          setError(result.error || "Registration failed. Please try again.");
+        }
       }
     } catch (err) {
       setError(err.message || "An unexpected error occurred.");
@@ -177,8 +233,88 @@ export function SignUp() {
               labelProps={{
                 className: "before:content-none after:content-none",
               }}
+              error={!!fieldErrors.email}
               required
             />
+            {fieldErrors.email && (
+              <Typography variant="small" color="red" className="-mt-4">
+                {Array.isArray(fieldErrors.email) ? fieldErrors.email[0] : fieldErrors.email}
+              </Typography>
+            )}
+            
+            <Typography variant="small" color="blue-gray" className="-mb-3 font-medium">
+              Employee ID
+            </Typography>
+            <Input
+              size="lg"
+              placeholder="1 or EMP123"
+              name="employee_id"
+              value={formData.employee_id}
+              onChange={handleInputChange}
+              className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
+              labelProps={{
+                className: "before:content-none after:content-none",
+              }}
+              error={!!fieldErrors.employee_id}
+              required
+            />
+            {fieldErrors.employee_id && (
+              <Typography variant="small" color="red" className="-mt-4">
+                {Array.isArray(fieldErrors.employee_id) ? fieldErrors.employee_id[0] : fieldErrors.employee_id}
+              </Typography>
+            )}
+            
+            <Typography variant="small" color="blue-gray" className="-mb-3 font-medium">
+              Phone Number
+            </Typography>
+            <Input
+              size="lg"
+              placeholder="+1234567890"
+              name="phone_number"
+              type="tel"
+              value={formData.phone_number}
+              onChange={handleInputChange}
+              className=" !border-t-blue-gray-200 focus:!border-t-gray-900"
+              labelProps={{
+                className: "before:content-none after:content-none",
+              }}
+              error={!!fieldErrors.phone_number}
+              required
+            />
+            {fieldErrors.phone_number && (
+              <Typography variant="small" color="red" className="-mt-4">
+                {Array.isArray(fieldErrors.phone_number) ? fieldErrors.phone_number[0] : fieldErrors.phone_number}
+              </Typography>
+            )}
+            
+            <Typography variant="small" color="blue-gray" className="-mb-3 font-medium">
+              Department
+            </Typography>
+            <Select
+              size="lg"
+            
+              value={formData.department}
+              onChange={(value) => setFormData(prev => ({ ...prev, department: value }))}
+              className="!border-t-blue-gray-200 focus:!border-t-gray-900"
+              menuProps={{ className: "max-h-72" }}
+              selected={(element) => {
+                if (React.isValidElement(element) && element.props?.children != null) {
+                  return element.props.children;
+                }
+                const raw = typeof element === "string" || typeof element === "number" 
+                  ? String(element) 
+                  : formData.department ?? "";
+                if (!raw) return "Select Department";
+                const dept = departments.find((d) => d.id.toString() === raw);
+                return dept ? dept.name : "Select Department";
+              }}
+            >
+              {departments.map((dept) => (
+                <Option key={dept.id} value={dept.id.toString()}>
+                  {dept.name}
+                </Option>
+              ))}
+            </Select>
             
             <Typography variant="small" color="blue-gray" className="-mb-3 font-medium">
               Password
@@ -194,8 +330,14 @@ export function SignUp() {
               labelProps={{
                 className: "before:content-none after:content-none",
               }}
+              error={!!fieldErrors.password1}
               required
             />
+            {fieldErrors.password1 && (
+              <Typography variant="small" color="red" className="-mt-4">
+                {Array.isArray(fieldErrors.password1) ? fieldErrors.password1[0] : fieldErrors.password1}
+              </Typography>
+            )}
             
             <Typography variant="small" color="blue-gray" className="-mb-3 font-medium">
               Confirm Password

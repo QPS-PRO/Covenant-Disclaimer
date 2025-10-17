@@ -621,7 +621,7 @@ def employee_disclaimer_status_view(request):
                         "employee_notes": step_request.employee_notes,
                         "manager_notes": step_request.manager_notes,
                         "rejection_reason": step_request.rejection_reason,
-                        "reviewed_by_name": step_request.reviewed_by.get_full_name()
+                        "reviewed_by_name": (step_request.reviewed_by.get_full_name() or step_request.reviewed_by.email)
                         if step_request.reviewed_by
                         else None,
                         "reviewed_at": step_request.reviewed_at.isoformat()

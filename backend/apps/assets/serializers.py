@@ -78,6 +78,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
     email = serializers.EmailField(write_only=True)
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
     face_recognition_data = serializers.CharField(
         write_only=True, required=False, allow_blank=True
     )
@@ -91,6 +92,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
+            "password",
             "face_recognition_data",
         )
 
@@ -99,12 +101,13 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             "first_name": validated_data.pop("first_name"),
             "last_name": validated_data.pop("last_name"),
             "email": validated_data.pop("email"),
+            "password": validated_data.pop("password"),
         }
 
         # Extract face recognition data
         face_data = validated_data.pop("face_recognition_data", None)
 
-        # Create user
+        # Create user with password
         user = User.objects.create_user(**user_data)
 
         # Create employee
