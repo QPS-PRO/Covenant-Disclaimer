@@ -45,11 +45,11 @@ const FaceRecognitionComponent = ({
 
     // Cleanup camera stream function
     const cleanupCamera = useCallback(() => {
-        console.log('Cleaning up camera...');
+        // console.log('Cleaning up camera...');
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => {
                 track.stop();
-                console.log('Stopped track:', track);
+                // console.log('Stopped track:', track);
             });
             streamRef.current = null;
         }
@@ -76,7 +76,7 @@ const FaceRecognitionComponent = ({
     // Additional cleanup effect for when open changes
     useEffect(() => {
         if (!open) {
-            console.log('Modal closed, cleaning up...');
+            // console.log('Modal closed, cleaning up...');
             cleanupCamera();
             resetState();
         }
@@ -123,13 +123,13 @@ const FaceRecognitionComponent = ({
                     setIsLoading(false);
                 };
                 videoRef.current.onerror = (err) => {
-                    console.error('Video error:', err);
+                    // console.error('Video error:', err);
                     setError(t('faceComponent.errors.displayFeedFailed', 'Failed to display camera feed'));
                     setIsLoading(false);
                 };
             }
         } catch (err) {
-            console.error('Camera initialization error:', err);
+            // console.error('Camera initialization error:', err);
             setError(err.message || t('faceComponent.errors.accessCameraFailed', 'Failed to access camera'));
             setIsLoading(false);
             cleanupCamera();
@@ -149,6 +149,10 @@ const FaceRecognitionComponent = ({
             const imageData = await faceRecognitionAPI.captureImageFromVideo(videoRef.current);
             setCapturedImage(imageData);
 
+            // Clean up camera immediately after capture
+            // console.log('Image captured, cleaning up camera...');
+            cleanupCamera();
+
             // Validate image quality
             const validation = await faceRecognitionAPI.validateImageQuality(imageData);
             setValidationResult(validation);
@@ -166,10 +170,12 @@ const FaceRecognitionComponent = ({
                 await verifyFace(imageData);
             }
         } catch (err) {
-            console.error('Capture error:', err);
+            // console.error('Capture error:', err);
             setError(err.message || t('faceComponent.errors.captureFailed', 'Failed to capture image'));
             setStep('capture');
             setIsLoading(false);
+            // Also cleanup camera on error
+            cleanupCamera();
         }
     };
 
@@ -180,10 +186,15 @@ const FaceRecognitionComponent = ({
             setStep('result');
 
             if (response.success && onSuccess) {
+                // Auto-close modal after successful registration
+                setTimeout(() => {
+                    handleClose();
+                }, 2000); // Close after 2 seconds to show success message
+                
                 onSuccess(response);
             }
         } catch (err) {
-            console.error('Registration error:', err);
+            // console.error('Registration error:', err);
             setError(err.message || t('employees.profile.errors.faceFailed', 'Face registration failed'));
             if (onError) onError(err);
         } finally {
@@ -199,6 +210,11 @@ const FaceRecognitionComponent = ({
 
             // Include the captured image data in the response for transaction use
             if (response.success && onSuccess) {
+                // Auto-close modal after successful verification
+                setTimeout(() => {
+                    handleClose();
+                }, 1500); // Close after 1.5 seconds to show success message
+                
                 onSuccess({
                     ...response,
                     face_image_data: imageData, // Pass the actual image data
@@ -211,7 +227,7 @@ const FaceRecognitionComponent = ({
                 });
             }
         } catch (err) {
-            console.error('Verification error:', err);
+            // console.error('Verification error:', err);
             setError(err.message || t('transactionsPage.errors.faceFailed', 'Face verification failed'));
             if (onError) onError(err);
         } finally {
@@ -220,7 +236,7 @@ const FaceRecognitionComponent = ({
     };
 
     const handleClose = useCallback(() => {
-        console.log('Handle close called');
+        // console.log('Handle close called');
         cleanupCamera();
         resetState();
         if (onClose) {
@@ -229,14 +245,18 @@ const FaceRecognitionComponent = ({
     }, [cleanupCamera, resetState, onClose]);
 
     const retakePhoto = () => {
+        // console.log('Retaking photo, cleaning up and reinitializing camera...');
+        cleanupCamera();
+        
         setCapturedImage(null);
         setValidationResult(null);
         setStep('camera');
         setError('');
-        // Reinitialize camera
+        
+        // Reinitialize camera after a short delay
         setTimeout(() => {
             initializeCamera();
-        }, 100);
+        }, 200);
     };
 
     const renderCameraView = () => (
@@ -269,33 +289,63 @@ const FaceRecognitionComponent = ({
                 )}
             </div>
 
-            <Typography className="text-center text-sm text-gray-600">
-                {t('faceComponent.positionFace', 'Position your face within the circle and click capture')}
-            </Typography>
+            <Alert color="blue" className="text-sm">
+                <Typography variant="small" className="font-semibold mb-2">
+                    {t('faceComponent.captureTips', 'Capture Tips:')}
+                </Typography>
+                <ul className="list-disc list-inside text-xs space-y-1">
+                    <li>{t('faceComponent.tip1', 'Position your face within the circle')}</li>
+                    <li>{t('faceComponent.tip2', 'Ensure good, even lighting on your face')}</li>
+                    <li>{t('faceComponent.tip3', 'Face the camera directly and keep still')}</li>
+                    <li>{t('faceComponent.tip4', 'Remove glasses or items that obscure your face')}</li>
+                    <li>{t('faceComponent.tip5', 'Move closer if needed (face should be clearly visible)')}</li>
+                </ul>
+            </Alert>
         </div>
     );
 
     const renderValidationIssues = () => (
         validationResult && !validationResult.is_valid && (
             <Alert color="amber" className="mb-4">
-                <ExclamationTriangleIcon className="h-5 w-5" />
-                <div>
-                    <Typography variant="h6" className="mb-1">
-                        {t('faceComponent.imageQualityIssues', 'Image Quality Issues:')}
-                    </Typography>
-                    <ul className="list-disc list-inside text-sm">
-                        {validationResult.issues.map((issue, index) => (
-                            <li key={index}>{issue}</li>
-                        ))}
-                    </ul>
-                    <Typography variant="small" className="mt-2 font-semibold">
-                        {t('faceComponent.recommendations', 'Recommendations:')}
-                    </Typography>
-                    <ul className="list-disc list-inside text-sm">
-                        {validationResult.recommendations.map((rec, index) => (
-                            <li key={index}>{rec}</li>
-                        ))}
-                    </ul>
+                <div className="flex items-start gap-3">
+                    <ExclamationTriangleIcon className="h-6 w-6 flex-shrink-0 mt-1" />
+                    <div className="flex-1">
+                        <Typography variant="h6" className="mb-2">
+                            {t('faceComponent.imageQualityIssues', 'Image Quality Issues:')}
+                        </Typography>
+                        
+                        {/* Quality Score */}
+                        {validationResult.quality_score !== undefined && (
+                            <div className="mb-3 p-2 bg-white/50 rounded">
+                                <Typography variant="small" className="font-semibold mb-1">
+                                    {t('faceComponent.overallQuality', 'Overall Quality Score:')} {(validationResult.quality_score * 100).toFixed(1)}%
+                                </Typography>
+                                <Progress 
+                                    value={validationResult.quality_score * 100} 
+                                    color={validationResult.quality_score > 0.6 ? "green" : validationResult.quality_score > 0.4 ? "yellow" : "red"}
+                                    className="h-2"
+                                />
+                            </div>
+                        )}
+                        
+                        <Typography variant="small" className="font-semibold mb-1">
+                            {t('faceComponent.detectedIssues', 'Detected Issues:')}
+                        </Typography>
+                        <ul className="list-disc list-inside text-sm mb-3 space-y-1">
+                            {validationResult.issues.map((issue, index) => (
+                                <li key={index} className="text-gray-800">{issue}</li>
+                            ))}
+                        </ul>
+                        
+                        <Typography variant="small" className="font-semibold mb-1 text-blue-900">
+                            {t('faceComponent.recommendations', 'Recommendations:')}
+                        </Typography>
+                        <ul className="list-disc list-inside text-sm space-y-1">
+                            {validationResult.recommendations.map((rec, index) => (
+                                <li key={index} className="text-blue-800">{rec}</li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
             </Alert>
         )

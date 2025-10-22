@@ -641,7 +641,6 @@ def verify_face_view(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def update_employee_face_data(request, employee_id):
-    """Update employee face recognition data with real face encoding"""
     try:
         employee = Employee.objects.get(id=employee_id, is_active=True)
         face_image_data = request.data.get("face_recognition_data")

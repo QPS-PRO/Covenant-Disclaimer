@@ -13,10 +13,10 @@ class CameraManager {
 
         const defaultConstraints = {
             video: {
-                width: { ideal: 640, max: 1280 },
-                height: { ideal: 480, max: 720 },
+                width: { ideal: 1280, max: 1920 },
+                height: { ideal: 720, max: 1080 },
                 facingMode: 'user',
-                frameRate: { ideal: 30 }
+                frameRate: { ideal: 30, min: 15 }
             },
             audio: false
         };

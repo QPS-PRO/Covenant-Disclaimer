@@ -25,6 +25,16 @@ class FaceRecognitionService:
         self.model = getattr(
             settings, "FACE_RECOGNITION_MODEL", "hog"
         )  # 'hog' or 'cnn'
+        
+        # Load quality thresholds from settings
+        self.quality_thresholds = getattr(settings, "FACE_QUALITY_THRESHOLDS", {
+            'min_quality_score': 0.35,
+            'min_sharpness': 25.0,
+            'min_brightness': 60.0,
+            'max_brightness': 220.0,
+            'min_face_size': 80,
+            'min_face_ratio': 0.03,
+        })
 
     def encode_face_from_base64(self, base64_image: str) -> Optional[Dict]:
         """
@@ -132,14 +142,14 @@ class FaceRecognitionService:
         # Size assessment
         face_width = right - left
         face_height = bottom - top
-        min_face_size = 100  # Minimum recommended face size
+        min_face_size = self.quality_thresholds['min_face_size']
 
         size_quality = min(face_width / min_face_size, face_height / min_face_size, 1.0)
 
-        # Overall quality score
+        # Overall quality score - adjusted for lower-quality cameras
         quality_score = min(
-            (sharpness / 100) * 0.4  # Sharpness weight
-            + (brightness / 255) * 0.2  # Brightness weight
+            (sharpness / 100) * 0.35  # Reduced sharpness weight
+            + (brightness / 255) * 0.25  # Increased brightness weight
             + size_quality * 0.3  # Size weight
             + min(face_ratio * 10, 1.0) * 0.1,  # Face ratio weight
             1.0,
@@ -149,8 +159,8 @@ class FaceRecognitionService:
             "score": round(quality_score, 3),
             "sharpness": round(sharpness, 2),
             "brightness": round(brightness, 2),
-            "face_size": {"width": face_width, "height": face_height},
-            "is_good_quality": quality_score > 0.6,
+            "face_size": {"width": int(face_width), "height": int(face_height)},
+            "is_good_quality": bool(quality_score > self.quality_thresholds['min_quality_score']),
         }
 
     def compare_faces(self, stored_encoding_data: str, captured_base64: str) -> Dict:
@@ -252,29 +262,37 @@ class FaceRecognitionService:
             issues = []
             recommendations = []
 
+            # Use configurable thresholds from settings
+            thresholds = self.quality_thresholds
+            
             # Check quality metrics
-            if quality["score"] < 0.6:
-                issues.append("Low overall image quality")
+            if quality["score"] < thresholds['min_quality_score']:
+                issues.append(f"Low overall image quality (score: {quality['score']:.2f}, minimum: {thresholds['min_quality_score']})")
                 recommendations.append("Use better lighting and ensure face is clear")
 
-            if quality["sharpness"] < 50:
-                issues.append("Image is too blurry")
+            if quality["sharpness"] < thresholds['min_sharpness']:
+                issues.append(f"Image is too blurry (sharpness: {quality['sharpness']:.2f}, minimum: {thresholds['min_sharpness']})")
                 recommendations.append("Keep camera steady and ensure good focus")
 
-            if quality["brightness"] < 80 or quality["brightness"] > 200:
-                issues.append("Poor lighting conditions")
+            if quality["brightness"] < thresholds['min_brightness'] or quality["brightness"] > thresholds['max_brightness']:
+                issues.append(f"Poor lighting conditions (brightness: {quality['brightness']:.2f}, range: {thresholds['min_brightness']}-{thresholds['max_brightness']})")
                 recommendations.append("Use good, even lighting on face")
 
             if (
-                quality["face_size"]["width"] < 100
-                or quality["face_size"]["height"] < 100
+                quality["face_size"]["width"] < thresholds['min_face_size']
+                or quality["face_size"]["height"] < thresholds['min_face_size']
             ):
-                issues.append("Face is too small in the image")
+                issues.append(f"Face is too small (size: {quality['face_size']['width']}x{quality['face_size']['height']}, minimum: {thresholds['min_face_size']})")
                 recommendations.append("Move closer to the camera")
 
-            if face_data["face_ratio"] < 0.05:
-                issues.append("Face takes up too little of the image")
+            if face_data["face_ratio"] < thresholds['min_face_ratio']:
+                issues.append(f"Face takes up too little of the image (ratio: {face_data['face_ratio']:.3f}, minimum: {thresholds['min_face_ratio']})")
                 recommendations.append("Center your face and move closer to camera")
+            
+            # Log quality metrics for debugging
+            logger.info(f"Image quality validation - Score: {quality['score']}, "
+                       f"Sharpness: {quality['sharpness']}, Brightness: {quality['brightness']}, "
+                       f"Face size: {quality['face_size']}, Face ratio: {face_data['face_ratio']}")
 
             return {
                 "is_valid": len(issues) == 0,

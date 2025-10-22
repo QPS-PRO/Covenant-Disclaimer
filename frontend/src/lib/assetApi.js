@@ -144,7 +144,7 @@ export const dashboardAPI = {
 
 // Enhanced Face Recognition API using camera manager
 export const faceRecognitionAPI = {
-    captureImageFromVideo: (videoElement, quality = 0.8) => {
+    captureImageFromVideo: (videoElement, quality = 0.95) => {
         return new Promise((resolve, reject) => {
             try {
                 const canvas = document.createElement('canvas');
@@ -158,8 +158,16 @@ export const faceRecognitionAPI = {
                     return;
                 }
 
+                // Enable image smoothing for better quality
+                context.imageSmoothingEnabled = true;
+                context.imageSmoothingQuality = 'high';
+
                 context.drawImage(videoElement, 0, 0);
+                
+                // Use higher quality JPEG encoding (0.95 instead of 0.8)
                 const imageData = canvas.toDataURL('image/jpeg', quality);
+                
+                console.log('Captured image dimensions:', canvas.width, 'x', canvas.height);
                 resolve(imageData);
             } catch (error) {
                 reject(error);
@@ -268,12 +276,28 @@ export const cameraUtils = {
     },
 
     // Get optimal camera constraints
-    getOptimalConstraints: () => ({
+    getOptimalConstraints: (highQuality = false) => ({
         video: {
-            width: { ideal: 640, max: 1280 },
-            height: { ideal: 480, max: 720 },
+            width: highQuality ? { ideal: 1280, max: 1920 } : { ideal: 1280, max: 1920 },
+            height: highQuality ? { ideal: 720, max: 1080 } : { ideal: 720, max: 1080 },
             facingMode: 'user',
-            frameRate: { ideal: 30 }
+            frameRate: { ideal: 30, min: 15 },
+            // Additional constraints for better quality
+            aspectRatio: { ideal: 1.777778 }, // 16:9
+            focusMode: { ideal: 'continuous' },
+            whiteBalanceMode: { ideal: 'continuous' },
+            exposureMode: { ideal: 'continuous' }
+        },
+        audio: false
+    }),
+    
+    // Get constraints for low-quality cameras (Dell AIO, etc.)
+    getCompatibleConstraints: () => ({
+        video: {
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
+            facingMode: 'user',
+            frameRate: { ideal: 30, min: 10 }
         },
         audio: false
     }),

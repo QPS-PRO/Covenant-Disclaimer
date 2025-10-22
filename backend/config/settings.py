@@ -254,6 +254,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # EMAIL_HOST_PASSWORD = ''
 # DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+# Face Recognition Settings
+# Configure these based on your hardware capabilities and requirements
+FACE_RECOGNITION_TOLERANCE = env.float('FACE_RECOGNITION_TOLERANCE', default=0.6)
+FACE_RECOGNITION_MODEL = env.str('FACE_RECOGNITION_MODEL', default='hog')  # 'hog' or 'cnn'
+
+# Quality Validation Thresholds (lowered for compatibility with Dell AIO and similar cameras)
+FACE_QUALITY_THRESHOLDS = {
+    'min_quality_score': env.float('FACE_MIN_QUALITY_SCORE', default=0.35),  # Overall quality (0-1)
+    'min_sharpness': env.float('FACE_MIN_SHARPNESS', default=25.0),  # Laplacian variance
+    'min_brightness': env.float('FACE_MIN_BRIGHTNESS', default=60.0),  # Mean pixel value
+    'max_brightness': env.float('FACE_MAX_BRIGHTNESS', default=220.0),  # Mean pixel value
+    'min_face_size': env.int('FACE_MIN_SIZE', default=80),  # Minimum face width/height in pixels
+    'min_face_ratio': env.float('FACE_MIN_RATIO', default=0.03),  # Minimum face area / image area
+}
+
 # Logging
 LOGGING = {
     'version': 1,
@@ -276,6 +291,11 @@ LOGGING = {
             'propagate': True,
         },
         'shobify': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'apps.assets': {
             'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': True,
