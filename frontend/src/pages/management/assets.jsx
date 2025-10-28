@@ -209,7 +209,17 @@ export function Assets() {
                     setError("Status can only be changed to available, maintenance, or retired.");
                     return;
                 }
-                await assetAPI.update(selectedAsset.id, { status: formData.status });
+                // Send all editable fields to backend
+                const updateData = {
+                    name: formData.name,
+                    serial_number: formData.serial_number,
+                    department: formData.department,
+                    status: formData.status,
+                    description: formData.description,
+                    purchase_date: formData.purchase_date || null,
+                    purchase_cost: formData.purchase_cost ? parseFloat(formData.purchase_cost) : null,
+                };
+                await assetAPI.update(selectedAsset.id, updateData);
                 setShowEditModal(false);
             } else {
                 await assetAPI.create(submitData);

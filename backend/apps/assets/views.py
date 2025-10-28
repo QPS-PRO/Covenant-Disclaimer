@@ -168,7 +168,8 @@ class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
         """
         Policy:
         - If asset is currently 'assigned' => block any update.
-        - Else: only allow changing status to 'available', 'maintenance' or 'retired'.
+        - Allow updating: name, serial_number, description, purchase_date, purchase_cost, department
+        - For status: only allow changing to 'available', 'maintenance' or 'retired'.
         - Never allow setting status to 'assigned' here.
         """
         asset = self.get_object()
@@ -180,25 +181,36 @@ class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Check if status is being changed
         new_status = request.data.get("status")
-        if not new_status:
-            return Response({"error": "Status is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if new_status:
+            if new_status == "assigned":
+                return Response(
+                    {"error": "Status cannot be changed to 'assigned' here."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        if new_status == "assigned":
-            return Response({"error": "Status cannot be changed to 'assigned' here."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            allowed_targets = {"available", "maintenance", "retired"}
+            if new_status not in allowed_targets:
+                return Response(
+                    {"error": "Status can only be changed to 'available', 'maintenance' or 'retired'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        allowed_targets = {"available", "maintenance", "retired"}
-        if new_status not in allowed_targets:
-            return Response(
-                {"error": "Status can only be changed to 'available', 'maintenance' or 'retired'."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Build a clean payload for the serializer instead of mutating request.data
-        data = {"status": new_status}
-        # ensure holder is cleared for non-assigned statuses
-        data["current_holder"] = None
+        # Build update data - allow updating all editable fields
+        data = {}
+        
+        # Allowed fields for update
+        allowed_fields = ['name', 'serial_number', 'description', 'purchase_date', 
+                         'purchase_cost', 'department', 'status']
+        
+        for field in allowed_fields:
+            if field in request.data:
+                data[field] = request.data[field]
+        
+        # Ensure holder is cleared for non-assigned statuses
+        if new_status and new_status != "assigned":
+            data["current_holder"] = None
 
         serializer = self.get_serializer(asset, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)

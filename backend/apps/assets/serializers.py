@@ -208,25 +208,21 @@ class AssetSerializer(serializers.ModelSerializer):
         status_in = data.get("status")
         current_holder_in = data.get("current_holder")
 
+        # Block updates if asset is currently assigned (must return first)
         if self.instance and self.instance.status == "assigned":
             raise serializers.ValidationError(
                 "Updates are not allowed while asset status is 'assigned'."
             )
 
-        if self.instance:
-            incoming_keys = set(self.initial_data.keys())
-            # allow status-only OR status + current_holder (when clearing)
-            allowed_sets = ({"status"}, {"status", "current_holder"})
-            if incoming_keys not in allowed_sets:
-                raise serializers.ValidationError("Only 'status' can be updated for this asset.")
-
-            # enforce allowed targets (never 'assigned' here)
-            if status_in and status_in not in {"available", "maintenance", "retired"}:
+        # For updates, validate status changes
+        if self.instance and status_in:
+            # enforce allowed targets (never 'assigned' via update endpoint)
+            if status_in not in {"available", "maintenance", "retired"}:
                 raise serializers.ValidationError(
                     "Status can only be changed to 'available', 'maintenance' or 'retired'."
                 )
 
-        # Keep your existing relationship validation:
+        # Validate status/holder relationship
         status_effective = status_in if status_in is not None else (self.instance.status if self.instance else "available")
         holder_effective = current_holder_in if current_holder_in is not None else (self.instance.current_holder if self.instance else None)
 

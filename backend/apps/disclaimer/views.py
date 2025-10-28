@@ -23,7 +23,7 @@ from .serializers import (
     EmployeeDisclaimerStatusSerializer,
 )
 from .permissions import IsAdmin, IsDepartmentManager, IsEmployee
-from apps.assets.models import Department, Employee
+from apps.assets.models import Department, Employee, Asset
 from django.db.models import Max
 # ============ ADMIN VIEWS ============
 
@@ -501,6 +501,27 @@ def manager_review_request_view(request, request_id):
         serializer = DisclaimerRequestReviewSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if employee has unreturned assets from this department before approval
+        if serializer.validated_data["status"] == "approved":
+            unreturned_assets = Asset.objects.filter(
+                current_holder=disclaimer_request.employee,
+                department=department
+            )
+            
+            if unreturned_assets.exists():
+                asset_names = ", ".join([asset.name for asset in unreturned_assets[:3]])
+                count = unreturned_assets.count()
+                more_text = f" (+{count - 3} more)" if count > 3 else ""
+                
+                return Response(
+                    {
+                        "error": f"Cannot approve: Employee has {count} unreturned asset(s) from your department: {asset_names}{more_text}. Please ensure all assets are returned before approving the disclaimer request.",
+                        "unreturned_assets_count": count,
+                        "unreturned_assets": [asset.name for asset in unreturned_assets]
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         with transaction.atomic():
             # Update request

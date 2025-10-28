@@ -74,17 +74,12 @@ class FaceRecognitionService:
                 logger.warning("No face found in the provided image")
                 return None
 
+            # SECURITY: Reject images with multiple faces
             if len(face_locations) > 1:
-                logger.warning(
-                    f"Multiple faces found ({len(face_locations)}), using the largest one"
+                logger.error(
+                    f"SECURITY: Multiple faces detected ({len(face_locations)}) - rejecting image"
                 )
-                # Use the largest face (by area)
-                face_locations = [
-                    max(
-                        face_locations,
-                        key=lambda loc: (loc[2] - loc[0]) * (loc[1] - loc[3]),
-                    )
-                ]
+                return None  # Reject if multiple faces detected
 
             # Get face encoding
             face_encodings = face_recognition.face_encodings(
@@ -255,6 +250,8 @@ class FaceRecognitionService:
                         "Ensure face is clearly visible",
                         "Use good lighting",
                         "Face the camera directly",
+                        "Remove any obstructions",
+                        "Ensure only ONE face is visible in the frame",
                     ],
                 }
 
@@ -288,6 +285,56 @@ class FaceRecognitionService:
             if face_data["face_ratio"] < thresholds['min_face_ratio']:
                 issues.append(f"Face takes up too little of the image (ratio: {face_data['face_ratio']:.3f}, minimum: {thresholds['min_face_ratio']})")
                 recommendations.append("Center your face and move closer to camera")
+            
+            # SECURITY: Check if face is too close (occupies too much of image)
+            max_face_ratio = thresholds.get('max_face_ratio', 0.65)
+            if face_data["face_ratio"] > max_face_ratio:
+                issues.append(f"Face is too close to camera (ratio: {face_data['face_ratio']:.3f}, maximum: {max_face_ratio})")
+                recommendations.append("Move back from the camera - entire face should be visible")
+            
+            # SECURITY CRITICAL: Check face aspect ratio to prevent partial faces (horizontal/vertical slices)
+            face_width = quality["face_size"]["width"]
+            face_height = quality["face_size"]["height"]
+            face_aspect = face_width / face_height if face_height > 0 else 0
+            
+            min_aspect = thresholds.get('min_face_aspect_ratio', 0.75)
+            max_aspect = thresholds.get('max_face_aspect_ratio', 1.35)
+            
+            if face_aspect < min_aspect:
+                issues.append(f"Face appears incomplete - too narrow (aspect ratio: {face_aspect:.2f}, minimum: {min_aspect})")
+                recommendations.append("Ensure ENTIRE face is visible - move to show full face from forehead to chin")
+            elif face_aspect > max_aspect:
+                issues.append(f"Face appears incomplete - too wide (aspect ratio: {face_aspect:.2f}, maximum: {max_aspect})")
+                recommendations.append("Ensure ENTIRE face is visible - move to show full face including both sides")
+            
+            # SECURITY: Check if face is centered (not at edges)
+            face_location = face_data.get("face_location")
+            if face_location:
+                image_dims = face_data.get("image_dimensions", {})
+                img_width = image_dims.get("width", 0)
+                img_height = image_dims.get("height", 0)
+                
+                if img_width > 0 and img_height > 0:
+                    # face_location is a tuple: (top, right, bottom, left)
+                    top, right, bottom, left = face_location
+                    
+                    # Calculate face center
+                    face_center_x = (left + right) / 2
+                    face_center_y = (top + bottom) / 2
+                    
+                    # Calculate image center
+                    img_center_x = img_width / 2
+                    img_center_y = img_height / 2
+                    
+                    # Calculate offset from center (as percentage of image size)
+                    x_offset = abs(face_center_x - img_center_x) / img_width
+                    y_offset = abs(face_center_y - img_center_y) / img_height
+                    
+                    max_offset = thresholds.get('min_center_offset', 0.25)
+                    
+                    if x_offset > max_offset or y_offset > max_offset:
+                        issues.append(f"Face is not centered (offset: {max(x_offset, y_offset):.2f}, maximum: {max_offset})")
+                        recommendations.append("Center your face in the frame - position yourself in the middle")
             
             # Log quality metrics for debugging
             logger.info(f"Image quality validation - Score: {quality['score']}, "

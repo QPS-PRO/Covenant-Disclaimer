@@ -43,6 +43,59 @@ const FaceRecognitionComponent = ({
     const [cameraReady, setCameraReady] = useState(false);
     const [validationResult, setValidationResult] = useState(null);
 
+    // Translation mapper for backend validation messages
+    const translateValidationMessage = useCallback((message) => {
+        if (!message) return message;
+        
+        // Map backend messages to translation keys
+        const messageMap = {
+            // Issues
+            'No face detected in image': t('faceComponent.validationIssues.noFaceDetected'),
+            'Low overall image quality': t('faceComponent.validationIssues.lowQuality'),
+            'Image is too blurry': t('faceComponent.validationIssues.tooBlurry'),
+            'Poor lighting conditions': t('faceComponent.validationIssues.poorLighting'),
+            'Face is too small': t('faceComponent.validationIssues.faceTooSmall'),
+            'Face takes up too little of the image': t('faceComponent.validationIssues.faceTooFar'),
+            'Face is too close to camera': t('faceComponent.validationIssues.faceTooClose'),
+            'Face is not centered': t('faceComponent.validationIssues.faceNotCentered'),
+            'Face appears incomplete - too narrow': t('faceComponent.validationIssues.faceIncompleteNarrow'),
+            'Face appears incomplete - too wide': t('faceComponent.validationIssues.faceIncompleteWide'),
+            'Image validation failed': t('faceComponent.validationIssues.validationFailed'),
+            
+            // Recommendations
+            'Ensure face is clearly visible': t('faceComponent.validationRecommendations.ensureFaceVisible'),
+            'Use good lighting': t('faceComponent.validationRecommendations.useGoodLighting'),
+            'Face the camera directly': t('faceComponent.validationRecommendations.faceCamera'),
+            'Use better lighting and ensure face is clear': t('faceComponent.validationRecommendations.betterLighting'),
+            'Keep camera steady and ensure good focus': t('faceComponent.validationRecommendations.keepSteady'),
+            'Use good, even lighting on face': t('faceComponent.validationRecommendations.evenLighting'),
+            'Move closer to the camera': t('faceComponent.validationRecommendations.moveCloser'),
+            'Move back from the camera - entire face should be visible': t('faceComponent.validationRecommendations.moveBack'),
+            'Center your face and move closer to camera': t('faceComponent.validationRecommendations.centerFace'),
+            'Center your face in the frame - position yourself in the middle': t('faceComponent.validationRecommendations.centerInFrame'),
+            'Remove any obstructions': t('faceComponent.validationRecommendations.removeObstructions'),
+            'Ensure only ONE face is visible in the frame': t('faceComponent.validationRecommendations.onlyOneFace'),
+            'Ensure ENTIRE face is visible - move to show full face from forehead to chin': t('faceComponent.validationRecommendations.showFullFaceVertical'),
+            'Ensure ENTIRE face is visible - move to show full face including both sides': t('faceComponent.validationRecommendations.showFullFaceHorizontal'),
+            'Please try again with a clear image': t('faceComponent.validationRecommendations.tryAgain'),
+        };
+        
+        // Check for exact match
+        if (messageMap[message]) {
+            return messageMap[message];
+        }
+        
+        // Check for partial matches (for messages with dynamic values)
+        for (const [key, value] of Object.entries(messageMap)) {
+            if (message.includes(key) || message.startsWith(key.split('(')[0])) {
+                return value;
+            }
+        }
+        
+        // Return original message if no translation found
+        return message;
+    }, [t]);
+
     // Cleanup camera stream function
     const cleanupCamera = useCallback(() => {
         // console.log('Cleaning up camera...');
@@ -80,6 +133,11 @@ const FaceRecognitionComponent = ({
             cleanupCamera();
             resetState();
         }
+        
+        // Safety: Also cleanup when modal closes AND when component unmounts
+        return () => {
+            cleanupCamera();
+        };
     }, [open, cleanupCamera]);
 
     const resetState = useCallback(() => {
@@ -186,6 +244,9 @@ const FaceRecognitionComponent = ({
             setStep('result');
 
             if (response.success && onSuccess) {
+                // CRITICAL: Ensure camera is fully stopped IMMEDIATELY after success
+                cleanupCamera();
+                
                 // Auto-close modal after successful registration
                 setTimeout(() => {
                     handleClose();
@@ -195,6 +256,7 @@ const FaceRecognitionComponent = ({
             }
         } catch (err) {
             // console.error('Registration error:', err);
+            cleanupCamera(); // Ensure camera stops even on error
             setError(err.message || t('employees.profile.errors.faceFailed', 'Face registration failed'));
             if (onError) onError(err);
         } finally {
@@ -207,6 +269,9 @@ const FaceRecognitionComponent = ({
             const response = await faceRecognitionAPI.verifyEmployeeFace(employeeId, imageData);
             setResult(response);
             setStep('result');
+
+            // CRITICAL: Ensure camera is fully stopped IMMEDIATELY after verification (success or failure)
+            cleanupCamera();
 
             // Include the captured image data in the response for transaction use
             if (response.success && onSuccess) {
@@ -221,6 +286,7 @@ const FaceRecognitionComponent = ({
                     capturedImage: imageData
                 });
             } else if (!response.success && onError) {
+                // Camera already cleaned up above
                 onError({
                     ...response,
                     face_image_data: imageData // Pass image data even on failure for debugging
@@ -228,6 +294,7 @@ const FaceRecognitionComponent = ({
             }
         } catch (err) {
             // console.error('Verification error:', err);
+            cleanupCamera(); // Ensure camera stops even on exception
             setError(err.message || t('transactionsPage.errors.faceFailed', 'Face verification failed'));
             if (onError) onError(err);
         } finally {
@@ -294,11 +361,11 @@ const FaceRecognitionComponent = ({
                     {t('faceComponent.captureTips', 'Capture Tips:')}
                 </Typography>
                 <ul className="list-disc list-inside text-xs space-y-1">
-                    <li>{t('faceComponent.tip1', 'Position your face within the circle')}</li>
-                    <li>{t('faceComponent.tip2', 'Ensure good, even lighting on your face')}</li>
-                    <li>{t('faceComponent.tip3', 'Face the camera directly and keep still')}</li>
-                    <li>{t('faceComponent.tip4', 'Remove glasses or items that obscure your face')}</li>
-                    <li>{t('faceComponent.tip5', 'Move closer if needed (face should be clearly visible)')}</li>
+                    <li>{t('faceComponent.captureTipsList.tip1', 'Position your face within the circle')}</li>
+                    <li>{t('faceComponent.captureTipsList.tip2', 'Ensure good, even lighting on your face')}</li>
+                    <li>{t('faceComponent.captureTipsList.tip3', 'Face the camera directly and keep still')}</li>
+                    <li>{t('faceComponent.captureTipsList.tip4', 'Remove glasses or items that obscure your face')}</li>
+                    <li>{t('faceComponent.captureTipsList.tip5', 'Move closer if needed (face should be clearly visible)')}</li>
                 </ul>
             </Alert>
         </div>
@@ -333,7 +400,7 @@ const FaceRecognitionComponent = ({
                         </Typography>
                         <ul className="list-disc list-inside text-sm mb-3 space-y-1">
                             {validationResult.issues.map((issue, index) => (
-                                <li key={index} className="text-gray-800">{issue}</li>
+                                <li key={index} className="text-gray-800">{translateValidationMessage(issue)}</li>
                             ))}
                         </ul>
                         
@@ -342,7 +409,7 @@ const FaceRecognitionComponent = ({
                         </Typography>
                         <ul className="list-disc list-inside text-sm space-y-1">
                             {validationResult.recommendations.map((rec, index) => (
-                                <li key={index} className="text-blue-800">{rec}</li>
+                                <li key={index} className="text-blue-800">{translateValidationMessage(rec)}</li>
                             ))}
                         </ul>
                     </div>
@@ -436,7 +503,7 @@ const FaceRecognitionComponent = ({
                                         </Typography>
                                         <ul className="list-disc list-inside text-xs text-left">
                                             {result.issues.map((issue, index) => (
-                                                <li key={index}>{issue}</li>
+                                                <li key={index}>{translateValidationMessage(issue)}</li>
                                             ))}
                                         </ul>
                                     </div>

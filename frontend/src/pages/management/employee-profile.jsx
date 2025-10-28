@@ -36,12 +36,16 @@ import FaceRecognitionComponent from "../../components/FaceRecognitionComponent"
 import AssetReturnComponent from "../../components/AssetReturnComponent";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/lib/api";
+import { isAdmin } from "@/utils/authHelpers";
 
 export function EmployeeProfile() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { t } = useTranslation();
     const { isRTL } = useLanguage();
+    const { user } = useAuth();
+    const isUserAdmin = isAdmin(user);
 
     const [employee, setEmployee] = useState(null);
     const [stats, setStats] = useState(null);
@@ -293,6 +297,7 @@ export function EmployeeProfile() {
                                 size="sm"
                                 color="blue"
                                 onClick={handleFaceRegistration}
+                                disabled={!isUserAdmin}
                                 className="flex items-center gap-2"
                             >
                                 <CameraIcon className="h-4 w-4" />
@@ -489,6 +494,7 @@ export function EmployeeProfile() {
                                                         size="sm"
                                                         color="orange"
                                                         onClick={() => handleAssetReturn(asset)}
+                                                        disabled={!isUserAdmin}
                                                         className="flex items-center gap-2 w-full"
                                                         variant="filled"
                                                     >

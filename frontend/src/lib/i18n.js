@@ -167,6 +167,7 @@ const enTranslations = {
             filterByDepartment: "Filter by Department",
             allDepartments: "All Departments",
             selectDepartment: "Select Department",
+            currentStatus: "Current Status:",
             table: {
                 employee: "Employee",
                 id: "ID",
@@ -413,7 +414,10 @@ const enTranslations = {
             cameraNotReady: "Camera not ready",
             positionFace: "Position your face within the circle and click capture",
             imageQualityIssues: "Image Quality Issues:",
+            detectedIssues: "Detected Issues:",
             recommendations: "Recommendations:",
+            captureTips: "Capture Tips:",
+            overallQuality: "Overall Quality Score:",
             registrationSuccessful: "Registration Successful!",
             verificationSuccessful: "Verification Successful!",
             registrationFailed: "Registration Failed",
@@ -427,6 +431,43 @@ const enTranslations = {
             continue: "Continue",
             issues: "Issues:",
             threshold: "Threshold",
+            validationIssues: {
+                noFaceDetected: "No face detected in image",
+                lowQuality: "Low overall image quality",
+                tooBlurry: "Image is too blurry",
+                poorLighting: "Poor lighting conditions",
+                faceTooSmall: "Face is too small",
+                faceTooFar: "Face takes up too little of the image",
+                faceTooClose: "Face is too close to camera",
+                faceNotCentered: "Face is not centered",
+                faceIncompleteNarrow: "Face appears incomplete - too narrow",
+                faceIncompleteWide: "Face appears incomplete - too wide",
+                validationFailed: "Image validation failed"
+            },
+            validationRecommendations: {
+                ensureFaceVisible: "Ensure face is clearly visible",
+                useGoodLighting: "Use good lighting",
+                faceCamera: "Face the camera directly",
+                betterLighting: "Use better lighting and ensure face is clear",
+                keepSteady: "Keep camera steady and ensure good focus",
+                evenLighting: "Use good, even lighting on face",
+                moveCloser: "Move closer to the camera",
+                moveBack: "Move back from the camera - entire face should be visible",
+                centerFace: "Center your face and move closer to camera",
+                centerInFrame: "Center your face in the frame - position yourself in the middle",
+                removeObstructions: "Remove any obstructions",
+                onlyOneFace: "Ensure only ONE face is visible in the frame",
+                showFullFaceVertical: "Ensure ENTIRE face is visible - move to show full face from forehead to chin",
+                showFullFaceHorizontal: "Ensure ENTIRE face is visible - move to show full face including both sides",
+                tryAgain: "Please try again with a clear image"
+            },
+            captureTipsList: {
+                tip1: "Position your face within the circle",
+                tip2: "Ensure good, even lighting on your face",
+                tip3: "Face the camera directly and keep still",
+                tip4: "Remove glasses or items that obscure your face",
+                tip5: "Move closer if needed (face should be clearly visible)"
+            },
             errors: {
                 displayFeedFailed: "Failed to display camera feed",
                 accessCameraFailed: "Failed to access camera",
@@ -629,6 +670,10 @@ const enTranslations = {
                 department: "Department: {{dept}}",
                 submitted: "Submitted: {{date}}",
                 reviewedBy: "Reviewed By"
+            },
+            warnings: {
+                unreturnedAssets: "Warning: Employee has {{count}} unreturned asset(s) from your department",
+                unreturnedAssetsHelp: "Please ensure all assets are returned before approving."
             },
             dialog: {
                 title: "Review Disclaimer Request",
@@ -962,6 +1007,7 @@ const arTranslations = {
             filterByDepartment: "تصفية حسب القسم",
             allDepartments: "جميع الأقسام",
             selectDepartment: "اختر القسم",
+            currentStatus: "الحالة الحالية:",
             table: {
                 employee: "الموظف",
                 id: "المعرف",
@@ -1208,7 +1254,10 @@ const arTranslations = {
             cameraNotReady: "الكاميرا غير جاهزة",
             positionFace: "ضع وجهك داخل الدائرة ثم اضغط التقاط",
             imageQualityIssues: "مشاكل جودة الصورة:",
+            detectedIssues: "المشكلات المكتشفة:",
             recommendations: "التوصيات:",
+            captureTips: "نصائح الالتقاط:",
+            overallQuality: "درجة الجودة الإجمالية:",
             registrationSuccessful: "تم التسجيل بنجاح!",
             verificationSuccessful: "تم التحقق بنجاح!",
             registrationFailed: "فشل التسجيل",
@@ -1222,6 +1271,43 @@ const arTranslations = {
             continue: "متابعة",
             issues: "المشكلات:",
             threshold: "الحد الأدنى",
+            validationIssues: {
+                noFaceDetected: "لم يتم اكتشاف وجه في الصورة",
+                lowQuality: "جودة الصورة منخفضة بشكل عام",
+                tooBlurry: "الصورة ضبابية جداً",
+                poorLighting: "ظروف الإضاءة سيئة",
+                faceTooSmall: "الوجه صغير جداً",
+                faceTooFar: "الوجه يشغل مساحة قليلة جداً من الصورة",
+                faceTooClose: "الوجه قريب جداً من الكاميرا",
+                faceNotCentered: "الوجه غير موجود في المنتصف",
+                faceIncompleteNarrow: "الوجه يبدو غير مكتمل - ضيق جداً",
+                faceIncompleteWide: "الوجه يبدو غير مكتمل - عريض جداً",
+                validationFailed: "فشل التحقق من صحة الصورة"
+            },
+            validationRecommendations: {
+                ensureFaceVisible: "تأكد من أن الوجه واضح ومرئي",
+                useGoodLighting: "استخدم إضاءة جيدة",
+                faceCamera: "واجه الكاميرا مباشرة",
+                betterLighting: "استخدم إضاءة أفضل وتأكد من وضوح الوجه",
+                keepSteady: "حافظ على ثبات الكاميرا وتأكد من التركيز الجيد",
+                evenLighting: "استخدم إضاءة جيدة ومتساوية على الوجه",
+                moveCloser: "اقترب من الكاميرا",
+                moveBack: "ابتعد عن الكاميرا - يجب أن يكون الوجه بالكامل مرئياً",
+                centerFace: "وسّط وجهك واقترب من الكاميرا",
+                centerInFrame: "وسّط وجهك في الإطار - ضع نفسك في المنتصف",
+                removeObstructions: "أزل أي عوائق",
+                onlyOneFace: "تأكد من ظهور وجه واحد فقط في الإطار",
+                showFullFaceVertical: "تأكد من ظهور الوجه كاملاً - تحرك لإظهار الوجه الكامل من الجبهة إلى الذقن",
+                showFullFaceHorizontal: "تأكد من ظهور الوجه كاملاً - تحرك لإظهار الوجه الكامل بما في ذلك الجانبين",
+                tryAgain: "يرجى المحاولة مرة أخرى بصورة واضحة"
+            },
+            captureTipsList: {
+                tip1: "ضع وجهك داخل الدائرة",
+                tip2: "تأكد من إضاءة جيدة ومتساوية على وجهك",
+                tip3: "واجه الكاميرا مباشرة وابق ثابتاً",
+                tip4: "أزل النظارات أو الأشياء التي تحجب وجهك",
+                tip5: "اقترب إذا لزم الأمر (يجب أن يكون الوجه واضحاً ومرئياً)"
+            },
             errors: {
                 displayFeedFailed: "فشل عرض بث الكاميرا",
                 accessCameraFailed: "فشل الوصول إلى الكاميرا",
@@ -1424,6 +1510,10 @@ const arTranslations = {
                 department: "القسم: {{dept}}",
                 submitted: "التقديم: {{date}}",
                 reviewedBy: "تم مراجعة بواسطة"
+            },
+            warnings: {
+                unreturnedAssets: "تحذير: الموظف لديه {{count}} أصل غير مُرجع من قسمك",
+                unreturnedAssetsHelp: "يرجى التأكد من إرجاع جميع الأصول قبل الموافقة."
             },
             dialog: {
                 title: "مراجعة طلب إخلاء الطرف",

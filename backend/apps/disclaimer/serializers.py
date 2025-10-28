@@ -99,11 +99,15 @@ class DepartmentDisclaimerOrderBulkUpdateSerializer(serializers.Serializer):
 
 class DisclaimerRequestSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source="employee.name", read_only=True)
+    employee_id_number = serializers.CharField(source="employee.employee_id", read_only=True)
+    employee_department = serializers.CharField(source="employee.department.name", read_only=True)
     target_department_name = serializers.CharField(
         source="target_department.name", read_only=True
     )
     reviewed_by_name = serializers.SerializerMethodField()
     process_info = serializers.SerializerMethodField()
+    unreturned_assets_count = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
         model = DisclaimerRequest
@@ -111,12 +115,15 @@ class DisclaimerRequestSerializer(serializers.ModelSerializer):
             "id",
             "employee",
             "employee_name",
+            "employee_id_number",
+            "employee_department",
             "process",
             "process_info",
             "target_department",
             "target_department_name",
             "step_number",
             "status",
+            "status_display",
             "employee_notes",
             "manager_notes",
             "rejection_reason",
@@ -125,6 +132,7 @@ class DisclaimerRequestSerializer(serializers.ModelSerializer):
             "reviewed_at",
             "created_at",
             "updated_at",
+            "unreturned_assets_count",
         ]
         read_only_fields = ["reviewed_by", "reviewed_at", "created_at", "updated_at"]
 
@@ -143,6 +151,15 @@ class DisclaimerRequestSerializer(serializers.ModelSerializer):
                 "total_steps": obj.process.total_steps,
             }
         return None
+
+    def get_unreturned_assets_count(self, obj):
+        """Get count of unreturned assets from the target department"""
+        from apps.assets.models import Asset
+        
+        return Asset.objects.filter(
+            current_holder=obj.employee,
+            department=obj.target_department
+        ).count()
 
 
 class DisclaimerProcessHistorySerializer(serializers.ModelSerializer):

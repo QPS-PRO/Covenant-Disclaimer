@@ -25,6 +25,12 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from apps.reports.pdf_utils import (
+    register_arabic_fonts,
+    process_arabic_text,
+    process_table_data,
+    get_table_font_name,
+)
 
 # Excel Generation
 from openpyxl import Workbook
@@ -42,21 +48,30 @@ from apps.disclaimer.permissions import IsAdmin
 
 def create_pdf_header(elements, title, styles):
     """Create PDF header with title and metadata"""
+    # Register Arabic fonts at the beginning
+    register_arabic_fonts()
+    
     title_style = ParagraphStyle(
         "CustomTitle",
         parent=styles["Heading1"],
         fontSize=18,
+        fontName=get_table_font_name(),
         textColor=colors.HexColor("#1e40af"),
         spaceAfter=30,
         alignment=TA_CENTER,
     )
-    elements.append(Paragraph(title, title_style))
+    # Process title for Arabic support
+    processed_title = process_arabic_text(title)
+    elements.append(Paragraph(processed_title, title_style))
+    
+    subtitle_text = f"Generated on: {timezone.now().strftime('%B %d, %Y at %H:%M')}"
     elements.append(
         Paragraph(
-            f"Generated on: {timezone.now().strftime('%B %d, %Y at %H:%M')}",
+            process_arabic_text(subtitle_text),
             ParagraphStyle(
                 "Subtitle",
                 parent=styles["Normal"],
+                fontName=get_table_font_name(),
                 alignment=TA_CENTER,
                 fontSize=10,
                 textColor=colors.grey,
@@ -169,6 +184,9 @@ def disclaimer_completion_report(request):
 
 def generate_disclaimer_completion_pdf(completed, not_completed):
     """Generate PDF for disclaimer completion report"""
+    # Register Arabic fonts
+    register_arabic_fonts()
+    
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer, pagesize=letter, topMargin=0.5 * inch, bottomMargin=0.5 * inch
@@ -178,36 +196,56 @@ def generate_disclaimer_completion_pdf(completed, not_completed):
 
     create_pdf_header(elements, "Disclaimer Completion Report", styles)
 
+    # Create paragraph with Arabic support
+    arabic_style = ParagraphStyle(
+        "ArabicNormal",
+        parent=styles["Normal"],
+        fontName=get_table_font_name(),
+    )
+    
+    arabic_heading = ParagraphStyle(
+        "ArabicHeading",
+        parent=styles["Heading2"],
+        fontName=get_table_font_name(),
+    )
+
     # Summary
     total = len(completed) + len(not_completed)
     if total > 0:
-        elements.append(Paragraph(f"<b>Total Employees:</b> {total}", styles["Normal"]))
+        elements.append(Paragraph(process_arabic_text(f"<b>Total Employees:</b> {total}"), arabic_style))
         elements.append(Paragraph(
-            f"<b>Completed:</b> {len(completed)} ({len(completed) / total * 100:.1f}%)",
-            styles["Normal"]
+            process_arabic_text(f"<b>Completed:</b> {len(completed)} ({len(completed) / total * 100:.1f}%)"),
+            arabic_style
         ))
         elements.append(Paragraph(
-            f"<b>Not Completed:</b> {len(not_completed)} ({len(not_completed) / total * 100:.1f}%)",
-            styles["Normal"]
+            process_arabic_text(f"<b>Not Completed:</b> {len(not_completed)} ({len(not_completed) / total * 100:.1f}%)"),
+            arabic_style
         ))
         elements.append(Spacer(1, 0.3 * inch))
 
     # Completed Employees Table
     if completed:
         elements.append(
-            Paragraph("<b>Employees Who Completed Disclaimer</b>", styles["Heading2"])
+            Paragraph(process_arabic_text("<b>Employees Who Completed Disclaimer</b>"), arabic_heading)
         )
         elements.append(Spacer(1, 0.1 * inch))
 
         data = [
-            ["Employee ID", "Name", "Department", "Email", "Completed Date", "Steps"]
+            [
+                process_arabic_text("Employee ID"),
+                process_arabic_text("Name"),
+                process_arabic_text("Department"),
+                process_arabic_text("Email"),
+                process_arabic_text("Completed Date"),
+                process_arabic_text("Steps")
+            ]
         ]
         for emp in completed:
             data.append(
                 [
                     emp["employee_id"],
-                    emp["name"],
-                    emp["department"],
+                    process_arabic_text(emp["name"]),
+                    process_arabic_text(emp["department"]),
                     emp["email"],
                     emp["completed_date"],
                     str(emp["total_steps"]),
@@ -221,7 +259,7 @@ def generate_disclaimer_completion_pdf(completed, not_completed):
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e40af")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, -1), get_table_font_name()),
                     ("FONTSIZE", (0, 0), (-1, 0), 10),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                     ("GRID", (0, 0), (-1, -1), 1, colors.grey),
@@ -242,20 +280,26 @@ def generate_disclaimer_completion_pdf(completed, not_completed):
     if not_completed:
         elements.append(
             Paragraph(
-                "<b>Employees Who Haven't Completed Disclaimer</b>", styles["Heading2"]
+                process_arabic_text("<b>Employees Who Haven't Completed Disclaimer</b>"), arabic_heading
             )
         )
         elements.append(Spacer(1, 0.1 * inch))
 
-        data = [["Employee ID", "Name", "Department", "Email", "Status"]]
+        data = [[
+            process_arabic_text("Employee ID"),
+            process_arabic_text("Name"),
+            process_arabic_text("Department"),
+            process_arabic_text("Email"),
+            process_arabic_text("Status")
+        ]]
         for emp in not_completed:
             data.append(
                 [
                     emp["employee_id"],
-                    emp["name"],
-                    emp["department"],
+                    process_arabic_text(emp["name"]),
+                    process_arabic_text(emp["department"]),
                     emp["email"],
-                    emp["status"],
+                    process_arabic_text(emp["status"]),
                 ]
             )
 
@@ -266,7 +310,7 @@ def generate_disclaimer_completion_pdf(completed, not_completed):
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#dc2626")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, -1), get_table_font_name()),
                     ("FONTSIZE", (0, 0), (-1, 0), 10),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                     ("GRID", (0, 0), (-1, -1), 1, colors.grey),
@@ -424,6 +468,9 @@ def assets_by_status_report(request):
 
 def generate_assets_status_pdf(assets_by_status):
     """Generate PDF for assets by status report"""
+    # Register Arabic fonts
+    register_arabic_fonts()
+    
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer, pagesize=A4, topMargin=0.5 * inch, bottomMargin=0.5 * inch
@@ -433,14 +480,27 @@ def generate_assets_status_pdf(assets_by_status):
 
     create_pdf_header(elements, "Assets Status Report", styles)
 
+    # Create paragraph with Arabic support
+    arabic_style = ParagraphStyle(
+        "ArabicNormal",
+        parent=styles["Normal"],
+        fontName=get_table_font_name(),
+    )
+    
+    arabic_heading = ParagraphStyle(
+        "ArabicHeading",
+        parent=styles["Heading2"],
+        fontName=get_table_font_name(),
+    )
+
     # Summary
     total_assets = sum(len(assets) for assets in assets_by_status.values())
-    elements.append(Paragraph(f"<b>Total Assets:</b> {total_assets}", styles["Normal"]))
+    elements.append(Paragraph(process_arabic_text(f"<b>Total Assets:</b> {total_assets}"), arabic_style))
     for status_key, assets in assets_by_status.items():
         elements.append(
             Paragraph(
-                f"<b>{status_key.title()}:</b> {len(assets)} ({len(assets) / total_assets * 100:.1f}%)",
-                styles["Normal"],
+                process_arabic_text(f"<b>{status_key.title()}:</b> {len(assets)} ({len(assets) / total_assets * 100:.1f}%)"),
+                arabic_style,
             )
         )
     elements.append(Spacer(1, 0.3 * inch))
@@ -458,20 +518,26 @@ def generate_assets_status_pdf(assets_by_status):
             continue
 
         elements.append(
-            Paragraph(f"<b>{status_key.upper()} ASSETS</b>", styles["Heading2"])
+            Paragraph(process_arabic_text(f"<b>{status_key.upper()} ASSETS</b>"), arabic_heading)
         )
         elements.append(Spacer(1, 0.1 * inch))
 
         data = [
-            ["Name", "Serial Number", "Department", "Current Holder", "Purchase Date"]
+            [
+                process_arabic_text("Name"),
+                process_arabic_text("Serial Number"),
+                process_arabic_text("Department"),
+                process_arabic_text("Current Holder"),
+                process_arabic_text("Purchase Date")
+            ]
         ]
         for asset in assets:
             data.append(
                 [
-                    asset["name"],
+                    process_arabic_text(asset["name"]),
                     asset["serial_number"],
-                    asset["department"],
-                    asset["current_holder"],
+                    process_arabic_text(asset["department"]),
+                    process_arabic_text(asset["current_holder"]),
                     asset["purchase_date"],
                 ]
             )
@@ -483,7 +549,7 @@ def generate_assets_status_pdf(assets_by_status):
                     ("BACKGROUND", (0, 0), (-1, 0), status_colors[status_key]),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, -1), get_table_font_name()),
                     ("FONTSIZE", (0, 0), (-1, 0), 9),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                     ("GRID", (0, 0), (-1, -1), 1, colors.grey),
@@ -618,6 +684,9 @@ def employee_assets_report(request):
 
 def generate_employee_assets_pdf(with_assets, without_assets):
     """Generate PDF for employee assets report"""
+    # Register Arabic fonts
+    register_arabic_fonts()
+    
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer, pagesize=letter, topMargin=0.5 * inch, bottomMargin=0.5 * inch
@@ -627,19 +696,32 @@ def generate_employee_assets_pdf(with_assets, without_assets):
 
     create_pdf_header(elements, "Employee Assets Report", styles)
 
+    # Create paragraph with Arabic support
+    arabic_style = ParagraphStyle(
+        "ArabicNormal",
+        parent=styles["Normal"],
+        fontName=get_table_font_name(),
+    )
+    
+    arabic_heading = ParagraphStyle(
+        "ArabicHeading",
+        parent=styles["Heading2"],
+        fontName=get_table_font_name(),
+    )
+
     # Summary
     total = len(with_assets) + len(without_assets)
-    elements.append(Paragraph(f"<b>Total Employees:</b> {total}", styles["Normal"]))
+    elements.append(Paragraph(process_arabic_text(f"<b>Total Employees:</b> {total}"), arabic_style))
     elements.append(
         Paragraph(
-            f"<b>With Assets:</b> {len(with_assets)} ({len(with_assets) / total * 100:.1f}%)",
-            styles["Normal"],
+            process_arabic_text(f"<b>With Assets:</b> {len(with_assets)} ({len(with_assets) / total * 100:.1f}%)"),
+            arabic_style,
         )
     )
     elements.append(
         Paragraph(
-            f"<b>Without Assets:</b> {len(without_assets)} ({len(without_assets) / total * 100:.1f}%)",
-            styles["Normal"],
+            process_arabic_text(f"<b>Without Assets:</b> {len(without_assets)} ({len(without_assets) / total * 100:.1f}%)"),
+            arabic_style,
         )
     )
     elements.append(Spacer(1, 0.3 * inch))
@@ -647,19 +729,25 @@ def generate_employee_assets_pdf(with_assets, without_assets):
     # Employees with assets
     if with_assets:
         elements.append(
-            Paragraph("<b>Employees With Current Assets</b>", styles["Heading2"])
+            Paragraph(process_arabic_text("<b>Employees With Current Assets</b>"), arabic_heading)
         )
         elements.append(Spacer(1, 0.1 * inch))
 
-        data = [["Employee ID", "Name", "Department", "Asset Count", "Assets"]]
+        data = [[
+            process_arabic_text("Employee ID"),
+            process_arabic_text("Name"),
+            process_arabic_text("Department"),
+            process_arabic_text("Asset Count"),
+            process_arabic_text("Assets")
+        ]]
         for emp in with_assets:
             data.append(
                 [
                     emp["employee_id"],
-                    emp["name"],
-                    emp["department"],
+                    process_arabic_text(emp["name"]),
+                    process_arabic_text(emp["department"]),
                     str(emp["asset_count"]),
-                    emp["assets"],
+                    process_arabic_text(emp["assets"]),
                 ]
             )
 
@@ -674,7 +762,7 @@ def generate_employee_assets_pdf(with_assets, without_assets):
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#10b981")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, -1), get_table_font_name()),
                     ("FONTSIZE", (0, 0), (-1, 0), 10),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                     ("GRID", (0, 0), (-1, -1), 1, colors.grey),
@@ -694,17 +782,23 @@ def generate_employee_assets_pdf(with_assets, without_assets):
     # Employees without assets
     if without_assets:
         elements.append(
-            Paragraph("<b>Employees Without Current Assets</b>", styles["Heading2"])
+            Paragraph(process_arabic_text("<b>Employees Without Current Assets</b>"), arabic_heading)
         )
         elements.append(Spacer(1, 0.1 * inch))
 
-        data = [["Employee ID", "Name", "Department", "Email", "Phone"]]
+        data = [[
+            process_arabic_text("Employee ID"),
+            process_arabic_text("Name"),
+            process_arabic_text("Department"),
+            process_arabic_text("Email"),
+            process_arabic_text("Phone")
+        ]]
         for emp in without_assets:
             data.append(
                 [
                     emp["employee_id"],
-                    emp["name"],
-                    emp["department"],
+                    process_arabic_text(emp["name"]),
+                    process_arabic_text(emp["department"]),
                     emp["email"],
                     emp["phone"],
                 ]
@@ -717,7 +811,7 @@ def generate_employee_assets_pdf(with_assets, without_assets):
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#6b7280")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, -1), get_table_font_name()),
                     ("FONTSIZE", (0, 0), (-1, 0), 10),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                     ("GRID", (0, 0), (-1, -1), 1, colors.grey),
@@ -870,6 +964,9 @@ def asset_transaction_history_report(request):
 
 def generate_transaction_history_pdf(transactions):
     """Generate PDF for transaction history"""
+    # Register Arabic fonts
+    register_arabic_fonts()
+    
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -884,22 +981,35 @@ def generate_transaction_history_pdf(transactions):
 
     create_pdf_header(elements, "Asset Transaction History Report", styles)
 
-    elements.append(
-        Paragraph(f"<b>Total Transactions:</b> {len(transactions)}", styles["Normal"])
+    # Create paragraph with Arabic support
+    arabic_style = ParagraphStyle(
+        "ArabicNormal",
+        parent=styles["Normal"],
+        fontName=get_table_font_name(),
     )
+    
+    total_text = process_arabic_text(f"<b>Total Transactions:</b> {len(transactions)}")
+    elements.append(Paragraph(total_text, arabic_style))
     elements.append(Spacer(1, 0.2 * inch))
 
     if transactions:
-        data = [["Date", "Type", "Asset", "Employee", "Dept", "Verified"]]
+        data = [[
+            process_arabic_text("Date"), 
+            process_arabic_text("Type"), 
+            process_arabic_text("Asset"), 
+            process_arabic_text("Employee"), 
+            process_arabic_text("Dept"), 
+            process_arabic_text("Verified")
+        ]]
         for txn in transactions:
             data.append(
                 [
                     txn["date"],
-                    txn["type"],
-                    txn["asset"],
-                    f"{txn['employee']} ({txn['employee_id']})",
-                    txn["department"],
-                    txn["face_verified"],
+                    process_arabic_text(txn["type"]),
+                    process_arabic_text(txn["asset"]),
+                    process_arabic_text(f"{txn['employee']} ({txn['employee_id']})"),
+                    process_arabic_text(txn["department"]),
+                    process_arabic_text(txn["face_verified"]),
                 ]
             )
 
@@ -910,7 +1020,7 @@ def generate_transaction_history_pdf(transactions):
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e40af")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, -1), get_table_font_name()),
                     ("FONTSIZE", (0, 0), (-1, 0), 8),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                     ("GRID", (0, 0), (-1, -1), 1, colors.grey),
@@ -1032,6 +1142,9 @@ def department_summary_report(request):
 
 def generate_department_summary_pdf(dept_data):
     """Generate PDF for department summary"""
+    # Register Arabic fonts
+    register_arabic_fonts()
+    
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer, pagesize=letter, topMargin=0.5 * inch, bottomMargin=0.5 * inch
@@ -1041,27 +1154,34 @@ def generate_department_summary_pdf(dept_data):
 
     create_pdf_header(elements, "Department Summary Report", styles)
 
-    elements.append(
-        Paragraph(f"<b>Total Departments:</b> {len(dept_data)}", styles["Normal"])
+    # Create paragraph with Arabic support
+    arabic_style = ParagraphStyle(
+        "ArabicNormal",
+        parent=styles["Normal"],
+        fontName=get_table_font_name(),
     )
+    
+    total_text = process_arabic_text(f"<b>Total Departments:</b> {len(dept_data)}")
+    elements.append(Paragraph(total_text, arabic_style))
     elements.append(Spacer(1, 0.2 * inch))
 
+    # Prepare table data with Arabic support
     data = [
         [
-            "Department",
-            "Manager",
-            "Employees",
-            "Disclaimer Rate",
-            "Total Assets",
-            "Assigned",
-            "Available",
+            process_arabic_text("Department"),
+            process_arabic_text("Manager"),
+            process_arabic_text("Employees"),
+            process_arabic_text("Disclaimer Rate"),
+            process_arabic_text("Total Assets"),
+            process_arabic_text("Assigned"),
+            process_arabic_text("Available"),
         ]
     ]
     for dept in dept_data:
         data.append(
             [
-                dept["name"],
-                dept["manager"],
+                process_arabic_text(dept["name"]),
+                process_arabic_text(dept["manager"]),
                 str(dept["total_employees"]),
                 dept["disclaimer_rate"],
                 str(dept["total_assets"]),
@@ -1077,7 +1197,7 @@ def generate_department_summary_pdf(dept_data):
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e40af")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, -1), get_table_font_name()),
                 ("FONTSIZE", (0, 0), (-1, 0), 10),
                 ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                 ("GRID", (0, 0), (-1, -1), 1, colors.grey),

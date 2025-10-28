@@ -14,7 +14,7 @@ import {
     Spinner,
     Chip,
 } from '@material-tailwind/react';
-import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, XCircleIcon, ClockIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { useTranslation } from 'react-i18next';
 import { disclaimerManagerAPI, disclaimerUtils } from '@/lib/disclaimerApi';
 
@@ -80,7 +80,9 @@ export default function ManagerPendingRequests() {
             setShowReviewDialog(false);
             await loadRequests();
         } catch (err) {
-            setError('submitFailed');
+            // Display the actual error message from the backend
+            const errorMessage = err?.message || err?.error || t('managerPendingRequests.toasts.submitFailed');
+            setError(errorMessage);
         } finally {
             setSubmitting(false);
         }
@@ -109,11 +111,13 @@ export default function ManagerPendingRequests() {
 
                     {error && (
                         <Alert color="red" className="mb-4" onClose={() => setError(null)}>
-                            {t(
-                                `managerPendingRequests.toasts.${error}`,
-                                // fallback to generic loadFailed if unknown key
-                                { defaultValue: t('managerPendingRequests.toasts.loadFailed') }
-                            )}
+                            {/* Display the error directly if it contains ":" or starts with uppercase (likely a message from backend) */}
+                            {error.includes(':') || error.includes('Cannot') || error.includes('Employee') || error.length > 50
+                                ? error
+                                : t(
+                                    `managerPendingRequests.toasts.${error}`,
+                                    { defaultValue: error }
+                                )}
                         </Alert>
                     )}
 
@@ -180,6 +184,25 @@ export default function ManagerPendingRequests() {
                                             </Button>
                                         </div>
 
+                                        {request.unreturned_assets_count > 0 && (
+                                            <Alert color="amber" className="mt-3 flex items-start gap-3">
+                                                <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                                                <div>
+                                                    <Typography variant="small" className="font-semibold">
+                                                        {t('managerPendingRequests.warnings.unreturnedAssets', {
+                                                            count: request.unreturned_assets_count,
+                                                            defaultValue: `Warning: Employee has ${request.unreturned_assets_count} unreturned asset(s) from your department`
+                                                        })}
+                                                    </Typography>
+                                                    <Typography variant="small">
+                                                        {t('managerPendingRequests.warnings.unreturnedAssetsHelp', {
+                                                            defaultValue: 'Please ensure all assets are returned before approving.'
+                                                        })}
+                                                    </Typography>
+                                                </div>
+                                            </Alert>
+                                        )}
+
                                         {request.employee_notes && (
                                             <div className="bg-gray-50 p-3 rounded mt-3">
                                                 <Typography variant="small" className="font-semibold mb-1">
@@ -231,6 +254,25 @@ export default function ManagerPendingRequests() {
                                     </div>
                                 </div>
                             </div>
+
+                            {selectedRequest.unreturned_assets_count > 0 && (
+                                <Alert color="amber" className="flex items-start gap-3">
+                                    <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <Typography variant="small" className="font-semibold">
+                                            {t('managerPendingRequests.warnings.unreturnedAssets', {
+                                                count: selectedRequest.unreturned_assets_count,
+                                                defaultValue: `Warning: Employee has ${selectedRequest.unreturned_assets_count} unreturned asset(s) from your department`
+                                            })}
+                                        </Typography>
+                                        <Typography variant="small">
+                                            {t('managerPendingRequests.warnings.unreturnedAssetsHelp', {
+                                                defaultValue: 'Please ensure all assets are returned before approving.'
+                                            })}
+                                        </Typography>
+                                    </div>
+                                </Alert>
+                            )}
 
                             {selectedRequest.employee_notes && (
                                 <div>
@@ -305,7 +347,11 @@ export default function ManagerPendingRequests() {
                     <Button
                         color={reviewStatus === 'approved' ? 'green' : 'red'}
                         onClick={handleSubmitReview}
-                        disabled={submitting || (reviewStatus === 'rejected' && !rejectionReason.trim())}
+                        disabled={
+                            submitting || 
+                            (reviewStatus === 'rejected' && !rejectionReason.trim()) ||
+                            (reviewStatus === 'approved' && selectedRequest?.unreturned_assets_count > 0)
+                        }
                     >
                         {submitting
                             ? t('managerPendingRequests.dialog.submitting')

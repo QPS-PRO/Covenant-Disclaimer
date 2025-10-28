@@ -254,19 +254,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # EMAIL_HOST_PASSWORD = ''
 # DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# Face Recognition Settings
-# Configure these based on your hardware capabilities and requirements
-FACE_RECOGNITION_TOLERANCE = env.float('FACE_RECOGNITION_TOLERANCE', default=0.6)
+# Face Recognition Settings - SECURITY CRITICAL
+# IMPORTANT: These settings directly impact security and accuracy
+# Lower tolerance = stricter matching, fewer false positives
+FACE_RECOGNITION_TOLERANCE = env.float('FACE_RECOGNITION_TOLERANCE', default=0.4)  # CRITICAL: Reduced from 0.6 for security
 FACE_RECOGNITION_MODEL = env.str('FACE_RECOGNITION_MODEL', default='hog')  # 'hog' or 'cnn'
 
-# Quality Validation Thresholds (lowered for compatibility with Dell AIO and similar cameras)
+# Quality Validation Thresholds - SECURITY CRITICAL
+# These ensure FULL FACE is captured - NO PARTIAL FACES ALLOWED
 FACE_QUALITY_THRESHOLDS = {
-    'min_quality_score': env.float('FACE_MIN_QUALITY_SCORE', default=0.35),  # Overall quality (0-1)
-    'min_sharpness': env.float('FACE_MIN_SHARPNESS', default=25.0),  # Laplacian variance
-    'min_brightness': env.float('FACE_MIN_BRIGHTNESS', default=60.0),  # Mean pixel value
-    'max_brightness': env.float('FACE_MAX_BRIGHTNESS', default=220.0),  # Mean pixel value
-    'min_face_size': env.int('FACE_MIN_SIZE', default=80),  # Minimum face width/height in pixels
-    'min_face_ratio': env.float('FACE_MIN_RATIO', default=0.03),  # Minimum face area / image area
+    'min_quality_score': env.float('FACE_MIN_QUALITY_SCORE', default=0.45),  # Higher quality required
+    'min_sharpness': env.float('FACE_MIN_SHARPNESS', default=35.0),  # Clear image required
+    'min_brightness': env.float('FACE_MIN_BRIGHTNESS', default=70.0),  # Good lighting required
+    'max_brightness': env.float('FACE_MAX_BRIGHTNESS', default=210.0),  # Avoid overexposure
+    'min_face_size': env.int('FACE_MIN_SIZE', default=180),  # CRITICAL: Face must be at least 180x180 pixels (larger for full face)
+    'min_face_ratio': env.float('FACE_MIN_RATIO', default=0.12),  # CRITICAL: Face must occupy at least 12% of image (NO PARTIAL FACES)
+    'max_face_ratio': env.float('FACE_MAX_RATIO', default=0.65),  # Face can't be too close (65% max - ensures full face visible)
+    'min_center_offset': env.float('FACE_MIN_CENTER_OFFSET', default=0.30),  # Face must be reasonably centered
+    'min_face_aspect_ratio': env.float('FACE_MIN_ASPECT_RATIO', default=0.75),  # CRITICAL: Face width/height ratio (prevents horizontal slices)
+    'max_face_aspect_ratio': env.float('FACE_MAX_ASPECT_RATIO', default=1.35),  # CRITICAL: Face width/height ratio (prevents vertical slices)
 }
 
 # Logging
